@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments
+.env
+.env.*
+.venv/
+venv/
+
+# Generated mascot packages and large local outputs
+run/
+runs/
+generated/
+frames/
+qa/
+atlas.png
+atlas.webp
+manifest.json
+*.gif
+*.mp4
+
+# Local/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

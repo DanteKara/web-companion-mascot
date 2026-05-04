@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web Companion Mascot"
+  short_description: "Create stateful React chatbot mascots"
+  default_prompt: "Use $web-companion-mascot to create a React chatbot companion with clear animated states."
