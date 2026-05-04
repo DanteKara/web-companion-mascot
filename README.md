@@ -15,6 +15,24 @@ The skill is designed for mascot companions that need to feel alive inside a pro
 
 ## Install
 
+### Recommended
+
+Use the Skills CLI:
+
+```bash
+npx --yes skills add DanteKara/web-companion-mascot -g -y
+```
+
+Or with the full GitHub URL:
+
+```bash
+npx --yes skills add https://github.com/DanteKara/web-companion-mascot -g -y
+```
+
+The `-g` flag installs the skill globally for your user, and `-y` skips confirmation prompts.
+
+### Manual Fallback
+
 ### Windows PowerShell
 
 ```powershell
