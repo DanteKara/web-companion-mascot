@@ -57,6 +57,14 @@ ALLOWED_ENHANCER_ATTACHMENTS = {
 TEXT_DEPENDENT_KIND_TERMS = {"text", "label", "caption", "word", "question-mark", "punctuation"}
 TEXT_NEGATION_TERMS = {"no", "non", "not", "without"}
 TEXT_NEGATION_BREAK_TERMS = {"although", "but", "except", "however", "though", "while", "yet"}
+DRAFT_ENHANCER_KIND_TERMS = {
+    "planned during row generation",
+    "planned visual aid",
+    "draft",
+    "placeholder",
+    "tbd",
+    "to be decided",
+}
 RISKY_ANATOMY_ATTACHMENTS = {"held", "near-hand"}
 NO_GRIP_ATTACHMENTS = {"held", "near-hand"}
 ACTION_TERMS_BY_AFFORDANCE = {
@@ -458,6 +466,11 @@ def is_text_dependent_kind(kind: str) -> bool:
     return False
 
 
+def is_draft_enhancer_kind(kind: str) -> bool:
+    normalized = " ".join(kind.lower().replace("_", " ").replace("-", " ").split())
+    return any(term in normalized for term in DRAFT_ENHANCER_KIND_TERMS)
+
+
 def enhancer_text(value: dict[str, Any]) -> str:
     return " ".join(
         str(value.get(key, "")).lower().replace("_", "-")
@@ -568,6 +581,10 @@ def validate_enhancer(
     require_non_empty_string(errors, value.get("description"), f"{name}.description")
 
     if kind:
+        if is_draft_enhancer_kind(kind):
+            warnings.append(
+                f"{name}.kind still looks like prompt-planning metadata; update it to describe the accepted visual aid before production validation"
+            )
         if is_text_dependent_kind(kind):
             warnings.append(f"{name}.kind appears text-dependent; prefer a visual non-text enhancer")
 

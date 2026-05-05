@@ -83,10 +83,12 @@ The default generated package looks like:
 ```text
 run/
   manifest.json
+  prompts/<state>.md
   atlas.webp
   atlas.png
   frames/<state>/*.png
   qa/assembly-report.json
+  qa/state-cue-plan.json
   qa/contact-sheet.png
   qa/cutout-check.png
   qa/state-readability-check.png
@@ -103,6 +105,7 @@ run/
 
 The skill includes deterministic QA scripts and requires visual inspection before accepting a mascot:
 
+- `prepare_companion_run.py` creates the initial manifest draft, per-state row prompts, and `qa/state-cue-plan.json` so vibe inference, acting beats, visual aids, and anatomy limits are planned before image generation.
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
@@ -120,7 +123,17 @@ The assembler keeps an outline improver enabled by default:
 
 Production runs should pass strict validation with zero warnings:
 
+`prepare_companion_run.py` writes draft enhancer metadata such as `planned during row generation`; after selecting final row art, update each enhanced state to describe the actual accepted visual aid. Strict validation warns on leftover draft wording so planning placeholders do not ship as production truth.
+
 ```bash
+python scripts/prepare_companion_run.py \
+  --companion-name MyCompanion \
+  --reference /path/to/reference.png \
+  --output-dir /path/to/run \
+  --state-clarity semantic-enhancers \
+  --anatomy-class ambiguous-limbs \
+  --force
+
 python scripts/analyze_companion_quality.py \
   --manifest /path/to/run/manifest.json
 

@@ -58,6 +58,21 @@ For a higher-FPS feel, prefer 12 columns for the atlas. `thinking`, `working`, a
 
 If image generation cannot reliably produce a full 12+ frame row with the correct number of mascot bodies, generate the row in smaller exact-count chunks such as two 6-frame parts and stitch those generated parts with `scripts/stitch_row_parts.py`. The stitch step may concatenate existing generated art only; it must not create missing frames, draw props, resize sprites, or patch anatomy. The stitched row must pass the same assembly, motion, cutout, readability, semantic-anchor, and visual seam QA as a single generated row.
 
+## Prompt Planning Artifacts
+
+Normal companion runs should start with `scripts/prepare_companion_run.py`. The preparer writes:
+
+```text
+run/
+  manifest.json
+  prompts/<state>.md
+  qa/state-cue-plan.json
+```
+
+`qa/state-cue-plan.json` is a planning artifact, not production acceptance. It should record the inferred source vibe, state purpose, acting-first beat, whether a visual aid is allowed, the suggested aid, and rejection criteria for each state. Row prompts should use that plan to make the mascot perform the state first through expression, posture, timing, and original appendages, then add a small visual aid only when the state would otherwise be unclear at website size.
+
+The preparer may seed enhanced states with draft metadata such as `"kind": "planned during row generation"`. After final row art is selected, replace that draft metadata with the actual accepted visual aid, for example `"kind": "near-face icy voice pixels"` or `"kind": "body-surface processing glyph"`. Strict validation warns on leftover draft enhancer wording so planning placeholders do not become shipped metadata.
+
 ## Style Metadata
 
 New companion packs should include top-level `style.renderingStyle` and `style.stateClarity` values. Production output from this skill must be Codex-style pixel art:
@@ -347,6 +362,7 @@ For high-frame-count rows, treat body stability as part of the prompt, not just 
 - Treat `outlineImprover.totalOutlineHaloPixels > 0` in `qa/assembly-report.json` as a production blocker unless a human explicitly accepts the edge artifact.
 - Produce a cutout QA sheet on dark, light, and saturated backgrounds; checkerboards alone can hide chroma-key halos.
 - Produce `qa/state-readability-check.png` for semantic-enhancer packs before strict validation.
+- Produce `qa/state-cue-plan.json` before row generation for normal generated packs, or document why prompt planning was skipped.
 - Produce `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png` before strict validation.
 - Treat `qa/quality-report.json` silhouette warnings as blockers: detached fragments, broken-cut symptoms, core scale drift, full-row core scale range, or core center drift mean the row needs regeneration or a better source strip. For production mascots, full-row core scale range should stay at or below `5%`; larger changes are usually visible as body growth/shrink even when the contact sheet looks otherwise clean.
 - For split-generated rows, inspect the stitch boundary and reject visible half-to-half changes in mascot scale, top/bottom anchor, outline thickness, prop size, palette, lighting, expression style, or pixel density even when numeric QA passes.
@@ -377,6 +393,7 @@ Reject or repair if any of these happen:
 - `style.stateClarity` is malformed.
 - `style.stateClarity` is `pose-only` but state rows introduce unrequested semantic props.
 - `style.stateClarity` is `semantic-enhancers` but `thinking`, `working`, `listening`, or `answering` omit `enhancer` metadata.
+- Enhanced state metadata still contains draft planning wording such as `planned during row generation` instead of the accepted visual aid.
 - A held, touched, near-hand, writing, or work-prop enhancer omits `enhancer.anatomyGuard`.
 - `enhancer.anatomyGuard.allowedInteractors` uses vague language instead of exact named reference appendages or body parts.
 - A `fins-no-hands` or `ambiguous-limbs` mascot uses held, near-hand, touched, writing, or work-prop semantics without a `style.anatomyContract` recording the stable body core, appendage count, appendage placement, and forbidden additions.

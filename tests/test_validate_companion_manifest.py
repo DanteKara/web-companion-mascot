@@ -237,6 +237,23 @@ class ManifestValidatorTests(unittest.TestCase):
             self.assertFalse(any("enhancer.visualLanguageFit" in error for error in errors))
             self.assertTrue(qa["stateClarity"]["hasVisualLanguage"])
 
+    def test_draft_enhancer_kind_warns_before_production_validation(self) -> None:
+        enhancer = {
+            "kind": "planned during row generation",
+            "attachment": "body-pose",
+            "description": "Prompt-planned visual aid that has not been updated after visual selection.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("prompt-planning metadata" in warning for warning in warnings))
+
     def test_risky_working_prop_requires_anatomy_guard(self) -> None:
         enhancer = {
             "kind": "glowing slate",

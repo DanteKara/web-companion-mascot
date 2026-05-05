@@ -15,6 +15,7 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 
 ## Generic Enhancer Rules
 
+- Start normal generated runs with `scripts/prepare_companion_run.py` so each state has a row prompt and `qa/state-cue-plan.json` before image generation. Treat that file as a planning aid, not proof that the final art works.
 - Pick props from the mascot's world, not from a universal icon set.
 - Before picking state cues, infer the mascot's vibe from the reference: source personality, recurring motifs, and generic cues to avoid. The user should not have to provide this. Record it briefly when useful, but treat it as a prompt-planning aid rather than paperwork.
 - Use one enhancer per state by default.
@@ -43,6 +44,7 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 - For mascots with fins, sleeves, tentacles, or mitten-like limbs, held/touched props are allowed only when those appendages already exist in the reference and declare a matching `grip` or `brace` affordance. Keep props chunky and easy to brace; avoid finger-dependent typing/writing unless the reference has fingers and `typing` or `writing` affordances. The state card must name the exact existing appendages from `style.anatomyContract` and forbid extra hands, fingers, fins, sleeves, or grip anatomy.
 - For mascots with `style.anatomyClass` set to `no-limbs`, avoid grip semantics entirely. Do not use held/touched/typing/writing props such as slates, tablets, keyboards, pencils, quills, parchment, or paper, even if the prompt says "no extra hands"; these words often cause image models to invent hand-like anatomy. Prefer non-grip semantics: body-surface processing glyphs, pulsing core marks, aura/status bands, near-head work orbs, facial/mouth motion, body-pose, or worn charms.
 - For held, touched, near-hand, writing, or work-prop enhancers, add `enhancer.anatomyGuard` metadata to the manifest. Strict validation treats missing anatomy guards as a production warning, which fails strict runs.
+- After final row art is selected, replace any draft `enhancer.kind` such as `planned during row generation` with the actual visual aid that passed review. Strict validation warns on leftover planning placeholders.
 
 ## Reference Anatomy Audit
 
@@ -229,6 +231,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - The enhancer appears in the wrong state or persists into unrelated states.
 - The row relies on text instead of visual meaning.
 - The manifest omits `style.stateClarity` or per-state `enhancer` metadata for enhanced states.
+- The manifest still contains draft enhancer wording instead of the actual accepted visual aid.
 - The manifest omits `style.renderingStyle: "codex-pixel-art"` for a new production pack.
 - The enhancer looks pasted on: mismatched outline thickness, different edge treatment, wrong scale, flat vector styling over pixel art, inconsistent lighting, different pixel density, or no believable hand/body occlusion.
 - The row or enhancer looks like smooth illustration, glossy app-icon art, 3D rendering, painterly gradients, high-detail antialiasing, vector-flat symbols, or CSS-scaled smooth art instead of native Codex-style pixel art.
