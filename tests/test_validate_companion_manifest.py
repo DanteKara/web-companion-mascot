@@ -138,6 +138,105 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("checks.pixelArtStyle is required" in error for error in errors))
 
+    def test_art_direction_review_requires_theme_native_state_cues_check(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "no-limbs"})
+            source_reference = tmp_path / "source.png"
+            source_reference.write_bytes(b"not-really-an-image")
+            qa_dir = tmp_path / "qa"
+            qa_dir.mkdir()
+            checks = {
+                "referenceQualityMaintained": True,
+                "identityPreserved": True,
+                "stylePreserved": True,
+                "pixelArtStyle": True,
+                "creativeStateReadability": True,
+                "nativeEnhancers": True,
+                "integratedEnhancers": True,
+                "anatomyPreserved": True,
+                "noExtraAnatomy": True,
+                "believableOcclusion": True,
+                "noPrototypeFlattening": True,
+            }
+            (qa_dir / "art-direction-review.json").write_text(
+                json.dumps(
+                    {
+                        "status": "pass",
+                        "generationMethod": "imagegen-integrated-row-art",
+                        "sourceReference": str(source_reference),
+                        "productionUse": True,
+                        "checks": checks,
+                        "blockers": [],
+                        "notes": "Visual review passed.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_art_direction_review=True,
+            )
+
+            self.assertTrue(any("checks.themeNativeStateCues is required" in error for error in errors))
+
+    def test_visual_language_is_required_when_requested(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_visual_language=True,
+            )
+
+            self.assertTrue(any("style.visualLanguage is required" in error for error in errors))
+            self.assertTrue(any("enhancer.visualLanguageFit is required" in error for error in errors))
+
+    def test_visual_language_contract_accepts_state_fit_note(self) -> None:
+        enhancer = {
+            "kind": "frost processing flakes",
+            "attachment": "near-head",
+            "description": "Small icy data flakes orbit near the head while the mascot focuses.",
+            "visualLanguageFit": "Uses Glace-like frost puffs and pale blue crystals instead of generic gears or UI panels.",
+        }
+        style = {
+            "anatomyClass": "fins-no-hands",
+            "visualLanguage": {
+                "sourceVibe": "soft round icy companion with a cute face and two side fins",
+                "motifs": ["frost puffs", "snowflake dots", "pale blue rim"],
+                "forbiddenGenericCues": ["gears", "circuit boards", "speech panels"],
+                "stateCueRules": {
+                    "working": "Use frost/data flakes or a soft processing aura, not generic tech symbols.",
+                    "answering": "Use mouth shapes and icy breath puffs, not speech bubbles.",
+                },
+            },
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, style)
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_visual_language=True,
+            )
+
+            self.assertFalse(any("style.visualLanguage" in error for error in errors))
+            self.assertFalse(any("enhancer.visualLanguageFit" in error for error in errors))
+            self.assertTrue(qa["stateClarity"]["hasVisualLanguage"])
+
     def test_risky_working_prop_requires_anatomy_guard(self) -> None:
         enhancer = {
             "kind": "glowing slate",

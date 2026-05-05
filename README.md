@@ -106,7 +106,7 @@ The skill includes deterministic QA scripts and requires visual inspection befor
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
-- `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, Codex pixel-art style, creative state readability, and native enhancer look.
+- `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, Codex pixel-art style, creative state readability, theme-native state cues, and native enhancer look.
 - `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, rendering-style metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, art-direction blockers, and residual key-colored outline halos.
 - `generate_react_component.py` emits a TypeScript React component that animates by per-frame manifest durations.
 
@@ -130,6 +130,7 @@ python scripts/validate_companion_manifest.py \
   --strict \
   --require-state-clarity \
   --require-rendering-style \
+  --require-visual-language \
   --require-quality-report
 ```
 
@@ -148,6 +149,7 @@ python scripts/create_art_direction_review.py \
   --check stylePreserved=true \
   --check pixelArtStyle=true \
   --check creativeStateReadability=true \
+  --check themeNativeStateCues=true \
   --check nativeEnhancers=true \
   --check integratedEnhancers=true \
   --check anatomyPreserved=true \
@@ -162,6 +164,7 @@ python scripts/validate_companion_manifest.py \
   --strict \
   --require-state-clarity \
   --require-rendering-style \
+  --require-visual-language \
   --require-quality-report \
   --require-art-direction-review \
   --max-outline-halo-pixels 0

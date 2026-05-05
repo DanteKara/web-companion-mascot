@@ -39,6 +39,7 @@ MIN_USED_CELL_COVERAGE = 0.015
 STATE_CLARITY_PROFILES = {"pose-only", "semantic-enhancers"}
 RENDERING_STYLES = {"codex-pixel-art"}
 ANATOMY_CLASSES = {"hands", "paws", "fins-no-hands", "no-limbs", "ambiguous-limbs"}
+VISUAL_LANGUAGE_REQUIRED_FIELDS = {"sourceVibe", "motifs", "forbiddenGenericCues"}
 NO_GRIP_ANATOMY_CLASSES = {"no-limbs"}
 ANATOMY_CONTRACT_RECOMMENDED_CLASSES = {"fins-no-hands", "ambiguous-limbs"}
 SEMANTIC_ENHANCER_STATES = {"listening", "thinking", "working", "answering"}
@@ -297,6 +298,7 @@ def validate_art_direction_review(
         "stylePreserved",
         "pixelArtStyle",
         "creativeStateReadability",
+        "themeNativeStateCues",
         "nativeEnhancers",
         "integratedEnhancers",
         "anatomyPreserved",
@@ -819,6 +821,69 @@ def validate_anatomy_contract(
                 errors.append(f"{name}.forbiddenAdditions[{index}] must be a non-empty string")
 
 
+def validate_string_list(
+    errors: list[str],
+    value: Any,
+    name: str,
+    *,
+    required: bool = False,
+) -> None:
+    if value is None:
+        if required:
+            errors.append(f"{name} is required")
+        return
+    if not isinstance(value, list) or not value:
+        errors.append(f"{name} must be a non-empty array")
+        return
+    for index, entry in enumerate(value):
+        if not isinstance(entry, str) or not entry.strip():
+            errors.append(f"{name}[{index}] must be a non-empty string")
+
+
+def validate_visual_language(
+    errors: list[str],
+    value: Any,
+    name: str,
+    *,
+    required: bool = False,
+) -> bool:
+    if value is None:
+        if required:
+            errors.append(f"{name} is required when --require-visual-language is used")
+        return False
+    if not isinstance(value, dict):
+        errors.append(f"{name} must be an object")
+        return False
+
+    if required:
+        for key in sorted(VISUAL_LANGUAGE_REQUIRED_FIELDS - set(value)):
+            errors.append(f"{name}.{key} is required")
+
+    source_vibe = value.get("sourceVibe")
+    if source_vibe is not None and (not isinstance(source_vibe, str) or not source_vibe.strip()):
+        errors.append(f"{name}.sourceVibe must be a non-empty string")
+    validate_string_list(errors, value.get("motifs"), f"{name}.motifs", required=required)
+    validate_string_list(
+        errors,
+        value.get("forbiddenGenericCues"),
+        f"{name}.forbiddenGenericCues",
+        required=required,
+    )
+
+    state_cue_rules = value.get("stateCueRules")
+    if state_cue_rules is not None:
+        if not isinstance(state_cue_rules, dict):
+            errors.append(f"{name}.stateCueRules must be an object when present")
+        else:
+            for state_name, rule in state_cue_rules.items():
+                if not isinstance(state_name, str) or not state_name.strip():
+                    errors.append(f"{name}.stateCueRules keys must be non-empty strings")
+                if not isinstance(rule, str) or not rule.strip():
+                    errors.append(f"{name}.stateCueRules.{state_name} must be a non-empty string")
+
+    return True
+
+
 def validate_style_metadata(
     data: dict[str, Any],
     states: dict[str, Any],
@@ -827,6 +892,7 @@ def validate_style_metadata(
     qa: dict[str, Any],
     require_state_clarity: bool,
     require_rendering_style: bool,
+    require_visual_language: bool,
 ) -> None:
     style = data.get("style")
     if style is None:
@@ -834,6 +900,8 @@ def validate_style_metadata(
             errors.append("style.stateClarity is required when --require-state-clarity is used")
         if require_rendering_style:
             errors.append("style.renderingStyle is required when --require-rendering-style is used")
+        if require_visual_language:
+            errors.append("style.visualLanguage is required when --require-visual-language is used")
         return
     if not isinstance(style, dict):
         errors.append("style must be an object")
@@ -864,6 +932,14 @@ def validate_style_metadata(
     if enhancer_theme is not None and not isinstance(enhancer_theme, str):
         errors.append("style.enhancerTheme must be a string when present")
 
+    visual_language = style.get("visualLanguage")
+    has_visual_language = validate_visual_language(
+        errors,
+        visual_language,
+        "style.visualLanguage",
+        required=require_visual_language,
+    )
+
     anatomy_class = style.get("anatomyClass")
     if anatomy_class is not None:
         if not isinstance(anatomy_class, str):
@@ -893,6 +969,12 @@ def validate_style_metadata(
                 anatomy_class=anatomy_class if isinstance(anatomy_class, str) else None,
                 anatomy_contract=anatomy_contract if isinstance(anatomy_contract, dict) else None,
             )
+            enhancer = state.get("enhancer")
+            visual_language_fit = enhancer.get("visualLanguageFit") if isinstance(enhancer, dict) else None
+            if require_visual_language and (not isinstance(visual_language_fit, str) or not visual_language_fit.strip()):
+                errors.append(
+                    f"states.{state_name}.enhancer.visualLanguageFit is required when --require-visual-language is used"
+                )
 
     if state_clarity == "pose-only" and states_with_enhancers:
         errors.append("style.stateClarity is pose-only but one or more states include enhancer metadata")
@@ -919,6 +1001,7 @@ def validate_style_metadata(
         "profile": state_clarity,
         "renderingStyle": rendering_style,
         "enhancerTheme": enhancer_theme,
+        "hasVisualLanguage": has_visual_language,
         "anatomyClass": anatomy_class,
         "hasAnatomyContract": anatomy_contract is not None,
         "statesWithEnhancers": sorted(states_with_enhancers),
@@ -932,6 +1015,7 @@ def validate_manifest(
     profile: str = "generic",
     require_state_clarity: bool = False,
     require_rendering_style: bool = False,
+    require_visual_language: bool = False,
     require_quality_report: bool = False,
     require_art_direction_review: bool = False,
     key_color: str | None = None,
@@ -1047,6 +1131,7 @@ def validate_manifest(
         qa,
         require_state_clarity,
         require_rendering_style,
+        require_visual_language,
     )
     style = data.get("style")
     if (
@@ -1157,6 +1242,11 @@ def main() -> int:
         help='Require style.renderingStyle metadata and enforce "codex-pixel-art"',
     )
     parser.add_argument(
+        "--require-visual-language",
+        action="store_true",
+        help="Require style.visualLanguage and per-enhancer visualLanguageFit metadata for mascot-native state cues",
+    )
+    parser.add_argument(
         "--require-quality-report",
         action="store_true",
         help="Require qa/quality-report.json and include quality warnings in strict validation",
@@ -1175,6 +1265,7 @@ def main() -> int:
         profile=args.profile,
         require_state_clarity=args.require_state_clarity,
         require_rendering_style=args.require_rendering_style,
+        require_visual_language=args.require_visual_language,
         require_quality_report=args.require_quality_report,
         require_art_direction_review=args.require_art_direction_review,
         key_color=args.key_color,
@@ -1189,6 +1280,7 @@ def main() -> int:
         "strict": args.strict,
         "requireStateClarity": args.require_state_clarity,
         "requireRenderingStyle": args.require_rendering_style,
+        "requireVisualLanguage": args.require_visual_language,
         "requireQualityReport": args.require_quality_report,
         "requireArtDirectionReview": args.require_art_direction_review,
         "errors": errors,

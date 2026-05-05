@@ -14,6 +14,7 @@ REQUIRED_CHECKS = [
     "stylePreserved",
     "pixelArtStyle",
     "creativeStateReadability",
+    "themeNativeStateCues",
     "nativeEnhancers",
     "integratedEnhancers",
     "anatomyPreserved",

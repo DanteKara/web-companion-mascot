@@ -16,6 +16,7 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 ## Generic Enhancer Rules
 
 - Pick props from the mascot's world, not from a universal icon set.
+- Before picking state cues, write a visual-language contract for the mascot: source vibe, recurring motifs, and generic cues to avoid. Use this as a veto list when a readable symbol does not feel native to the character.
 - Use one enhancer per state by default.
 - Anchor enhancers to the mascot: held, worn, near-head, near-hand, near-face, aura, gesture, or body-pose.
 - Write a tiny state card before generating each enhanced row: semantic read, chosen prop/effect, exact anchor, body parts allowed to interact with it, and forbidden artifacts.
@@ -30,6 +31,7 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 - For near-head bubbles, sound rings, work orbs, and similar detached-but-anchored effects, lock the mascot body footprint first: same body center, same silhouette scale, same top and bottom body edges, and the same appendage count across the row. Animate the effect around the mascot; do not let the model make the character zoom, shrink, or reposition to accommodate the effect.
 - For thinking bubbles or puffs, prefer a believable side-origin trajectory: begin near one side of the head or hood, drift slightly outward and upward, reach a compact readable hold, then settle. Avoid straight-up hovering icons unless that direction is intentionally chosen for the character.
 - Avoid under-designed semantics. Tiny dots, generic particles, or minimal marks are not enough for production unless they clearly look like intentional character art at 64, 96, and 128 px. If a state reads as "status particles" rather than the intended behavior, regenerate with a richer but still anchored concept.
+- Avoid off-vibe semantics. Generic gears, circuit diagrams, speech panels, UI windows, or universal assistant icons are blockers when the source mascot's world suggests softer or different motifs. For example, an icy round pet should use frost puffs, snowflake dots, icy breath, crystal/data flakes, or a cold shimmer before it uses gears or circuit glyphs.
 - Generate production enhancers as part of the mascot artwork. Do not add vector, CSS, or hand-drawn overlays after generation unless the user explicitly wants a throwaway prototype.
 - Do not use local scripts or deterministic compositors to create final enhancer pixels. Scripts may assemble and validate row art, but production semantics must come from `$imagegen` row generation or from user/artist-provided integrated row art.
 - Match the base mascot's line weight, pixel grid, palette, lighting direction, flat shading, edge treatment, pixel density, and occlusion. A good enhancer should look like it was designed by the same pixel artist in the same pass.
@@ -70,6 +72,7 @@ rendering style: codex-pixel-art
 semantic read: backend/tool work
 anatomy class: simple-appendages
 enhancer: theme-native work prop
+visual-language fit: why this prop/effect belongs to the source mascot's world
 anchor: held low and braced only by the original visible appendages
 required affordance: grip or brace
 allowed anatomy: exact named appendages from style.anatomyContract only, no new grip anatomy
@@ -84,13 +87,14 @@ rendering style: codex-pixel-art
 semantic read: planning before output
 anatomy class: simple-appendages
 enhancer: side-origin theme-native thought cue
+visual-language fit: why this cue uses the mascot's own motifs instead of generic symbols
 anchor: near upper-right side of head
 required affordance: face-touch only for mascots whose exact hand/paw/appendage declares face-touch
 allowed anatomy: same named original appendages may move within their affordances; otherwise keep simple appendages side-attached
 forbidden: extra limbs, extra hands, fingers, detached mitts, duplicated appendages, changed body scale, pasted-on effect
 ```
 
-The card should change with the mascot. A hooded fantasy character might use parchment and sleeves; a small round pet with usable fins might brace a simple slate; a modern bot might use a tablet. A true no-limb mascot should use a body-surface glyph or near-head effect instead of a held prop.
+The card should change with the mascot. A hooded fantasy character might use parchment and sleeves; a small round icy pet might use frost puffs, crystalline data flakes, or icy breath; a modern bot might use a tablet. A true no-limb mascot should use a body-surface motif or near-head effect from its own visual language instead of a held prop.
 
 ## State Patterns
 
@@ -117,6 +121,15 @@ Record the chosen profile so future QA and React integration can understand the 
     "renderingStyle": "codex-pixel-art",
     "stateClarity": "semantic-enhancers",
     "enhancerTheme": "fantasy",
+    "visualLanguage": {
+      "sourceVibe": "soft round icy companion with a cute face",
+      "motifs": ["frost puffs", "snowflake dots", "pale blue rim"],
+      "forbiddenGenericCues": ["gears", "circuit boards", "speech panels"],
+      "stateCueRules": {
+        "working": "Use frost/data flakes or a soft processing aura, not generic tech symbols.",
+        "answering": "Use mouth shapes and icy breath puffs, not speech bubbles."
+      }
+    },
     "anatomyClass": "fins-no-hands",
     "anatomyContract": {
       "source": "reference-audit",
@@ -150,7 +163,8 @@ Record the chosen profile so future QA and React integration can understand the 
       "enhancer": {
         "kind": "thought-bubble",
         "attachment": "near-head",
-        "description": "Small no-text thought bubble anchored near the head."
+        "description": "Small no-text thought bubble anchored near the head.",
+        "visualLanguageFit": "Uses the same soft puff silhouette and pale blue snow highlights as the source mascot."
       }
     }
   }
@@ -200,6 +214,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - `qa/quality-report.json` reports semantic anchor drift, missing enhancer presence, near-duplicate animation, body jitter, or large foreground area changes.
 - `qa/quality-report.json` reports detached fragments, broken-cut symptoms, core silhouette scale drift, or core center drift.
 - The enhancer is technically stable but creatively weak, such as tiny dots or generic particles that do not look like deliberate state art.
+- The enhancer is technically readable but off-vibe, such as gears, circuit glyphs, speech panels, or generic assistant symbols on a mascot whose visual language suggests different motifs.
 - The enhancer is readable but mechanically placed, such as a bubble that only floats straight above the head with no acting beat, eye tracking, expression change, or believable trajectory.
 - The enhancer is cropped, detached from the character, or visually leaks into neighboring cells.
 - The enhancer changes sides, height, or anchor point without an intentional animated reason.

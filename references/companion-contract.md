@@ -79,6 +79,15 @@ or:
     "renderingStyle": "codex-pixel-art",
     "stateClarity": "semantic-enhancers",
     "enhancerTheme": "modern-assistant",
+    "visualLanguage": {
+      "sourceVibe": "soft round icy companion with a cute face",
+      "motifs": ["frost puffs", "snowflake dots", "pale blue rim"],
+      "forbiddenGenericCues": ["gears", "circuit boards", "speech panels"],
+      "stateCueRules": {
+        "working": "Use frost/data flakes or a soft processing aura, not generic tech symbols.",
+        "answering": "Use mouth shapes and icy breath puffs, not speech bubbles."
+      }
+    },
     "anatomyClass": "fins-no-hands",
     "anatomyContract": {
       "source": "reference-audit",
@@ -133,11 +142,32 @@ When `semantic-enhancers` is used, add an `enhancer` object to states that need 
     "enhancer": {
       "kind": "thought-bubble",
       "attachment": "near-head",
-      "description": "Small no-text thought bubble anchored near the head."
+      "description": "Small no-text thought bubble anchored near the head.",
+      "visualLanguageFit": "Uses the mascot's soft puff motif and pale palette instead of a generic UI icon."
     }
   }
 }
 ```
+
+For newly generated semantic-enhancer packs, record a visual-language contract:
+
+```json
+{
+  "style": {
+    "visualLanguage": {
+      "sourceVibe": "soft round icy companion with a cute face and two side fins",
+      "motifs": ["frost puffs", "snowflake dots", "icy breath"],
+      "forbiddenGenericCues": ["gears", "circuit boards", "speech panels"],
+      "stateCueRules": {
+        "working": "Use frost/data flakes or a soft processing aura, not generic tech symbols.",
+        "answering": "Use mouth shapes and icy breath puffs, not speech bubbles."
+      }
+    }
+  }
+}
+```
+
+`style.visualLanguage` is not a substitute for visual review, but it forces the prompt and manifest to name what belongs to the mascot's world. Each enhanced state should include `enhancer.visualLanguageFit`, a short note explaining why the state cue matches the reference vibe. Use `scripts/validate_companion_manifest.py --require-visual-language` for production auditions so missing visual-language intent fails validation.
 
 Held, touched, near-hand, writing, or work-prop enhancers should also include an `anatomyGuard` so prompts and QA do not invent new limbs:
 
@@ -321,6 +351,7 @@ For high-frame-count rows, treat body stability as part of the prompt, not just 
 - Treat `qa/quality-report.json` silhouette warnings as blockers: detached fragments, broken-cut symptoms, core scale drift, full-row core scale range, or core center drift mean the row needs regeneration or a better source strip. For production mascots, full-row core scale range should stay at or below `5%`; larger changes are usually visible as body growth/shrink even when the contact sheet looks otherwise clean.
 - For split-generated rows, inspect the stitch boundary and reject visible half-to-half changes in mascot scale, top/bottom anchor, outline thickness, prop size, palette, lighting, expression style, or pixel density even when numeric QA passes.
 - Produce `qa/art-direction-review.json` before production validation. This is the visual gate for reference quality, identity preservation, native enhancers, and creative state readability.
+- Production art-direction review must also confirm `themeNativeStateCues`: the state cues come from the mascot's visual language rather than generic symbols that merely read as chatbot UI.
 - Production visual QA must confirm Codex-style pixel art: visible stepped edges, crisp clusters, limited palette, flat cel shading, thick readable outline, and consistent pixel density. Smooth illustration, glossy app-icon rendering, painterly gradients, 3D shading, vector-flat symbols, or high-detail antialiasing are production blockers.
 - Production art must come from `$imagegen` integrated row generation or user/artist-provided integrated row art. Local scripts and deterministic compositors may not draw, synthesize, or paste final mascot props/effects.
 - Review assembly warnings such as equal-width fallback; they indicate the row may need regeneration or manual inspection.
@@ -342,6 +373,7 @@ Reject or repair if any of these happen:
 - `qa/quality-report.json` reports low motion, near-duplicate transitions, body jitter, major area jumps, missing enhancer presence, or semantic anchor drift.
 - `qa/art-direction-review.json` is missing for a production run, has `status` other than `pass`, has `productionUse` other than `true`, contains blockers, or reports any required art-direction check as false.
 - `style.renderingStyle` is missing from a new production pack or is not `codex-pixel-art`.
+- `style.visualLanguage` is missing from a new production pack, or an enhanced state omits `enhancer.visualLanguageFit`.
 - `style.stateClarity` is malformed.
 - `style.stateClarity` is `pose-only` but state rows introduce unrequested semantic props.
 - `style.stateClarity` is `semantic-enhancers` but `thinking`, `working`, `listening`, or `answering` omit `enhancer` metadata.
@@ -350,6 +382,7 @@ Reject or repair if any of these happen:
 - A `fins-no-hands` or `ambiguous-limbs` mascot uses held, near-hand, touched, writing, or work-prop semantics without a `style.anatomyContract` recording the stable body core, appendage count, appendage placement, and forbidden additions.
 - A semantic enhancer is not readable at 64, 96, and 128 px.
 - A semantic enhancer is readable only as generic particles or timid decoration rather than intentional, character-native state art.
+- A semantic enhancer is readable but off-vibe: generic gears, circuit diagrams, speech panels, UI windows, or universal symbols that do not belong to the mascot's source world.
 - A semantic enhancer is cropped, detached, text-dependent, or appears in unrelated states.
 - A semantic enhancer wanders away from its intended anchor, changes sides without intent, or makes the row read as a different state.
 - A semantic enhancer looks pasted on: mismatched outline, edge treatment, lighting, scale, pixel density, palette, or occlusion.
@@ -364,6 +397,7 @@ Reject or repair if any of these happen:
 - Production semantic enhancers were added as post-process overlays instead of generated as integrated mascot art.
 - Production final art was made with deterministic compositing, vector overlays, manual shape props, or another prototype-only path.
 - `qa/art-direction-review.json` has a production generation method other than `imagegen-integrated-row-art`, `user-provided-integrated-row-art`, or `artist-provided-integrated-row-art`.
+- `qa/art-direction-review.json` does not record `checks.themeNativeStateCues: true` for production acceptance.
 - `qa/art-direction-review.json` does not record the original source reference that was used for visual comparison.
 - A key chatbot state has too few frames: use 12+ for `thinking`, `working`, and `answering`; use 10+ for the other default states.
 - A row contains floating symbols, shadows, glows, dust, speed lines, text, UI panels, or scenery that the user did not request.
