@@ -36,6 +36,9 @@ CHATBOT_RECOMMENDED_FRAMES = {
 CHATBOT_CORE_STATES = {"idle", "thinking", "working", "answering", "success", "error"}
 MIN_USED_CELL_COVERAGE = 0.015
 STATE_CLARITY_PROFILES = {"pose-only", "semantic-enhancers"}
+ANATOMY_CLASSES = {"hands", "paws", "fins-no-hands", "no-limbs", "ambiguous-limbs"}
+NO_GRIP_ANATOMY_CLASSES = {"no-limbs"}
+ANATOMY_CONTRACT_RECOMMENDED_CLASSES = {"fins-no-hands", "ambiguous-limbs"}
 SEMANTIC_ENHANCER_STATES = {"listening", "thinking", "working", "answering"}
 ALLOWED_ENHANCER_ATTACHMENTS = {
     "held",
@@ -49,6 +52,59 @@ ALLOWED_ENHANCER_ATTACHMENTS = {
     "body-pose",
 }
 TEXT_DEPENDENT_KIND_TERMS = {"text", "label", "caption", "word", "question-mark", "punctuation"}
+TEXT_NEGATION_TERMS = {"no", "non", "not", "without"}
+RISKY_ANATOMY_ATTACHMENTS = {"held", "near-hand"}
+NO_GRIP_ATTACHMENTS = {"held", "near-hand"}
+VAGUE_ALLOWED_INTERACTOR_PHRASES = {
+    "existing appendages only",
+    "existing limbs only",
+    "existing visible appendages only",
+    "original appendages only",
+    "visible appendages only",
+}
+RISKY_ANATOMY_PROP_TERMS = {
+    "book",
+    "document",
+    "keyboard",
+    "laptop",
+    "paper",
+    "parchment",
+    "pen",
+    "pencil",
+    "quill",
+    "slate",
+    "tablet",
+    "tool",
+    "writing",
+}
+NO_GRIP_PROP_TERMS = RISKY_ANATOMY_PROP_TERMS | {
+    "brace",
+    "braced",
+    "grip",
+    "hand",
+    "hands",
+    "finger",
+    "fingers",
+    "typing",
+}
+ALLOWED_PRODUCTION_GENERATION_METHODS = {
+    "imagegen-integrated-row-art",
+    "user-provided-integrated-row-art",
+    "artist-provided-integrated-row-art",
+}
+DISALLOWED_GENERATION_METHOD_TERMS = {
+    "compositor",
+    "deterministic",
+    "overlay",
+    "vector",
+    "procedural",
+    "pillow",
+    "script",
+    "css",
+    "svg",
+    "canvas",
+    "hand-authored",
+}
 
 
 def parse_hex_color(value: str) -> tuple[int, int, int]:
@@ -127,6 +183,101 @@ def load_quality_report(manifest_path: Path) -> dict[str, Any] | None:
     except Exception:
         return None
     return report if isinstance(report, dict) else None
+
+
+def load_art_direction_review(manifest_path: Path) -> dict[str, Any] | None:
+    report_path = manifest_path.parent / "qa" / "art-direction-review.json"
+    if not report_path.exists():
+        return None
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    return report if isinstance(report, dict) else None
+
+
+def validate_art_direction_review(
+    manifest_path: Path,
+    review: dict[str, Any],
+    errors: list[str],
+    warnings: list[str],
+    qa: dict[str, Any],
+) -> None:
+    status = review.get("status")
+    method = review.get("generationMethod")
+    source_reference = review.get("sourceReference")
+    production_use = review.get("productionUse")
+    blockers = review.get("blockers")
+
+    qa["artDirectionReview"] = {
+        "status": status,
+        "generationMethod": method,
+        "sourceReference": source_reference,
+        "productionUse": production_use,
+        "blockers": blockers if isinstance(blockers, list) else [],
+    }
+
+    if status != "pass":
+        errors.append("qa/art-direction-review.json status must be 'pass' for production validation")
+
+    if production_use is not True:
+        errors.append("qa/art-direction-review.json productionUse must be true for production validation")
+
+    if isinstance(blockers, list) and blockers:
+        for blocker in blockers:
+            errors.append(f"art direction blocker: {blocker}")
+    elif blockers is not None and not isinstance(blockers, list):
+        errors.append("qa/art-direction-review.json blockers must be an array")
+
+    if not isinstance(method, str) or not method.strip():
+        errors.append("qa/art-direction-review.json generationMethod must be a non-empty string")
+    elif method not in ALLOWED_PRODUCTION_GENERATION_METHODS:
+        errors.append(
+            "qa/art-direction-review.json generationMethod must be one of: "
+            + ", ".join(sorted(ALLOWED_PRODUCTION_GENERATION_METHODS))
+        )
+    elif any(term in method.lower() for term in DISALLOWED_GENERATION_METHOD_TERMS):
+        errors.append(
+            f"qa/art-direction-review.json generationMethod {method!r} is not acceptable for production final art"
+        )
+
+    if not isinstance(source_reference, str) or not source_reference.strip():
+        errors.append("qa/art-direction-review.json sourceReference is required for production validation")
+    else:
+        source_reference_path = Path(source_reference).expanduser()
+        if not source_reference_path.is_absolute():
+            source_reference_path = manifest_path.parent / source_reference_path
+        if not source_reference_path.exists():
+            errors.append(f"qa/art-direction-review.json sourceReference does not exist: {source_reference}")
+
+    checks = review.get("checks")
+    required_checks = {
+        "referenceQualityMaintained",
+        "identityPreserved",
+        "stylePreserved",
+        "creativeStateReadability",
+        "nativeEnhancers",
+        "integratedEnhancers",
+        "anatomyPreserved",
+        "noExtraAnatomy",
+        "believableOcclusion",
+        "noPrototypeFlattening",
+    }
+    if not isinstance(checks, dict):
+        errors.append("qa/art-direction-review.json checks must be an object")
+        return
+
+    missing = sorted(required_checks - set(checks))
+    for key in missing:
+        errors.append(f"qa/art-direction-review.json checks.{key} is required")
+
+    for key in sorted(required_checks & set(checks)):
+        if checks.get(key) is not True:
+            errors.append(f"qa/art-direction-review.json checks.{key} must be true")
+
+    notes = review.get("notes")
+    if not isinstance(notes, str) or not notes.strip():
+        warnings.append("qa/art-direction-review.json notes should describe why the mascot passes visually")
 
 
 def inspect_atlas(
@@ -239,11 +390,59 @@ def require_non_empty_string(errors: list[str], value: Any, name: str) -> str | 
     return value
 
 
+def is_text_dependent_kind(kind: str) -> bool:
+    normalized = kind.lower().replace("_", "-").replace(" ", "-")
+    tokens = [token for token in normalized.split("-") if token]
+    simple_terms = TEXT_DEPENDENT_KIND_TERMS - {"question-mark"}
+
+    for index, token in enumerate(tokens):
+        if token not in simple_terms:
+            continue
+        previous = tokens[index - 1] if index else ""
+        if previous in TEXT_NEGATION_TERMS:
+            continue
+        return True
+
+    question_indexes = [index for index, token in enumerate(tokens) if token == "question"]
+    for index in question_indexes:
+        if index + 1 >= len(tokens) or tokens[index + 1] != "mark":
+            continue
+        previous = tokens[index - 1] if index else ""
+        if previous in TEXT_NEGATION_TERMS:
+            continue
+        return True
+
+    return False
+
+
+def enhancer_text(value: dict[str, Any]) -> str:
+    return " ".join(
+        str(value.get(key, "")).lower().replace("_", "-")
+        for key in ["kind", "attachment", "description"]
+    )
+
+
+def enhancer_has_anatomy_risk(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    attachment = value.get("attachment")
+    text = enhancer_text(value)
+    return bool(attachment in RISKY_ANATOMY_ATTACHMENTS) or any(
+        term in text for term in RISKY_ANATOMY_PROP_TERMS
+    )
+
+
+def is_vague_allowed_interactor(value: str) -> bool:
+    normalized = " ".join(value.lower().replace("-", " ").split())
+    return normalized in VAGUE_ALLOWED_INTERACTOR_PHRASES
+
+
 def validate_enhancer(
     errors: list[str],
     warnings: list[str],
     value: Any,
     name: str,
+    anatomy_class: str | None = None,
 ) -> None:
     if not isinstance(value, dict):
         errors.append(f"{name} must be an object")
@@ -254,8 +453,7 @@ def validate_enhancer(
     require_non_empty_string(errors, value.get("description"), f"{name}.description")
 
     if kind:
-        normalized_kind = kind.lower().replace("_", "-").replace(" ", "-")
-        if any(term in normalized_kind for term in TEXT_DEPENDENT_KIND_TERMS):
+        if is_text_dependent_kind(kind):
             warnings.append(f"{name}.kind appears text-dependent; prefer a visual non-text enhancer")
 
     if attachment:
@@ -265,6 +463,117 @@ def validate_enhancer(
             errors.append(
                 f"{name}.attachment must be one of: {', '.join(sorted(ALLOWED_ENHANCER_ATTACHMENTS))}"
             )
+
+    text = enhancer_text(value)
+    if anatomy_class in NO_GRIP_ANATOMY_CLASSES:
+        if attachment in NO_GRIP_ATTACHMENTS:
+            errors.append(
+                f"{name}.attachment {attachment!r} is not allowed for style.anatomyClass {anatomy_class!r}; "
+                "use attached, near-head, near-face, aura, gesture, worn, or body-pose semantics instead"
+            )
+        if any(term in text for term in NO_GRIP_PROP_TERMS):
+            errors.append(
+                f"{name} describes a grip/typing/writing prop that is unsafe for style.anatomyClass {anatomy_class!r}; "
+                "use a non-grip enhancer such as a body-surface glyph, processing aura, facial animation, or near-head effect"
+            )
+
+    anatomy_risk = enhancer_has_anatomy_risk(value)
+    anatomy_guard = value.get("anatomyGuard")
+    if anatomy_risk and anatomy_guard is None:
+        warnings.append(
+            f"{name}.anatomyGuard is recommended for held, near-hand, touched, writing, or work-prop enhancers so QA can reject extra limbs/new anatomy"
+        )
+    elif anatomy_guard is not None:
+        validate_anatomy_guard(errors, warnings, anatomy_guard, f"{name}.anatomyGuard")
+
+
+def validate_anatomy_guard(
+    errors: list[str],
+    warnings: list[str],
+    value: Any,
+    name: str,
+) -> None:
+    if not isinstance(value, dict):
+        errors.append(f"{name} must be an object")
+        return
+
+    limb_policy = value.get("limbPolicy")
+    if not isinstance(limb_policy, str) or not limb_policy.strip():
+        errors.append(f"{name}.limbPolicy must be a non-empty string")
+    elif "new" not in limb_policy.lower() and "existing" not in limb_policy.lower():
+        warnings.append(f"{name}.limbPolicy should explicitly forbid new anatomy or require existing limbs only")
+
+    for key in ["allowedInteractors", "forbidden"]:
+        entries = value.get(key)
+        if not isinstance(entries, list) or not entries:
+            errors.append(f"{name}.{key} must be a non-empty array")
+            continue
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, str) or not entry.strip():
+                errors.append(f"{name}.{key}[{index}] must be a non-empty string")
+                continue
+            if key == "allowedInteractors" and is_vague_allowed_interactor(entry):
+                warnings.append(
+                    f"{name}.allowedInteractors should name exact reference appendages or body parts, not only {entry!r}"
+                )
+
+
+def validate_anatomy_contract(
+    errors: list[str],
+    warnings: list[str],
+    value: Any,
+    name: str,
+) -> None:
+    if not isinstance(value, dict):
+        errors.append(f"{name} must be an object")
+        return
+
+    for key in ["source", "bodyCore"]:
+        field = value.get(key)
+        if not isinstance(field, str) or not field.strip():
+            errors.append(f"{name}.{key} must be a non-empty string")
+
+    total_appendages = value.get("totalAppendages")
+    if not isinstance(total_appendages, int) or total_appendages < 0:
+        errors.append(f"{name}.totalAppendages must be an integer >= 0")
+        total_appendages = None
+
+    appendages = value.get("appendages")
+    counted_appendages = 0
+    if not isinstance(appendages, list):
+        errors.append(f"{name}.appendages must be an array")
+    elif total_appendages != 0 and not appendages:
+        errors.append(f"{name}.appendages must list the reference appendages when totalAppendages is greater than 0")
+    else:
+        for index, appendage in enumerate(appendages):
+            item_name = f"{name}.appendages[{index}]"
+            if not isinstance(appendage, dict):
+                errors.append(f"{item_name} must be an object")
+                continue
+            for key in ["id", "kind", "placement"]:
+                field = appendage.get(key)
+                if not isinstance(field, str) or not field.strip():
+                    errors.append(f"{item_name}.{key} must be a non-empty string")
+            count = appendage.get("count")
+            if not isinstance(count, int) or count < 1:
+                errors.append(f"{item_name}.count must be an integer >= 1")
+            else:
+                counted_appendages += count
+
+    if total_appendages is not None and isinstance(appendages, list) and counted_appendages != total_appendages:
+        errors.append(
+            f"{name}.totalAppendages must equal the sum of appendages counts ({counted_appendages})"
+        )
+
+    forbidden = value.get("forbiddenAdditions")
+    if forbidden is None:
+        warnings.append(f"{name}.forbiddenAdditions should list anatomy the generator must not invent")
+    elif not isinstance(forbidden, list) or not forbidden:
+        errors.append(f"{name}.forbiddenAdditions must be a non-empty array when present")
+    else:
+        for index, entry in enumerate(forbidden):
+            if not isinstance(entry, str) or not entry.strip():
+                errors.append(f"{name}.forbiddenAdditions[{index}] must be a non-empty string")
 
 
 def validate_style_metadata(
@@ -299,13 +608,34 @@ def validate_style_metadata(
     if enhancer_theme is not None and not isinstance(enhancer_theme, str):
         errors.append("style.enhancerTheme must be a string when present")
 
+    anatomy_class = style.get("anatomyClass")
+    if anatomy_class is not None:
+        if not isinstance(anatomy_class, str):
+            errors.append("style.anatomyClass must be a string when present")
+            anatomy_class = None
+        elif anatomy_class not in ANATOMY_CLASSES:
+            errors.append(f"style.anatomyClass must be one of: {', '.join(sorted(ANATOMY_CLASSES))}")
+
+    anatomy_contract = style.get("anatomyContract")
+    if anatomy_contract is not None:
+        validate_anatomy_contract(errors, warnings, anatomy_contract, "style.anatomyContract")
+
     states_with_enhancers: list[str] = []
+    risky_anatomy_states: list[str] = []
     for state_name, state in states.items():
         if not isinstance(state, dict):
             continue
         if "enhancer" in state:
             states_with_enhancers.append(state_name)
-            validate_enhancer(errors, warnings, state.get("enhancer"), f"states.{state_name}.enhancer")
+            if enhancer_has_anatomy_risk(state.get("enhancer")):
+                risky_anatomy_states.append(state_name)
+            validate_enhancer(
+                errors,
+                warnings,
+                state.get("enhancer"),
+                f"states.{state_name}.enhancer",
+                anatomy_class=anatomy_class if isinstance(anatomy_class, str) else None,
+            )
 
     if state_clarity == "pose-only" and states_with_enhancers:
         errors.append("style.stateClarity is pose-only but one or more states include enhancer metadata")
@@ -317,11 +647,24 @@ def validate_style_metadata(
                 warnings.append(
                     f"states.{state_name}.enhancer metadata is recommended when style.stateClarity is semantic-enhancers"
                 )
+        if (
+            anatomy_contract is None
+            and anatomy_class in ANATOMY_CONTRACT_RECOMMENDED_CLASSES
+            and risky_anatomy_states
+        ):
+            warnings.append(
+                "style.anatomyContract is recommended for "
+                f"style.anatomyClass {anatomy_class!r} when risky enhancer interactions are used in "
+                + ", ".join(sorted(risky_anatomy_states))
+            )
 
     qa["stateClarity"] = {
         "profile": state_clarity,
         "enhancerTheme": enhancer_theme,
+        "anatomyClass": anatomy_class,
+        "hasAnatomyContract": anatomy_contract is not None,
         "statesWithEnhancers": sorted(states_with_enhancers),
+        "riskyAnatomyStates": sorted(risky_anatomy_states),
         "recommendedSemanticStates": sorted(SEMANTIC_ENHANCER_STATES & set(states)),
     }
 
@@ -331,6 +674,7 @@ def validate_manifest(
     profile: str = "generic",
     require_state_clarity: bool = False,
     require_quality_report: bool = False,
+    require_art_direction_review: bool = False,
     key_color: str | None = None,
     spill_threshold: int | None = None,
     max_outline_halo_pixels: int = 0,
@@ -372,6 +716,13 @@ def validate_manifest(
             errors.append(f"quality report error: {error}")
         for warning in quality_report.get("warnings", []):
             warnings.append(f"quality report warning: {warning}")
+
+    art_direction_review = load_art_direction_review(manifest_path)
+    if art_direction_review is None:
+        if require_art_direction_review:
+            warnings.append("qa/art-direction-review.json is missing or unreadable")
+    else:
+        validate_art_direction_review(manifest_path, art_direction_review, errors, warnings, qa)
 
     if key_color is None and assembly_report:
         report_key_color = assembly_report.get("keyColor")
@@ -538,6 +889,11 @@ def main() -> int:
         action="store_true",
         help="Require qa/quality-report.json and include quality warnings in strict validation",
     )
+    parser.add_argument(
+        "--require-art-direction-review",
+        action="store_true",
+        help="Require qa/art-direction-review.json so production validation includes visual/art-direction acceptance",
+    )
     parser.add_argument("--json-out", help="Optional path to write validation JSON")
     args = parser.parse_args()
 
@@ -547,6 +903,7 @@ def main() -> int:
         profile=args.profile,
         require_state_clarity=args.require_state_clarity,
         require_quality_report=args.require_quality_report,
+        require_art_direction_review=args.require_art_direction_review,
         key_color=args.key_color,
         spill_threshold=args.spill_threshold,
         max_outline_halo_pixels=args.max_outline_halo_pixels,
@@ -559,6 +916,7 @@ def main() -> int:
         "strict": args.strict,
         "requireStateClarity": args.require_state_clarity,
         "requireQualityReport": args.require_quality_report,
+        "requireArtDirectionReview": args.require_art_direction_review,
         "errors": errors,
         "warnings": warnings,
         "qa": qa,

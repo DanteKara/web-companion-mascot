@@ -8,10 +8,12 @@ This is a Codex skill. It helps produce a web-ready mascot package with:
 - a transparent sprite atlas in `atlas.webp` and `atlas.png`
 - a strict `manifest.json`
 - extracted per-frame PNGs
-- visual QA sheets for contact, cutout, semantic readability, semantic anchor, and motion quality checks
+- visual QA sheets for contact, cutout, semantic readability, semantic anchor, motion quality, and art-direction checks
 - a generated React component and companion-state hook
 
 The skill is designed for mascot companions that need to feel alive inside a product UI, especially AI chatbots.
+
+Production mascot art must come from integrated row art generated with `$imagegen` or from finished user/artist-provided row strips. The bundled scripts assemble, clean, validate, and integrate assets; they must not draw or paste final semantic props into production mascot frames.
 
 ## Install
 
@@ -87,6 +89,7 @@ run/
   qa/cutout-check.png
   qa/state-readability-check.png
   qa/quality-report.json
+  qa/art-direction-review.json
   qa/semantic-anchor-check.png
   qa/motion-quality-check.png
   qa/previews/*.gif
@@ -101,7 +104,8 @@ The skill includes deterministic QA scripts and requires visual inspection befor
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
-- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, assembly warnings, quality warnings, and residual key-colored outline halos.
+- `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, style, creative state readability, and native enhancer look.
+- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, assembly warnings, quality warnings, art-direction blockers, and residual key-colored outline halos.
 - `generate_react_component.py` emits a TypeScript React component that animates by per-frame manifest durations.
 
 The assembler keeps an outline improver enabled by default:
@@ -118,12 +122,31 @@ Production runs should pass strict validation with zero warnings:
 python scripts/analyze_companion_quality.py \
   --manifest /path/to/run/manifest.json
 
+python scripts/create_art_direction_review.py \
+  --manifest /path/to/run/manifest.json \
+  --status pass \
+  --production-use \
+  --generation-method imagegen-integrated-row-art \
+  --source-reference /path/to/original-reference.png \
+  --check referenceQualityMaintained=true \
+  --check identityPreserved=true \
+  --check stylePreserved=true \
+  --check creativeStateReadability=true \
+  --check nativeEnhancers=true \
+  --check integratedEnhancers=true \
+  --check anatomyPreserved=true \
+  --check noExtraAnatomy=true \
+  --check believableOcclusion=true \
+  --check noPrototypeFlattening=true \
+  --notes "Visual review passed."
+
 python scripts/validate_companion_manifest.py \
   --manifest /path/to/run/manifest.json \
   --profile chatbot \
   --strict \
   --require-state-clarity \
   --require-quality-report \
+  --require-art-direction-review \
   --max-outline-halo-pixels 0
 ```
 

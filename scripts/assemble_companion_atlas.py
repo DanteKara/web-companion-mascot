@@ -293,6 +293,124 @@ def remove_small_components(image: Image.Image, min_area: int) -> Image.Image:
     return rgba
 
 
+def connected_components_with_pixels(alpha: Image.Image, min_area: int) -> list[dict[str, Any]]:
+    width, height = alpha.size
+    alpha_pixels = alpha.load()
+    visited = bytearray(width * height)
+    components: list[dict[str, Any]] = []
+
+    for y in range(height):
+        for x in range(width):
+            index = y * width + x
+            if visited[index] or not alpha_pixels[x, y]:
+                continue
+
+            pixels: list[tuple[int, int]] = []
+            stack = [(x, y)]
+            visited[index] = 1
+            x0 = x1 = x
+            y0 = y1 = y
+
+            while stack:
+                px, py = stack.pop()
+                pixels.append((px, py))
+                x0 = min(x0, px)
+                x1 = max(x1, px)
+                y0 = min(y0, py)
+                y1 = max(y1, py)
+                for ny in range(max(0, py - 1), min(height, py + 2)):
+                    for nx in range(max(0, px - 1), min(width, px + 2)):
+                        nindex = ny * width + nx
+                        if visited[nindex] or not alpha_pixels[nx, ny]:
+                            continue
+                        visited[nindex] = 1
+                        stack.append((nx, ny))
+
+            area = len(pixels)
+            if area >= min_area:
+                bbox = (x0, y0, x1 + 1, y1 + 1)
+                components.append(
+                    {
+                        "area": area,
+                        "bbox": bbox,
+                        "center": ((x0 + x1 + 1) / 2, (y0 + y1 + 1) / 2),
+                        "pixels": pixels,
+                    }
+                )
+
+    return components
+
+
+def component_frame_slots(
+    strip: Image.Image,
+    expected: int,
+    body_min_area: int,
+    component_min_area: int,
+) -> tuple[list[Image.Image], list[dict[str, Any]]]:
+    components = connected_components_with_pixels(strip.getchannel("A"), component_min_area)
+    body_candidates = [component for component in components if int(component["area"]) >= body_min_area]
+    if len(body_candidates) < expected:
+        raise ValueError(f"expected {expected} body components, found {len(body_candidates)}")
+    if len(body_candidates) > expected:
+        bodies = sorted(body_candidates, key=lambda component: int(component["area"]), reverse=True)[:expected]
+    else:
+        bodies = body_candidates
+    if len(bodies) != expected:
+        raise ValueError(f"expected {expected} body components, found {len(bodies)}")
+
+    bodies = sorted(bodies, key=lambda component: float(component["center"][0]))
+    centers = [float(component["center"][0]) for component in bodies]
+    boundaries = [float("-inf")]
+    for left, right in zip(centers, centers[1:]):
+        boundaries.append((left + right) / 2)
+    boundaries.append(float("inf"))
+
+    assignments: list[list[dict[str, Any]]] = [[] for _index in range(expected)]
+    for component in components:
+        center_x = float(component["center"][0])
+        slot_index = min(
+            range(expected),
+            key=lambda index: (
+                0 if boundaries[index] <= center_x < boundaries[index + 1] else 1,
+                abs(center_x - centers[index]),
+            ),
+        )
+        assignments[slot_index].append(component)
+
+    source_pixels = strip.load()
+    slots: list[Image.Image] = []
+    metadata: list[dict[str, Any]] = []
+    for slot_index, slot_components in enumerate(assignments):
+        slot = Image.new("RGBA", strip.size, (0, 0, 0, 0))
+        slot_pixels = slot.load()
+        x0 = strip.width
+        y0 = strip.height
+        x1 = 0
+        y1 = 0
+        component_areas: list[int] = []
+        for component in slot_components:
+            component_areas.append(int(component["area"]))
+            bx0, by0, bx1, by1 = component["bbox"]
+            x0 = min(x0, bx0)
+            y0 = min(y0, by0)
+            x1 = max(x1, bx1)
+            y1 = max(y1, by1)
+            for x, y in component["pixels"]:
+                slot_pixels[x, y] = source_pixels[x, y]
+        slots.append(slot)
+        metadata.append(
+            {
+                "index": slot_index,
+                "bodyCenterX": centers[slot_index],
+                "bbox": (x0, y0, x1, y1) if slot_components else None,
+                "components": len(slot_components),
+                "componentAreas": sorted(component_areas, reverse=True),
+            }
+        )
+
+    return slots, metadata
+
+
 def column_runs(strip: Image.Image, expected: int) -> list[tuple[int, int]]:
     alpha = strip.getchannel("A")
     counts = [
@@ -313,16 +431,17 @@ def column_runs(strip: Image.Image, expected: int) -> list[tuple[int, int]]:
         if start is not None:
             runs.append((start, strip.width - 1))
 
-        merged: list[tuple[int, int]] = []
-        for run in runs:
-            if merged and run[0] - merged[-1][1] <= 10:
-                merged[-1] = (merged[-1][0], run[1])
-            else:
-                merged.append(run)
+        for merge_gap in [10, 8, 6, 4, 2, 0]:
+            merged: list[tuple[int, int]] = []
+            for run in runs:
+                if merged and run[0] - merged[-1][1] <= merge_gap:
+                    merged[-1] = (merged[-1][0], run[1])
+                else:
+                    merged.append(run)
 
-        last_merged = merged
-        if len(merged) == expected:
-            return merged
+            last_merged = merged
+            if len(merged) == expected:
+                return merged
 
     raise ValueError(f"expected {expected} foreground runs, found {len(last_merged)}")
 
@@ -350,10 +469,12 @@ def fit_to_cell(
     padding: int,
     key: tuple[int, int, int],
     spill_threshold: int,
+    scale: float | None = None,
 ) -> Image.Image:
     max_width = max(1, cell_width - padding * 2)
     max_height = max(1, cell_height - padding * 2)
-    scale = min(max_width / sprite.width, max_height / sprite.height, 1.0)
+    if scale is None:
+        scale = min(max_width / sprite.width, max_height / sprite.height, 1.0)
     width = max(1, int(round(sprite.width * scale)))
     height = max(1, int(round(sprite.height * scale)))
     if (width, height) != sprite.size:
@@ -365,6 +486,14 @@ def fit_to_cell(
     y = cell_height - height - padding
     cell.alpha_composite(sprite, (x, y))
     return cell
+
+
+def fit_scale_for_sprites(sprites: list[Image.Image], cell_width: int, cell_height: int, padding: int) -> float:
+    max_width = max(1, cell_width - padding * 2)
+    max_height = max(1, cell_height - padding * 2)
+    sprite_width = max((sprite.width for sprite in sprites), default=1)
+    sprite_height = max((sprite.height for sprite in sprites), default=1)
+    return min(max_width / sprite_width, max_height / sprite_height, 1.0)
 
 
 def checkerboard(width: int, height: int, block: int = 16) -> Image.Image:
@@ -422,16 +551,34 @@ def extract_state_frames(
 ) -> list[Image.Image]:
     strip = key_to_alpha(Image.open(row_path), args.key_color_rgb, args.key_tolerance, args.spill_threshold)
     strip = remove_edge_spill(strip, args.key_color_rgb, args.spill_threshold, args.edge_spill_passes)
-    try:
-        runs = column_runs(strip, frame_count)
-        bounds = frame_bounds_from_runs(strip.width, runs)
-        extraction = "foreground-center"
-    except ValueError as exc:
-        if args.no_equal_fallback:
-            raise
+    component_slots: list[Image.Image] | None = None
+    component_metadata: list[dict[str, Any]] | None = None
+    if args.extraction_mode == "component":
+        component_slots, component_metadata = component_frame_slots(
+            strip,
+            frame_count,
+            args.body_component_area,
+            args.component_min_area,
+        )
+        bounds = [
+            tuple(int(value) for value in metadata["bbox"]) if metadata.get("bbox") else (0, 0, 0, 0)
+            for metadata in component_metadata
+        ]
+        extraction = "component-body"
+    elif args.extraction_mode == "equal":
         bounds = equal_frame_bounds(strip.width, frame_count)
-        extraction = "equal-fallback"
-        report["warnings"].append(f"{state_name}: {exc}; used equal-width fallback")
+        extraction = "equal-grid"
+    else:
+        try:
+            runs = column_runs(strip, frame_count)
+            bounds = frame_bounds_from_runs(strip.width, runs)
+            extraction = "foreground-center"
+        except ValueError as exc:
+            if args.no_equal_fallback or args.extraction_mode == "foreground":
+                raise
+            bounds = equal_frame_bounds(strip.width, frame_count)
+            extraction = "equal-fallback"
+            report["warnings"].append(f"{state_name}: {exc}; used equal-width fallback")
 
     frames: list[Image.Image] = []
     state_report = {
@@ -442,21 +589,36 @@ def extract_state_frames(
         "bounds": bounds,
         "frames": [],
     }
+    if component_metadata is not None:
+        state_report["components"] = component_metadata
     report["states"][state_name] = state_report
 
     out_dir = args.frames_dir / state_name
     out_dir.mkdir(parents=True, exist_ok=True)
-    for index, (x0, x1) in enumerate(bounds):
-        slot = strip.crop((x0, 0, x1, strip.height))
+    slots = component_slots if component_slots is not None else [strip.crop((x0, 0, x1, strip.height)) for x0, x1 in bounds]
+    sprites: list[Image.Image] = []
+    for slot in slots:
         slot = remove_small_components(slot, args.min_component_area)
         slot = remove_edge_spill(slot, args.key_color_rgb, args.spill_threshold, args.edge_spill_passes)
         slot = clean_transparent_rgb(slot)
-        sprite = crop_to_content(slot)
-        cell = fit_to_cell(sprite, args.cell_width, args.cell_height, args.padding, args.key_color_rgb, args.spill_threshold)
+        sprites.append(crop_to_content(slot))
+    state_fit_scale = fit_scale_for_sprites(sprites, args.cell_width, args.cell_height, args.padding)
+    state_report["fitScale"] = round(state_fit_scale, 6)
+    for index, sprite in enumerate(sprites):
+        cell = fit_to_cell(
+            sprite,
+            args.cell_width,
+            args.cell_height,
+            args.padding,
+            args.key_color_rgb,
+            args.spill_threshold,
+            scale=state_fit_scale,
+        )
         outline_halo_pixels = count_outline_halo_pixels(cell, args.key_color_rgb, args.spill_threshold)
         state_report["frames"].append(
             {
                 "index": index,
+                "fitScale": round(state_fit_scale, 6),
                 "outlineHaloPixels": outline_halo_pixels,
             }
         )
@@ -651,7 +813,15 @@ def main() -> int:
     parser.add_argument("--min-component-area", type=int, default=500, help="Drop isolated alpha components below this pixel area")
     parser.add_argument("--atlas-webp", default="atlas.webp", help="Atlas WebP filename relative to out-dir")
     parser.add_argument("--atlas-png", default="atlas.png", help="Atlas PNG filename relative to out-dir")
+    parser.add_argument(
+        "--extraction-mode",
+        choices=["auto", "foreground", "equal", "component"],
+        default="auto",
+        help="Frame extraction mode. Use component for row strips with detached integrated effects that need body-centered grouping.",
+    )
     parser.add_argument("--no-equal-fallback", action="store_true", help="Fail instead of equal-slicing if foreground run detection fails")
+    parser.add_argument("--body-component-area", type=int, default=8000, help="Minimum alpha component area used as a body anchor in component extraction mode")
+    parser.add_argument("--component-min-area", type=int, default=80, help="Minimum alpha component area retained for component extraction grouping")
     args = parser.parse_args()
 
     args.manifest = args.manifest.expanduser().resolve()

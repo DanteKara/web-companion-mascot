@@ -15,6 +15,13 @@ from PIL import Image, ImageDraw, ImageFont
 SEPARATE_ENHANCER_ATTACHMENTS = {"near-head", "near-face", "near-hand", "aura"}
 
 
+def quantile(sorted_values: list[int], ratio: float) -> int:
+    if not sorted_values:
+        return 0
+    index = int(round((len(sorted_values) - 1) * ratio))
+    return sorted_values[min(len(sorted_values) - 1, max(0, index))]
+
+
 def component_center(bbox: tuple[int, int, int, int]) -> tuple[float, float]:
     x0, y0, x1, y1 = bbox
     return ((x0 + x1) / 2, (y0 + y1) / 2)
@@ -23,6 +30,17 @@ def component_center(bbox: tuple[int, int, int, int]) -> tuple[float, float]:
 def component_size(bbox: tuple[int, int, int, int]) -> tuple[int, int]:
     x0, y0, x1, y1 = bbox
     return x1 - x0, y1 - y0
+
+
+def core_bbox(xs: list[int], ys: list[int], low: float = 0.10, high: float = 0.90) -> tuple[int, int, int, int]:
+    sorted_xs = sorted(xs)
+    sorted_ys = sorted(ys)
+    return (
+        quantile(sorted_xs, low),
+        quantile(sorted_ys, low),
+        quantile(sorted_xs, high) + 1,
+        quantile(sorted_ys, high) + 1,
+    )
 
 
 def connected_components(alpha: Image.Image, min_area: int) -> list[dict[str, Any]]:
@@ -42,10 +60,14 @@ def connected_components(alpha: Image.Image, min_area: int) -> list[dict[str, An
             area = 0
             x0 = x1 = x
             y0 = y1 = y
+            xs: list[int] = []
+            ys: list[int] = []
 
             while stack:
                 px, py = stack.pop()
                 area += 1
+                xs.append(px)
+                ys.append(py)
                 x0 = min(x0, px)
                 x1 = max(x1, px)
                 y0 = min(y0, py)
@@ -60,12 +82,16 @@ def connected_components(alpha: Image.Image, min_area: int) -> list[dict[str, An
 
             if area >= min_area:
                 bbox = (x0, y0, x1 + 1, y1 + 1)
+                core = core_bbox(xs, ys)
                 components.append(
                     {
                         "area": area,
                         "bbox": bbox,
                         "center": component_center(bbox),
                         "size": component_size(bbox),
+                        "coreBbox": core,
+                        "coreCenter": component_center(core),
+                        "coreSize": component_size(core),
                     }
                 )
 
@@ -149,6 +175,12 @@ def draw_scaled_frame(
             (bx0 * scale_x, by0 * scale_y, bx1 * scale_x, by1 * scale_y),
             outline=(80, 190, 255, 255),
             width=2,
+        )
+        cx0, cy0, cx1, cy1 = body.get("coreBbox", body["bbox"])
+        draw.rectangle(
+            (cx0 * scale_x, cy0 * scale_y, cx1 * scale_x, cy1 * scale_y),
+            outline=(86, 255, 162, 255),
+            width=1,
         )
     semantic = metrics.get("semantic")
     if semantic:
@@ -239,11 +271,16 @@ def analyze_manifest_quality(
     manifest_path: Path | str,
     *,
     min_component_area: int = 80,
+    fragment_min_area: int = 12,
     near_duplicate_delta: float = 1.0,
     max_duplicate_ratio: float = 0.45,
     min_average_motion_delta: float = 1.2,
     max_body_jump_ratio: float = 0.35,
     max_area_jump_ratio: float = 0.45,
+    max_core_scale_drift_ratio: float = 0.12,
+    max_core_scale_range_ratio: float = 0.05,
+    max_core_center_drift_ratio: float = 0.08,
+    max_fragment_area_ratio: float = 0.015,
     max_semantic_drift_ratio: float = 0.55,
     min_semantic_presence_ratio: float = 0.35,
     semantic_anchor_check: str = "qa/semantic-anchor-check.png",
@@ -277,7 +314,13 @@ def analyze_manifest_quality(
             frames_by_state[state_name] = frames
             state_metrics: list[dict[str, Any]] = []
             for frame in frames:
-                components = connected_components(frame.getchannel("A"), min_component_area)
+                all_components = connected_components(frame.getchannel("A"), fragment_min_area)
+                components = [
+                    component for component in all_components if int(component["area"]) >= min_component_area
+                ]
+                fragments = [
+                    component for component in all_components if int(component["area"]) < min_component_area
+                ]
                 body = components[0] if components else None
                 semantic_components = components[1:]
                 semantic_box = union_bbox(semantic_components)
@@ -297,6 +340,8 @@ def analyze_manifest_quality(
                         "body": body,
                         "semantic": semantic,
                         "foregroundArea": sum(int(component["area"]) for component in components),
+                        "fragmentCount": len(fragments),
+                        "fragmentArea": sum(int(component["area"]) for component in fragments),
                     }
                 )
 
@@ -334,6 +379,46 @@ def analyze_manifest_quality(
                         warnings.append(
                             f"states.{state_name} frame {index}->{index + 1} foreground area changes {ratio:.0%}; check for extra limbs, missing props, or crop artifacts"
                         )
+
+            core_scales = []
+            core_centers = []
+            for metric in state_metrics:
+                body = metric.get("body")
+                if not body:
+                    continue
+                core_w, core_h = body.get("coreSize", body["size"])
+                core_scales.append(math.sqrt(max(1, core_w * core_h)))
+                core_centers.append(body.get("coreCenter", body["center"]))
+            if len(core_scales) > 1:
+                median_scale = sorted(core_scales)[len(core_scales) // 2]
+                max_scale_drift = max(abs(scale - median_scale) / max(1.0, median_scale) for scale in core_scales)
+                if max_scale_drift > max_core_scale_drift_ratio:
+                    warnings.append(
+                        f"states.{state_name} silhouette core scale drifts {max_scale_drift:.0%}; keep the mascot body size/proportions consistent across frames"
+                    )
+                scale_range_ratio = (max(core_scales) - min(core_scales)) / max(1.0, median_scale)
+                if scale_range_ratio > max_core_scale_range_ratio:
+                    warnings.append(
+                        f"states.{state_name} silhouette core scale range is {scale_range_ratio:.0%}; body size changes too much across the row"
+                    )
+            if len(core_centers) > 1:
+                x_values = sorted(center[0] for center in core_centers)
+                y_values = sorted(center[1] for center in core_centers)
+                median_center = (x_values[len(x_values) // 2], y_values[len(y_values) // 2])
+                max_center_drift = max(math.dist(center, median_center) for center in core_centers)
+                center_ratio = max_center_drift / max(1, min(cell_width, cell_height))
+                if center_ratio > max_core_center_drift_ratio:
+                    warnings.append(
+                        f"states.{state_name} silhouette core center drifts {center_ratio:.0%} of cell size; check for body jitter or inconsistent cuts"
+                    )
+
+            for index, metric in enumerate(state_metrics):
+                foreground_area = int(metric.get("foregroundArea", 0))
+                fragment_area = int(metric.get("fragmentArea", 0))
+                if foreground_area and fragment_area / foreground_area > max_fragment_area_ratio:
+                    warnings.append(
+                        f"states.{state_name} frame {index} has detached fragment area {fragment_area}px; check for neighboring-frame slivers or broken cuts"
+                    )
 
             enhancer = state.get("enhancer")
             if isinstance(enhancer, dict):
@@ -374,6 +459,17 @@ def analyze_manifest_quality(
                 "nearDuplicateTransitions": duplicate_count,
                 "nearDuplicateRatio": round(duplicate_ratio, 3),
                 "componentCounts": [metric["componentCount"] for metric in state_metrics],
+                "fragmentCounts": [metric["fragmentCount"] for metric in state_metrics],
+                "bodyCoreScales": [
+                    round(math.sqrt(max(1, metric["body"].get("coreSize", metric["body"]["size"])[0] * metric["body"].get("coreSize", metric["body"]["size"])[1])), 3)
+                    for metric in state_metrics
+                    if metric.get("body")
+                ],
+                "bodyCoreScaleRangeRatio": (
+                    round((max(core_scales) - min(core_scales)) / max(1.0, sorted(core_scales)[len(core_scales) // 2]), 3)
+                    if len(core_scales) > 1
+                    else 0.0
+                ),
             }
 
     semantic_path = manifest_path.parent / semantic_anchor_check
@@ -400,11 +496,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path, help="Path to manifest.json")
     parser.add_argument("--min-component-area", type=int, default=80, help="Minimum alpha component area to inspect")
+    parser.add_argument("--fragment-min-area", type=int, default=12, help="Minimum detached fragment area to inspect")
     parser.add_argument("--near-duplicate-delta", type=float, default=1.0, help="Frame delta at or below this value counts as near-duplicate")
     parser.add_argument("--max-duplicate-ratio", type=float, default=0.45, help="Maximum near-duplicate transition ratio")
     parser.add_argument("--min-average-motion-delta", type=float, default=1.2, help="Minimum average frame delta before a state is considered too static")
     parser.add_argument("--max-body-jump-ratio", type=float, default=0.35, help="Max body center jump as a ratio of cell min dimension")
     parser.add_argument("--max-area-jump-ratio", type=float, default=0.45, help="Max consecutive body area jump ratio")
+    parser.add_argument("--max-core-scale-drift-ratio", type=float, default=0.12, help="Max mascot core scale drift within one state")
+    parser.add_argument("--max-core-scale-range-ratio", type=float, default=0.05, help="Max full mascot core scale range within one state")
+    parser.add_argument("--max-core-center-drift-ratio", type=float, default=0.08, help="Max mascot core center drift as a ratio of cell min dimension")
+    parser.add_argument("--max-fragment-area-ratio", type=float, default=0.015, help="Max detached fragment area as a ratio of foreground area")
     parser.add_argument("--max-semantic-drift-ratio", type=float, default=0.55, help="Max semantic anchor drift in body-widths")
     parser.add_argument("--min-semantic-presence-ratio", type=float, default=0.35, help="Minimum presence ratio for separate semantic enhancers")
     parser.add_argument("--json-out", default="qa/quality-report.json", help="Quality report path relative to manifest directory")
@@ -413,11 +514,16 @@ def main() -> int:
     result = analyze_manifest_quality(
         args.manifest,
         min_component_area=args.min_component_area,
+        fragment_min_area=args.fragment_min_area,
         near_duplicate_delta=args.near_duplicate_delta,
         max_duplicate_ratio=args.max_duplicate_ratio,
         min_average_motion_delta=args.min_average_motion_delta,
         max_body_jump_ratio=args.max_body_jump_ratio,
         max_area_jump_ratio=args.max_area_jump_ratio,
+        max_core_scale_drift_ratio=args.max_core_scale_drift_ratio,
+        max_core_scale_range_ratio=args.max_core_scale_range_ratio,
+        max_core_center_drift_ratio=args.max_core_center_drift_ratio,
+        max_fragment_area_ratio=args.max_fragment_area_ratio,
         max_semantic_drift_ratio=args.max_semantic_drift_ratio,
         min_semantic_presence_ratio=args.min_semantic_presence_ratio,
         json_out=args.json_out,
