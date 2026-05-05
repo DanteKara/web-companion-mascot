@@ -21,16 +21,16 @@ REQUIRED_ATLAS_FIELDS = {
 }
 
 CHATBOT_RECOMMENDED_FRAMES = {
-    "idle": 8,
-    "greeting": 8,
-    "listening": 8,
-    "thinking": 10,
-    "working": 10,
-    "answering": 10,
-    "success": 8,
-    "error": 8,
-    "confused": 8,
-    "sleeping": 8,
+    "idle": 10,
+    "greeting": 10,
+    "listening": 10,
+    "thinking": 12,
+    "working": 12,
+    "answering": 12,
+    "success": 10,
+    "error": 10,
+    "confused": 10,
+    "sleeping": 10,
 }
 
 CHATBOT_CORE_STATES = {"idle", "thinking", "working", "answering", "success", "error"}
@@ -109,6 +109,17 @@ def count_outline_halo_pixels(image: Any, key: tuple[int, int, int], threshold: 
 
 def load_assembly_report(manifest_path: Path) -> dict[str, Any] | None:
     report_path = manifest_path.parent / "qa" / "assembly-report.json"
+    if not report_path.exists():
+        return None
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    return report if isinstance(report, dict) else None
+
+
+def load_quality_report(manifest_path: Path) -> dict[str, Any] | None:
+    report_path = manifest_path.parent / "qa" / "quality-report.json"
     if not report_path.exists():
         return None
     try:
@@ -319,6 +330,7 @@ def validate_manifest(
     manifest_path: Path,
     profile: str = "generic",
     require_state_clarity: bool = False,
+    require_quality_report: bool = False,
     key_color: str | None = None,
     spill_threshold: int | None = None,
     max_outline_halo_pixels: int = 0,
@@ -345,6 +357,21 @@ def validate_manifest(
         }
         for warning in assembly_report.get("warnings", []):
             warnings.append(f"assembly report warning: {warning}")
+
+    quality_report = load_quality_report(manifest_path)
+    if quality_report is None:
+        if require_quality_report:
+            warnings.append("qa/quality-report.json is missing or unreadable")
+    else:
+        qa["qualityReport"] = {
+            "ok": quality_report.get("ok"),
+            "semanticAnchorCheck": quality_report.get("semanticAnchorCheck"),
+            "motionQualityCheck": quality_report.get("motionQualityCheck"),
+        }
+        for error in quality_report.get("errors", []):
+            errors.append(f"quality report error: {error}")
+        for warning in quality_report.get("warnings", []):
+            warnings.append(f"quality report warning: {warning}")
 
     if key_color is None and assembly_report:
         report_key_color = assembly_report.get("keyColor")
@@ -506,6 +533,11 @@ def main() -> int:
         action="store_true",
         help="Require style.stateClarity metadata for newly generated companion packs",
     )
+    parser.add_argument(
+        "--require-quality-report",
+        action="store_true",
+        help="Require qa/quality-report.json and include quality warnings in strict validation",
+    )
     parser.add_argument("--json-out", help="Optional path to write validation JSON")
     args = parser.parse_args()
 
@@ -514,6 +546,7 @@ def main() -> int:
         manifest_path,
         profile=args.profile,
         require_state_clarity=args.require_state_clarity,
+        require_quality_report=args.require_quality_report,
         key_color=args.key_color,
         spill_threshold=args.spill_threshold,
         max_outline_halo_pixels=args.max_outline_halo_pixels,
@@ -525,6 +558,7 @@ def main() -> int:
         "profile": args.profile,
         "strict": args.strict,
         "requireStateClarity": args.require_state_clarity,
+        "requireQualityReport": args.require_quality_report,
         "errors": errors,
         "warnings": warnings,
         "qa": qa,

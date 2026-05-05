@@ -26,6 +26,37 @@ DEFAULT_DURATIONS = {
 }
 
 
+SMOOTH_DURATION_TEMPLATES = {
+    "idle": [180, 150, 150, 200, 140, 140, 180, 150, 150, 220, 160, 300],
+    "greeting": [90, 90, 100, 110, 130, 120, 110, 100, 110, 140, 160, 260],
+    "listening": [120, 120, 130, 140, 150, 160, 130, 120, 130, 150, 160, 240],
+    "thinking": [120, 120, 140, 180, 120, 120, 160, 180, 120, 140, 180, 260],
+    "working": [90, 100, 90, 110, 100, 90, 120, 100, 90, 110, 100, 170],
+    "answering": [90, 90, 100, 110, 90, 100, 120, 90, 100, 110, 90, 160],
+    "success": [90, 90, 110, 120, 140, 150, 130, 120, 130, 150, 160, 280],
+    "error": [120, 130, 150, 170, 180, 160, 150, 140, 130, 140, 160, 300],
+    "confused": [130, 140, 160, 180, 160, 140, 150, 180, 160, 150, 170, 280],
+    "sleeping": [300, 320, 360, 420, 340, 320, 360, 450, 340, 320, 360, 500],
+}
+
+
+def default_durations_for_state(name: str, frames: int) -> list[int]:
+    defaults = DEFAULT_DURATIONS.get(name)
+    if defaults and len(defaults) == frames:
+        return list(defaults)
+
+    template = SMOOTH_DURATION_TEMPLATES.get(name, [120, 140, 160, 180, 140, 120, 160, 220])
+    if frames == len(template):
+        return list(template)
+    if frames <= 1:
+        return [template[0]]
+
+    return [
+        template[round(index * (len(template) - 1) / (frames - 1))]
+        for index in range(frames)
+    ]
+
+
 def parse_hex_color(value: str) -> tuple[int, int, int]:
     raw = value.strip()
     if raw.startswith("#"):
@@ -367,11 +398,7 @@ def normalize_manifest(manifest: dict[str, Any], columns: int, rows: int, cell_w
         state["frames"] = frames
         durations = state.get("durations")
         if not isinstance(durations, list) or len(durations) != frames:
-            defaults = DEFAULT_DURATIONS.get(name)
-            if defaults and len(defaults) == frames:
-                state["durations"] = defaults
-            else:
-                state["durations"] = [140] * frames
+            state["durations"] = default_durations_for_state(name, frames)
         state.setdefault("loop", True)
 
     manifest["atlas"] = {

@@ -34,7 +34,7 @@ Default high-quality sprite geometry:
 
 ```text
 cell: 256x288
-columns: max frame count across states, usually 10
+columns: max frame count across states, usually 12
 rows: one row per website state
 atlas width: columns * 256
 atlas height: rows * 288
@@ -49,11 +49,11 @@ Use `references/companion-contract.md` for the manifest schema, default states, 
 Default to a high-motion website companion profile rather than the smaller Codex pet frame counts:
 
 ```text
-idle/listening/greeting/success/error/confused/sleeping: 8+ frames
-thinking/working/answering: 10+ frames
+standard: idle/listening/greeting/success/error/confused/sleeping 10+ frames; thinking/working/answering 12+ frames
+cinematic: idle/listening/greeting/success/error/confused/sleeping 12+ frames; thinking/working/answering 14+ frames
 ```
 
-Use fewer frames only when the user explicitly prioritizes file size or when a target app has a hard frame limit. For chatbot companions, `thinking`, `working`, and `answering` are the most visible states and should get the richest motion.
+Use the standard profile by default for production chatbot mascots. Use the cinematic profile when the user explicitly asks for extra smoothness or the mascot is simple enough to stay consistent across more frames. Use fewer frames only when the user explicitly prioritizes file size or when a target app has a hard frame limit. For chatbot companions, `thinking`, `working`, and `answering` are the most visible states and should get the richest motion.
 
 Design rows as true animation, not static variants:
 
@@ -63,6 +63,7 @@ Design rows as true animation, not static variants:
 - Stagger face, body, robe/clothing, and prop motion so the row feels alive.
 - Keep frame durations mostly between 80 and 220 ms. Use occasional 260-420 ms holds for readable blinks, idle breaths, or sleeping only.
 - Do not increase apparent smoothness by adding near-duplicate frames. Every frame should change silhouette, face, prop, or body position enough to matter at display size.
+- If extra frames make the character drift, mutate, or invent anatomy, prefer fewer better frames over more broken frames.
 
 ## State Design
 
@@ -115,12 +116,12 @@ When `semantic-enhancers` is selected, read `references/state-enhancers.md`. Cho
 3. Generate one row strip per state with `$imagegen`, using the canonical base and any original references as grounding images.
 4. Keep all row strips on a clean flat chroma-key background. Pick a key color absent from the character; avoid yellow for gold props, avoid magenta for pink/purple characters, and avoid green for green characters.
 5. Preserve identity across every row: silhouette, face, palette, props, outfit, outline weight, and proportions.
-6. If using `semantic-enhancers`, include the chosen profile in row prompts and generate each enhancer as integrated mascot artwork, not as a post-process overlay. Add only one small anchored enhancer per ambiguous state unless the user explicitly requests more.
+6. If using `semantic-enhancers`, include the chosen profile in row prompts and generate each enhancer as integrated mascot artwork, not as a post-process overlay. Add only one small anchored enhancer per ambiguous state unless the user explicitly requests more. Before each enhanced row, write a small state card: semantic read, prop/effect, anchor point, allowed body parts, and forbidden artifacts. For held props, explicitly require the mascot's existing hands/fins/paws to hold the prop and forbid extra hands, duplicated arms, detached fingers, or new anatomy.
 7. Seed `manifest.json` with the state rows, frame counts, durations, `id`, `displayName`, `style.stateClarity`, and per-state `enhancer` metadata when semantic enhancers are used.
 8. Assemble the atlas with the bundled assembler. This script handles variable row-strip spacing, chroma-key gradients, wide gestures, transparent unused cells, extracted frames, contact sheets, GIF previews, and an assembly report. Its outline improver must remain enabled: key-to-alpha removal, edge-spill cleanup, spill-color replacement, transparent RGB cleanup, and premultiplied resizing all protect the sprite edge from chroma halos.
 
 ```bash
-python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 10 --cell-width 256 --cell-height 288 --max-outline-halo-pixels 0
+python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 12 --cell-width 256 --cell-height 288 --max-outline-halo-pixels 0 --no-equal-fallback
 ```
 
 9. Create the small-size readability QA sheet for semantic states:
@@ -129,14 +130,20 @@ python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json
 python scripts/create_state_readability_sheet.py --manifest /path/to/run/manifest.json
 ```
 
-10. Visually inspect the contact sheet, cutout check, readability sheet, and previews before accepting the mascot. If the contact sheet shows neighboring-frame slivers, chopped hands/props, stray specks, or off-center sprites, repair the generated row or adjust assembler settings before validation. If `qa/cutout-check.png` shows pink/magenta halos on dark, white, blue, or green backgrounds, rebuild with stronger chroma cleanup or regenerate the row with a flatter key background. For `semantic-enhancers`, reject rows where the enhancer is unclear at 64, 96, and 128 px, cropped, detached, leaking into other states, or visually pasted on.
-11. Run manifest validation with the chatbot profile before finishing. Strict validation must fail on assembly warnings, missing readability QA, malformed state clarity metadata, cropped sprites, non-transparent unused cells, or any remaining key-colored outline halo pixels:
+10. Run the quality analyzer before acceptance. It writes `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png`; strict production runs should have no analyzer warnings. This catches near-duplicate frames, static rows, body jumps, foreground area jumps that often signal extra limbs or missing props, and drifting semantic enhancers:
 
 ```bash
-python scripts/validate_companion_manifest.py --manifest /path/to/manifest.json --profile chatbot --strict --require-state-clarity --max-outline-halo-pixels 0
+python scripts/analyze_companion_quality.py --manifest /path/to/run/manifest.json
 ```
 
-12. Generate the React component only after visual QA and strict validation pass.
+11. Visually inspect the contact sheet, cutout check, readability sheet, semantic anchor sheet, motion quality sheet, and previews before accepting the mascot. If the contact sheet shows neighboring-frame slivers, chopped hands/props, stray specks, or off-center sprites, repair the generated row or regenerate it. If `qa/cutout-check.png` shows pink/magenta halos on dark, white, blue, or green backgrounds, rebuild with stronger chroma cleanup or regenerate the row with a flatter key background. For `semantic-enhancers`, reject rows where the enhancer is unclear at 64, 96, and 128 px, cropped, detached, leaking into other states, visually pasted on, drifting away from its anchor, or causing extra anatomy.
+12. Run manifest validation with the chatbot profile before finishing. Strict validation must fail on assembly warnings, missing readability QA, missing quality report, malformed state clarity metadata, cropped sprites, non-transparent unused cells, quality warnings, or any remaining key-colored outline halo pixels:
+
+```bash
+python scripts/validate_companion_manifest.py --manifest /path/to/manifest.json --profile chatbot --strict --require-state-clarity --require-quality-report --max-outline-halo-pixels 0
+```
+
+13. Generate the React component only after visual QA and strict validation pass.
 
 When the mascot has side-specific props, text, emblems, handed items, or asymmetric lighting, generate left/right directional states separately instead of mirroring.
 
@@ -151,7 +158,7 @@ Prefer sprite-readable animation over decorative effects.
 - For `pose-only`, show `thinking`, `working`, and `answering` through head tilt, eye movement, hand/prop pose, blink, mouth shapes, and body motion.
 - For `semantic-enhancers`, add one small anchored enhancer for ambiguous states, such as a thought bubble near the head, a held paper/tablet/tool, listening rings, or a small success/error charm. The enhancer must match the mascot's theme.
 - Production enhancers must match the mascot's exact rendering style: same line weight, pixel grid or brush texture, palette, lighting direction, shading, antialiasing, and occlusion with hands/clothing. Do not ship hand-drawn/vector overlays on top of generated mascot frames unless the user explicitly asked for a prototype.
-- For `working`, choose the work prop from the companion's world: laptop/tablet for modern assistants, parchment/quill/glowing slate/tool for fantasy or character mascots.
+- For `working`, choose the work prop from the companion's world: laptop/tablet for modern assistants, parchment/quill/glowing slate/tool for fantasy or character mascots. The prop must be held or touched by existing body parts; reject rows that invent extra hands, duplicate arms, or add new fingers/paws/fins.
 - For `answering`, prefer mouth shapes, presenting gestures, or a small no-text speech cue.
 - For `success`, use body pose, bounce, wave, raised prop, or a small anchored check/glint. Detached confetti/sparkles should be avoided unless the user wants website-only effects and the atlas extraction can preserve them.
 - For `error`, use expression, slump, prop droop, attached tear, warning charm, or attached smoke/stars only when they remain inside the cell and attached to the mascot.
@@ -174,9 +181,10 @@ Read `references/react-integration.md` for a reusable component pattern.
 Use bundled scripts when useful:
 
 ```bash
-python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 10 --cell-width 256 --cell-height 288
+python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 12 --cell-width 256 --cell-height 288 --no-equal-fallback
 python scripts/create_state_readability_sheet.py --manifest /path/to/run/manifest.json
-python scripts/validate_companion_manifest.py --manifest /path/to/manifest.json --profile chatbot --strict --require-state-clarity
+python scripts/analyze_companion_quality.py --manifest /path/to/run/manifest.json
+python scripts/validate_companion_manifest.py --manifest /path/to/manifest.json --profile chatbot --strict --require-state-clarity --require-quality-report
 python scripts/generate_react_component.py --manifest /path/to/manifest.json --out-dir /path/to/react
 ```
 
@@ -186,7 +194,9 @@ If the system `python` cannot import Pillow/PIL, use the Codex bundled workspace
 
 `create_state_readability_sheet.py` writes `qa/state-readability-check.png`, showing enhanced states at 64, 96, and 128 px. Use it before validation for `semantic-enhancers` packs.
 
-`validate_companion_manifest.py` verifies manifest shape, state frame counts, durations, atlas path, dimensions, alpha channel, empty used cells, non-transparent unused cells, edge-touching/cropped sprites, residual key-colored outline halos, assembly-report warnings, missing readability QA, and optional state clarity metadata. The `chatbot` profile warns when core website states are missing or when important states have too few frames for smooth motion. Use `--strict --require-state-clarity --max-outline-halo-pixels 0` for newly generated production packs so warnings, missing clarity metadata, missing QA, and outline halo pixels block acceptance.
+`analyze_companion_quality.py` writes `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png`. It flags near-duplicate frames, low average motion, body jitter, large foreground area jumps, missing separate enhancers, and drifting semantic anchors. This is not a substitute for visual judgment, but it catches the common symptoms of extra hands, unstable props, pasted-on effects, and fake smoothness.
+
+`validate_companion_manifest.py` verifies manifest shape, state frame counts, durations, atlas path, dimensions, alpha channel, empty used cells, non-transparent unused cells, edge-touching/cropped sprites, residual key-colored outline halos, assembly-report warnings, missing readability QA, quality-report warnings, and optional state clarity metadata. The `chatbot` profile warns when core website states are missing or when important states have too few frames for smooth motion. Use `--strict --require-state-clarity --require-quality-report --max-outline-halo-pixels 0` for newly generated production packs so warnings, missing clarity metadata, missing QA, quality issues, and outline halo pixels block acceptance.
 
 `generate_react_component.py` emits a TypeScript React component that reads the manifest and animates by per-frame durations.
 
@@ -200,13 +210,15 @@ If the system `python` cannot import Pillow/PIL, use the Codex bundled workspace
 - `qa/assembly-report.json` records `outlineImprover.enabled: true` and `outlineImprover.totalOutlineHaloPixels: 0` for production packs.
 - `qa/cutout-check.png` shows no visible chroma-key halo on dark, light, and saturated backgrounds.
 - `qa/state-readability-check.png` exists for `semantic-enhancers` packs and shows enhanced states at 64, 96, and 128 px.
+- `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png` exist and show no unresolved quality warnings for production packs.
 - Chatbot profile validation passes in strict mode, or every warning is explicitly reviewed and accepted.
 - `manifest.json` records `style.stateClarity` as `pose-only` or `semantic-enhancers` for newly generated packs.
 - If `semantic-enhancers` is selected, `thinking`, `working`, `listening`, and `answering` include per-state `enhancer` metadata and read clearly at 64, 96, and 128 px.
 - Semantic enhancers look native to the mascot artwork, not pasted on. Reject any row where prop/effect outline, shading, scale, perspective, antialiasing, or pixel density does not match the base mascot.
+- Enhanced states do not create extra limbs, duplicate hands, new fingers/paws/fins, or body parts that were not in the original character design.
 - If `pose-only` is selected, no new semantic props appear unless the user explicitly requested them.
-- `thinking`, `working`, and `answering` have 10+ frames by default unless the user requested a smaller atlas.
-- `idle`, `greeting`, `listening`, `success`, `error`, `confused`, and `sleeping` have 8+ frames by default unless the user requested a smaller atlas.
+- `thinking`, `working`, and `answering` have 12+ frames by default unless the user requested a smaller atlas.
+- `idle`, `greeting`, `listening`, `success`, `error`, `confused`, and `sleeping` have 10+ frames by default unless the user requested a smaller atlas.
 - Every requested chatbot state is visually distinct enough to read at website size.
 - Contact sheet and at least one preview format are produced.
 - React component can display `idle`, `thinking`, `working`, `answering`, `success`, and `error`.

@@ -8,7 +8,7 @@ This is a Codex skill. It helps produce a web-ready mascot package with:
 - a transparent sprite atlas in `atlas.webp` and `atlas.png`
 - a strict `manifest.json`
 - extracted per-frame PNGs
-- visual QA sheets for contact, cutout, and semantic readability checks
+- visual QA sheets for contact, cutout, semantic readability, semantic anchor, and motion quality checks
 - a generated React component and companion-state hook
 
 The skill is designed for mascot companions that need to feel alive inside a product UI, especially AI chatbots.
@@ -86,6 +86,9 @@ run/
   qa/contact-sheet.png
   qa/cutout-check.png
   qa/state-readability-check.png
+  qa/quality-report.json
+  qa/semantic-anchor-check.png
+  qa/motion-quality-check.png
   qa/previews/*.gif
   react/CompanionMascot.tsx
   react/useCompanionState.ts
@@ -97,7 +100,8 @@ The skill includes deterministic QA scripts and requires visual inspection befor
 
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
-- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, assembly warnings, and residual key-colored outline halos.
+- `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
+- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, assembly warnings, quality warnings, and residual key-colored outline halos.
 - `generate_react_component.py` emits a TypeScript React component that animates by per-frame manifest durations.
 
 The assembler keeps an outline improver enabled by default:
@@ -111,11 +115,15 @@ The assembler keeps an outline improver enabled by default:
 Production runs should pass strict validation with zero warnings:
 
 ```bash
+python scripts/analyze_companion_quality.py \
+  --manifest /path/to/run/manifest.json
+
 python scripts/validate_companion_manifest.py \
   --manifest /path/to/run/manifest.json \
   --profile chatbot \
   --strict \
   --require-state-clarity \
+  --require-quality-report \
   --max-outline-halo-pixels 0
 ```
 
