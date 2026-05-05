@@ -57,6 +57,8 @@ Use the audit as a lock, not as a freeze. Existing appendages can lift, wave, br
 
 For simple appendages, treat face-touching as a high-risk gesture. If a fin, sleeve, paw, tentacle, wing, or mitt-like limb lifted toward the face starts reading like a new hand, a fingered mitten, a detached prop, or an extra limb, reject that row and regenerate with no cross-body appendage gesture. Keep the appendages side-attached with only small tilt/tuck motion, and make the state read through eye direction, mouth shape, blink timing, body lean, and the anchored enhancer.
 
+Also reject simple-appendage rows where a limb-colored oval, patch, detached blob, or front-body shape appears and could be read as an extra fin, sleeve, paw, mitt, or hand. This can happen even when the side appendages remain correctly attached. Regenerate with plain body shading and move the state read into the face, body tilt, blink timing, or a clearly separate near-head/aura/body-surface enhancer that does not share the appendage silhouette.
+
 ## State Card Pattern
 
 Use this compact card in row prompts and QA notes:
@@ -210,6 +212,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - A held prop creates extra limbs, duplicate hands, new fingers/paws/fins, or inconsistent sleeves/body parts. This is a production blocker even if validation passes.
 - A pose uses appendage motion but changes the appendage count, invents grip anatomy, detaches a limb, or makes the moving appendage look like a new object instead of the original body part.
 - A state asks an appendage to perform an action outside its `style.anatomyContract.appendages[].affordances`, such as face-touch by a fin that only has side-bob/tilt, or typing by a paw without fingers.
+- A simple appendage mascot gains a limb-colored oval, patch, detached blob, or front-body shape that reads as an extra appendage, even if the original side appendages are still present.
 - A face-touching or cross-body simple-appendage gesture reads as a hand, fingered mitten, detached prop, or extra limb. Regenerate with safer side-attached appendage motion and stronger face/enhancer acting.
 - The working state uses a typing/writing prop with hands/fingers the reference character does not have. Use simpler braced/touched props or a non-grip semantic instead.
 - The working state uses a slate, tablet, keyboard, pencil, quill, paper, or other grip prop for a true no-limb mascot. Use a non-grip body-surface, aura, near-head, facial, or pose semantic instead.

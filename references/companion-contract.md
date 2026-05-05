@@ -206,6 +206,8 @@ Use exact names from this contract in every risky `enhancer.anatomyGuard.allowed
 
 Appendage `affordances` describe what a visible part can safely do in generated animation. They should come from the source reference and the mascot's design language, not from the desired state alone. Use them to preserve expressive hand acting for mascots that truly have hands while keeping fins, wings, sleeves, mitts, and other simple appendages from being translated into invented hands.
 
+For simple appendages, preserve not only side appendage count but also appendage-like shapes elsewhere on the body. A limb-colored oval, patch, detached blob, or front-body mark can read as an extra fin, paw, sleeve, mitt, or hand. Prompts and visual QA should forbid those shapes unless they are part of the original reference identity.
+
 Common affordances:
 
 | Affordance | Use For | Avoid When |
@@ -339,6 +341,7 @@ Reject or repair if any of these happen:
 - A semantic enhancer looks pasted on: mismatched outline, antialiasing, lighting, scale, pixel density, palette, or occlusion.
 - A held enhancer causes extra hands, duplicate arms, new fingers/paws/fins, or other anatomy that was not in the source mascot.
 - A state asks an appendage to perform an action outside its recorded affordances, such as face-touch by a fin that only has side-bob/tilt, or typing by a paw without fingers.
+- A simple appendage mascot gains a limb-colored oval, patch, detached blob, or front-body shape that reads as an extra appendage.
 - A true no-limb mascot uses a held, near-hand, typing, writing, slate, tablet, keyboard, paper, pencil, quill, or similar grip-based semantic. Use non-grip semantics instead.
 - A fin/no-hand or ambiguous-limb mascot uses a held/touched prop without naming the exact existing fins, sleeves, paws, tentacles, or body parts allowed to interact with the prop in both the prompt and manifest.
 - A held, touched, face-touch, typing, writing, pointing, presenting, or waving enhancer omits `enhancer.requiredAffordances` when the action depends on specific appendages.

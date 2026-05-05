@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import re
 from pathlib import Path
 from typing import Any
 
@@ -459,13 +460,34 @@ def enhancer_text(value: dict[str, Any]) -> str:
     )
 
 
-def normalized_words(value: str) -> set[str]:
+def split_term_clauses(value: str) -> list[list[str]]:
     normalized = value.lower().replace("_", "-").replace("/", "-")
-    for char in [",", ".", ":", ";", "(", ")", "[", "]", "{", "}", "'", '"']:
-        normalized = normalized.replace(char, " ")
-    words = set(normalized.split())
-    words.update(word.replace(" ", "-") for word in normalized.replace("-", " ").split())
-    return {word.strip("- ") for word in words if word.strip("- ")}
+    clauses = re.split(r"[.,;:()[\]{}\"']+", normalized)
+    return [re.findall(r"[a-z0-9]+", clause) for clause in clauses if clause.strip()]
+
+
+def clause_has_term(tokens: list[str], term: str) -> int | None:
+    term_tokens = re.findall(r"[a-z0-9]+", term.lower().replace("_", "-"))
+    if not term_tokens:
+        return None
+    span = len(term_tokens)
+    for index in range(0, len(tokens) - span + 1):
+        if tokens[index : index + span] == term_tokens:
+            return index
+    return None
+
+
+def has_prior_negation(tokens: list[str], term_index: int) -> bool:
+    return any(token in TEXT_NEGATION_TERMS for token in tokens[:term_index])
+
+
+def has_unnegated_term(value: str, terms: set[str]) -> bool:
+    for tokens in split_term_clauses(value):
+        for term in terms:
+            term_index = clause_has_term(tokens, term)
+            if term_index is not None and not has_prior_negation(tokens, term_index):
+                return True
+    return False
 
 
 def normalize_label(value: str) -> str:
@@ -482,14 +504,13 @@ def canonical_affordance_group(value: str) -> str | None:
 
 def infer_required_affordance_groups(value: dict[str, Any]) -> set[str]:
     text = enhancer_text(value)
-    words = normalized_words(text)
     groups: set[str] = set()
 
     if value.get("attachment") == "held":
         groups.add("grip")
 
     for group, terms in ACTION_TERMS_BY_AFFORDANCE.items():
-        if words & terms or any(term in text for term in terms if "-" in term):
+        if has_unnegated_term(text, terms):
             groups.add(group)
 
     explicit = value.get("requiredAffordances")
@@ -508,10 +529,10 @@ def enhancer_has_anatomy_risk(value: Any) -> bool:
         return False
     attachment = value.get("attachment")
     text = enhancer_text(value)
-    return bool(attachment in RISKY_ANATOMY_ATTACHMENTS) or any(
-        term in text for term in RISKY_ANATOMY_PROP_TERMS
-    ) or bool(
-        infer_required_affordance_groups(value)
+    return (
+        bool(attachment in RISKY_ANATOMY_ATTACHMENTS)
+        or has_unnegated_term(text, RISKY_ANATOMY_PROP_TERMS)
+        or bool(infer_required_affordance_groups(value))
     )
 
 
@@ -574,7 +595,7 @@ def validate_enhancer(
                 f"{name}.attachment {attachment!r} is not allowed for style.anatomyClass {anatomy_class!r}; "
                 "use attached, near-head, near-face, aura, gesture, worn, or body-pose semantics instead"
             )
-        if any(term in text for term in NO_GRIP_PROP_TERMS):
+        if has_unnegated_term(text, NO_GRIP_PROP_TERMS):
             errors.append(
                 f"{name} describes a grip/typing/writing prop that is unsafe for style.anatomyClass {anatomy_class!r}; "
                 "use a non-grip enhancer such as a body-surface glyph, processing aura, facial animation, or near-head effect"

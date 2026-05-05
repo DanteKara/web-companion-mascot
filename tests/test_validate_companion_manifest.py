@@ -414,6 +414,25 @@ class ManifestValidatorTests(unittest.TestCase):
             self.assertFalse(any("non-grip enhancer" in error for error in errors))
             self.assertFalse(any("anatomyGuard" in warning for warning in warnings))
 
+    def test_negated_held_prop_language_does_not_create_anatomy_risk(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "Small processing glyphs painted on the body surface; no held object or tablet.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("non-grip enhancer" in error for error in errors))
+            self.assertFalse(any("requiredAffordances" in warning for warning in warnings))
+            self.assertFalse(any("anatomyGuard" in warning for warning in warnings))
+
     def test_no_text_visual_cue_is_not_text_dependent(self) -> None:
         enhancer = {
             "kind": "tiny no-text voice cue",
