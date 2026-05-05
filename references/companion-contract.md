@@ -149,7 +149,7 @@ When `semantic-enhancers` is used, add an `enhancer` object to states that need 
 }
 ```
 
-For newly generated semantic-enhancer packs, record a visual-language contract:
+For newly generated semantic-enhancer packs, the agent should infer a visual-language read from the reference. It can be recorded in the manifest when useful, especially during auditions:
 
 ```json
 {
@@ -167,7 +167,7 @@ For newly generated semantic-enhancer packs, record a visual-language contract:
 }
 ```
 
-`style.visualLanguage` is not a substitute for visual review, but it forces the prompt and manifest to name what belongs to the mascot's world. Each enhanced state should include `enhancer.visualLanguageFit`, a short note explaining why the state cue matches the reference vibe. Use `scripts/validate_companion_manifest.py --require-visual-language` for production auditions so missing visual-language intent fails validation.
+`style.visualLanguage` is optional metadata, not a substitute for visual review. It is useful when a state has been failing because generic symbols or off-vibe props keep appearing. Each enhanced state may include `enhancer.visualLanguageFit`, a short note explaining why the state cue matches the reference vibe. Use `scripts/validate_companion_manifest.py --require-visual-language` only for targeted auditions where missing vibe-fit metadata should fail validation.
 
 Held, touched, near-hand, writing, or work-prop enhancers should also include an `anatomyGuard` so prompts and QA do not invent new limbs:
 
@@ -373,7 +373,7 @@ Reject or repair if any of these happen:
 - `qa/quality-report.json` reports low motion, near-duplicate transitions, body jitter, major area jumps, missing enhancer presence, or semantic anchor drift.
 - `qa/art-direction-review.json` is missing for a production run, has `status` other than `pass`, has `productionUse` other than `true`, contains blockers, or reports any required art-direction check as false.
 - `style.renderingStyle` is missing from a new production pack or is not `codex-pixel-art`.
-- `style.visualLanguage` is missing from a new production pack, or an enhanced state omits `enhancer.visualLanguageFit`.
+- `style.visualLanguage` is required by the run policy but missing, or an enhanced state omits required `enhancer.visualLanguageFit`.
 - `style.stateClarity` is malformed.
 - `style.stateClarity` is `pose-only` but state rows introduce unrequested semantic props.
 - `style.stateClarity` is `semantic-enhancers` but `thinking`, `working`, `listening`, or `answering` omit `enhancer` metadata.
@@ -383,6 +383,8 @@ Reject or repair if any of these happen:
 - A semantic enhancer is not readable at 64, 96, and 128 px.
 - A semantic enhancer is readable only as generic particles or timid decoration rather than intentional, character-native state art.
 - A semantic enhancer is readable but off-vibe: generic gears, circuit diagrams, speech panels, UI windows, or universal symbols that do not belong to the mascot's source world.
+- A semantic enhancer is on-vibe but does not read as the intended state, such as decorative frost that does not communicate active work.
+- The `working` face reads as angry/hostile instead of focused, busy, and character-appropriate.
 - A semantic enhancer is cropped, detached, text-dependent, or appears in unrelated states.
 - A semantic enhancer wanders away from its intended anchor, changes sides without intent, or makes the row read as a different state.
 - A semantic enhancer looks pasted on: mismatched outline, edge treatment, lighting, scale, pixel density, palette, or occlusion.

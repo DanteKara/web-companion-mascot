@@ -130,7 +130,6 @@ python scripts/validate_companion_manifest.py \
   --strict \
   --require-state-clarity \
   --require-rendering-style \
-  --require-visual-language \
   --require-quality-report
 ```
 
@@ -164,7 +163,6 @@ python scripts/validate_companion_manifest.py \
   --strict \
   --require-state-clarity \
   --require-rendering-style \
-  --require-visual-language \
   --require-quality-report \
   --require-art-direction-review \
   --max-outline-halo-pixels 0
