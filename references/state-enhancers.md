@@ -33,10 +33,10 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 - Do not use local scripts or deterministic compositors to create final enhancer pixels. Scripts may assemble and validate row art, but production semantics must come from `$imagegen` row generation or from user/artist-provided integrated row art.
 - Match the base mascot's line weight, pixel grid or brush texture, palette, lighting direction, shading, antialiasing, and occlusion. A good enhancer should look like it was designed by the same artist in the same pass.
 - Preserve the reference's art quality and personality. Do not simplify a detailed mascot into a flatter or more generic sprite just to make enhancers easier to place.
-- For held or touched props, the mascot must use only its existing hands, paws, fins, sleeves, tentacles, or identity body parts. Reject extra hands, duplicate arms, new fingers, cloned sleeves, disconnected mitts, or props held by anatomy the source character does not have.
-- Existing appendages may be expressive. Do not overconstrain prompts into static side limbs; fins, paws, sleeves, mitts, tentacles, wings, or similar visible appendages can move, touch the face, brace props, gesture, and follow through if they remain the same appendages from the reference. The blocker is invented anatomy, not motion.
-- If the mascot has simple or ambiguous limbs, choose props that can sit against the body, tuck under an existing limb, or hover near the head instead of requiring detailed fingers.
-- For mascots with fins, sleeves, tentacles, or mitten-like limbs, held/touched props are allowed when those appendages already exist in the reference. Keep props chunky and easy to brace; avoid finger-dependent typing/writing unless the reference has fingers. The state card must name the exact existing appendages from `style.anatomyContract` and forbid extra hands, fingers, fins, sleeves, or grip anatomy.
+- For held or touched props, the mascot must use only existing hands, paws, fins, sleeves, tentacles, or identity body parts that have a matching `grip`, `brace`, `face-touch`, `typing`, or `writing` affordance. Reject extra hands, duplicate arms, new fingers, cloned sleeves, disconnected mitts, or props held by anatomy the source character does not have.
+- Existing appendages may be expressive when their audited affordances support the action. Do not overconstrain real hands into static side limbs; hands with `face-touch`, `grip`, `point`, or `present` affordances can use rich acting. For fins, paws, sleeves, mitts, tentacles, wings, or similar simple appendages, use only the actions recorded in `style.anatomyContract.appendages[].affordances`. The blocker is invented anatomy or unsupported action, not motion itself.
+- If the mascot has simple or ambiguous limbs, choose props that can sit against the body, tuck under an existing limb, or hover near the head instead of requiring detailed fingers. Face-touch and cross-body gestures are high-risk unless the exact appendage has a `face-touch` affordance and an audition proves it reads as the original appendage.
+- For mascots with fins, sleeves, tentacles, or mitten-like limbs, held/touched props are allowed only when those appendages already exist in the reference and declare a matching `grip` or `brace` affordance. Keep props chunky and easy to brace; avoid finger-dependent typing/writing unless the reference has fingers and `typing` or `writing` affordances. The state card must name the exact existing appendages from `style.anatomyContract` and forbid extra hands, fingers, fins, sleeves, or grip anatomy.
 - For mascots with `style.anatomyClass` set to `no-limbs`, avoid grip semantics entirely. Do not use held/touched/typing/writing props such as slates, tablets, keyboards, pencils, quills, parchment, or paper, even if the prompt says "no extra hands"; these words often cause image models to invent hand-like anatomy. Prefer non-grip semantics: body-surface processing glyphs, pulsing core marks, aura/status bands, near-head work orbs, facial/mouth motion, body-pose, or worn charms.
 - For held, touched, near-hand, writing, or work-prop enhancers, add `enhancer.anatomyGuard` metadata to the manifest. Strict validation treats missing anatomy guards as a production warning, which fails strict runs.
 
@@ -47,12 +47,13 @@ Before generating state cards, audit the source image and write the contract int
 ```text
 body core: the stable central body shape that should not scale or drift
 appendages: exact visible appendages, counted and named by placement
+affordances: what each appendage can safely do, such as side-bob, tilt, wave, point, present, face-touch, grip, brace, typing, or writing
 allowed motion: how those exact appendages may move
 forbidden additions: anatomy the generator must not add
 ambiguous marks: highlights, shadows, clothing edges, or effects that are not appendages
 ```
 
-Use the audit as a lock, not as a freeze. Existing appendages can lift, wave, brace, tuck, or settle if the state needs acting, but the row must keep the same appendage count and identity. If the reference has two side fins, the prompt should say `left side fin` and `right side fin`; if it has sleeves, name the sleeves; if it has paws, name the paws. Do not use generic phrases like `existing appendages only` in the final state card or manifest, because they do not tell the next agent what to inspect.
+Use the audit as a lock, not as a freeze. Existing appendages can lift, wave, brace, tuck, or settle if the state needs acting and the appendage affordances allow it, but the row must keep the same appendage count and identity. If the reference has two side fins, the prompt should say `left side fin` and `right side fin`; if it has sleeves, name the sleeves; if it has paws, name the paws. Do not use generic phrases like `existing appendages only` in the final state card or manifest, because they do not tell the next agent what to inspect.
 
 For simple appendages, treat face-touching as a high-risk gesture. If a fin, sleeve, paw, tentacle, wing, or mitt-like limb lifted toward the face starts reading like a new hand, a fingered mitten, a detached prop, or an extra limb, reject that row and regenerate with no cross-body appendage gesture. Keep the appendages side-attached with only small tilt/tuck motion, and make the state read through eye direction, mouth shape, blink timing, body lean, and the anchored enhancer.
 
@@ -66,11 +67,12 @@ semantic read: backend/tool work
 anatomy class: simple-appendages
 enhancer: theme-native work prop
 anchor: held low and braced only by the original visible appendages
+required affordance: grip or brace
 allowed anatomy: exact named appendages from style.anatomyContract only, no new grip anatomy
 forbidden: extra hands, extra limbs, new fingers, cloned sleeves, detached prop, pasted-on prop, text labels, copied UI panel
 ```
 
-For expressive pose states, the same guard should allow motion:
+For expressive pose states, the same guard should allow motion that the audited appendages can actually perform:
 
 ```text
 state: thinking
@@ -78,7 +80,8 @@ semantic read: planning before output
 anatomy class: simple-appendages
 enhancer: side-origin theme-native thought cue
 anchor: near upper-right side of head
-allowed anatomy: the same named original appendages may subtly move; one named appendage may lift toward the chin or face
+required affordance: face-touch only for mascots whose exact hand/paw/appendage declares face-touch
+allowed anatomy: same named original appendages may move within their affordances; otherwise keep simple appendages side-attached
 forbidden: extra limbs, extra hands, fingers, detached mitts, duplicated appendages, changed body scale, pasted-on effect
 ```
 
@@ -114,8 +117,20 @@ Record the chosen profile so future QA and React integration can understand the 
       "bodyCore": "round body",
       "totalAppendages": 2,
       "appendages": [
-        { "id": "left-fin", "kind": "fin", "count": 1, "placement": "left side" },
-        { "id": "right-fin", "kind": "fin", "count": 1, "placement": "right side" }
+        {
+          "id": "left-fin",
+          "kind": "fin",
+          "count": 1,
+          "placement": "left side",
+          "affordances": ["side-bob", "small-wave", "tilt", "brace"]
+        },
+        {
+          "id": "right-fin",
+          "kind": "fin",
+          "count": 1,
+          "placement": "right side",
+          "affordances": ["side-bob", "small-wave", "tilt", "brace"]
+        }
       ],
       "forbiddenAdditions": ["extra fins", "hands", "fingers", "detached mitts"]
     }
@@ -144,6 +159,7 @@ For anatomy-risky props, record the guard explicitly:
     "kind": "body-anchored work slate",
     "attachment": "attached",
     "description": "A small theme-native work slate braced against the mascot body.",
+    "requiredAffordances": ["grip"],
     "anatomyGuard": {
       "limbPolicy": "no-new-limbs",
       "allowedInteractors": ["left side fin", "right side fin"],
@@ -165,7 +181,7 @@ Allowed `style.anatomyClass` values:
 hands, paws, fins-no-hands, no-limbs, ambiguous-limbs
 ```
 
-For `no-limbs`, strict validation rejects held/near-hand grip semantics and common typing/writing/work props. For `fins-no-hands` and `ambiguous-limbs`, strict validation allows held props only with `anatomyGuard` metadata; visual QA must still reject any generated extra hands, fingers, duplicate fins, cloned sleeves, or invented grip anatomy.
+For `no-limbs`, strict validation rejects held/near-hand grip semantics and common typing/writing/work props. For `fins-no-hands` and `ambiguous-limbs`, strict validation allows held props only with `anatomyGuard` metadata and matching appendage affordances; visual QA must still reject any generated extra hands, fingers, duplicate fins, cloned sleeves, or invented grip anatomy.
 
 ## QA
 
@@ -193,10 +209,12 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - The enhancer was added by post-processing instead of generated as integrated row art, unless the package is clearly labeled as a prototype and not accepted as final.
 - A held prop creates extra limbs, duplicate hands, new fingers/paws/fins, or inconsistent sleeves/body parts. This is a production blocker even if validation passes.
 - A pose uses appendage motion but changes the appendage count, invents grip anatomy, detaches a limb, or makes the moving appendage look like a new object instead of the original body part.
+- A state asks an appendage to perform an action outside its `style.anatomyContract.appendages[].affordances`, such as face-touch by a fin that only has side-bob/tilt, or typing by a paw without fingers.
 - A face-touching or cross-body simple-appendage gesture reads as a hand, fingered mitten, detached prop, or extra limb. Regenerate with safer side-attached appendage motion and stronger face/enhancer acting.
 - The working state uses a typing/writing prop with hands/fingers the reference character does not have. Use simpler braced/touched props or a non-grip semantic instead.
 - The working state uses a slate, tablet, keyboard, pencil, quill, paper, or other grip prop for a true no-limb mascot. Use a non-grip body-surface, aura, near-head, facial, or pose semantic instead.
 - A held, touched, near-hand, writing, or work-prop enhancer is missing `enhancer.anatomyGuard` metadata.
+- A held, touched, face-touch, typing, writing, pointing, presenting, or waving enhancer omits `enhancer.requiredAffordances` when the action depends on specific appendages.
 - `enhancer.anatomyGuard.allowedInteractors` says only `existing appendages` or similar vague language instead of exact audited parts.
 - A simple or ambiguous appendage mascot uses risky prop/near-hand semantics without `style.anatomyContract`.
 

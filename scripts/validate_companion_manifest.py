@@ -55,6 +55,43 @@ TEXT_DEPENDENT_KIND_TERMS = {"text", "label", "caption", "word", "question-mark"
 TEXT_NEGATION_TERMS = {"no", "non", "not", "without"}
 RISKY_ANATOMY_ATTACHMENTS = {"held", "near-hand"}
 NO_GRIP_ATTACHMENTS = {"held", "near-hand"}
+ACTION_TERMS_BY_AFFORDANCE = {
+    "face-touch": {
+        "chin",
+        "chin-touch",
+        "face-touch",
+        "forehead",
+        "hand-to-chin",
+        "hand-to-face",
+        "touch-face",
+        "touching-face",
+    },
+    "grip": {
+        "brace",
+        "braced",
+        "bracing",
+        "grip",
+        "gripped",
+        "gripping",
+        "held",
+        "hold",
+        "holding",
+    },
+    "typing": {"keyboard", "type", "typing"},
+    "writing": {"pen", "pencil", "quill", "write", "writing"},
+    "point": {"point", "pointing"},
+    "present": {"present", "presenting"},
+    "wave": {"wave", "waving"},
+}
+AFFORDANCE_GROUP_ALIASES = {
+    "face-touch": {"face-touch", "face-touch-safe", "hand-to-face", "hand-to-chin", "chin-touch"},
+    "grip": {"grip", "grip-safe", "hold", "hold-safe", "brace", "brace-safe"},
+    "typing": {"typing", "typing-safe", "fine-finger", "fine-fingers", "fingered"},
+    "writing": {"writing", "writing-safe", "grip", "grip-safe", "fine-finger", "fine-fingers", "fingered"},
+    "point": {"point", "point-safe", "present", "gesture"},
+    "present": {"present", "present-safe", "point", "gesture"},
+    "wave": {"wave", "small-wave", "side-wave", "gesture"},
+}
 VAGUE_ALLOWED_INTERACTOR_PHRASES = {
     "existing appendages only",
     "existing limbs only",
@@ -422,6 +459,50 @@ def enhancer_text(value: dict[str, Any]) -> str:
     )
 
 
+def normalized_words(value: str) -> set[str]:
+    normalized = value.lower().replace("_", "-").replace("/", "-")
+    for char in [",", ".", ":", ";", "(", ")", "[", "]", "{", "}", "'", '"']:
+        normalized = normalized.replace(char, " ")
+    words = set(normalized.split())
+    words.update(word.replace(" ", "-") for word in normalized.replace("-", " ").split())
+    return {word.strip("- ") for word in words if word.strip("- ")}
+
+
+def normalize_label(value: str) -> str:
+    return " ".join(value.lower().replace("_", " ").replace("-", " ").split())
+
+
+def canonical_affordance_group(value: str) -> str | None:
+    normalized = value.lower().replace("_", "-").replace(" ", "-")
+    for group, aliases in AFFORDANCE_GROUP_ALIASES.items():
+        if normalized == group or normalized in aliases:
+            return group
+    return normalized if normalized in AFFORDANCE_GROUP_ALIASES else None
+
+
+def infer_required_affordance_groups(value: dict[str, Any]) -> set[str]:
+    text = enhancer_text(value)
+    words = normalized_words(text)
+    groups: set[str] = set()
+
+    if value.get("attachment") == "held":
+        groups.add("grip")
+
+    for group, terms in ACTION_TERMS_BY_AFFORDANCE.items():
+        if words & terms or any(term in text for term in terms if "-" in term):
+            groups.add(group)
+
+    explicit = value.get("requiredAffordances")
+    if isinstance(explicit, list):
+        for entry in explicit:
+            if isinstance(entry, str):
+                group = canonical_affordance_group(entry)
+                if group:
+                    groups.add(group)
+
+    return groups
+
+
 def enhancer_has_anatomy_risk(value: Any) -> bool:
     if not isinstance(value, dict):
         return False
@@ -429,6 +510,8 @@ def enhancer_has_anatomy_risk(value: Any) -> bool:
     text = enhancer_text(value)
     return bool(attachment in RISKY_ANATOMY_ATTACHMENTS) or any(
         term in text for term in RISKY_ANATOMY_PROP_TERMS
+    ) or bool(
+        infer_required_affordance_groups(value)
     )
 
 
@@ -443,6 +526,7 @@ def validate_enhancer(
     value: Any,
     name: str,
     anatomy_class: str | None = None,
+    anatomy_contract: dict[str, Any] | None = None,
 ) -> None:
     if not isinstance(value, dict):
         errors.append(f"{name} must be an object")
@@ -463,6 +547,25 @@ def validate_enhancer(
             errors.append(
                 f"{name}.attachment must be one of: {', '.join(sorted(ALLOWED_ENHANCER_ATTACHMENTS))}"
             )
+
+    required_affordances = value.get("requiredAffordances")
+    if required_affordances is not None:
+        if not isinstance(required_affordances, list) or not required_affordances:
+            errors.append(f"{name}.requiredAffordances must be a non-empty array when present")
+        else:
+            for index, entry in enumerate(required_affordances):
+                if not isinstance(entry, str) or not entry.strip():
+                    errors.append(f"{name}.requiredAffordances[{index}] must be a non-empty string")
+                elif canonical_affordance_group(entry) is None:
+                    warnings.append(
+                        f"{name}.requiredAffordances[{index}] uses unknown affordance {entry!r}; "
+                        "use common affordances such as face-touch, grip, typing, writing, point, present, or wave"
+                    )
+    elif infer_required_affordance_groups(value):
+        warnings.append(
+            f"{name}.requiredAffordances is recommended for appendage-dependent actions so the state card, "
+            "manifest, and anatomy contract agree on what the named appendages may do"
+        )
 
     text = enhancer_text(value)
     if anatomy_class in NO_GRIP_ANATOMY_CLASSES:
@@ -485,6 +588,14 @@ def validate_enhancer(
         )
     elif anatomy_guard is not None:
         validate_anatomy_guard(errors, warnings, anatomy_guard, f"{name}.anatomyGuard")
+
+    validate_enhancer_affordances(
+        errors,
+        warnings,
+        value,
+        name,
+        anatomy_contract,
+    )
 
 
 def validate_anatomy_guard(
@@ -516,6 +627,99 @@ def validate_anatomy_guard(
                 warnings.append(
                     f"{name}.allowedInteractors should name exact reference appendages or body parts, not only {entry!r}"
                 )
+
+
+def appendage_reference_labels(appendage: dict[str, Any]) -> set[str]:
+    labels: set[str] = set()
+    appendage_id = appendage.get("id")
+    kind = appendage.get("kind")
+    placement = appendage.get("placement")
+
+    for value in [appendage_id, kind, placement]:
+        if isinstance(value, str) and value.strip():
+            labels.add(normalize_label(value))
+
+    if isinstance(placement, str) and isinstance(kind, str):
+        labels.add(normalize_label(f"{placement} {kind}"))
+        labels.add(normalize_label(f"{kind} {placement}"))
+
+    return labels
+
+
+def interactor_matches_appendage(interactor: str, appendage: dict[str, Any]) -> bool:
+    normalized = normalize_label(interactor)
+    return any(label and (label == normalized or label in normalized or normalized in label) for label in appendage_reference_labels(appendage))
+
+
+def appendage_affordance_groups(appendage: dict[str, Any]) -> set[str]:
+    groups: set[str] = set()
+    affordances = appendage.get("affordances")
+    if not isinstance(affordances, list):
+        return groups
+    for entry in affordances:
+        if not isinstance(entry, str):
+            continue
+        group = canonical_affordance_group(entry)
+        if group:
+            groups.add(group)
+    return groups
+
+
+def matching_contract_appendages(anatomy_contract: dict[str, Any], allowed_interactors: list[str]) -> list[dict[str, Any]]:
+    appendages = anatomy_contract.get("appendages")
+    if not isinstance(appendages, list):
+        return []
+    matches: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for interactor in allowed_interactors:
+        if not isinstance(interactor, str):
+            continue
+        for appendage in appendages:
+            if not isinstance(appendage, dict):
+                continue
+            if interactor_matches_appendage(interactor, appendage):
+                identity = id(appendage)
+                if identity not in seen:
+                    matches.append(appendage)
+                    seen.add(identity)
+    return matches
+
+
+def validate_enhancer_affordances(
+    errors: list[str],
+    warnings: list[str],
+    value: dict[str, Any],
+    name: str,
+    anatomy_contract: dict[str, Any] | None,
+) -> None:
+    required_groups = infer_required_affordance_groups(value)
+    if not required_groups:
+        return
+    anatomy_guard = value.get("anatomyGuard")
+    if not isinstance(anatomy_guard, dict):
+        return
+    allowed_interactors = anatomy_guard.get("allowedInteractors")
+    if not isinstance(allowed_interactors, list) or not allowed_interactors:
+        return
+    if not isinstance(anatomy_contract, dict):
+        return
+
+    matched = matching_contract_appendages(anatomy_contract, allowed_interactors)
+    if not matched:
+        warnings.append(
+            f"{name}.anatomyGuard.allowedInteractors should match exact style.anatomyContract.appendages entries "
+            "when gesture/prop affordances are involved"
+        )
+        return
+
+    for group in sorted(required_groups):
+        if any(group in appendage_affordance_groups(appendage) for appendage in matched):
+            continue
+        warnings.append(
+            f"{name} uses a {group} action, but the matched style.anatomyContract.appendages do not declare a "
+            f"compatible affordance; add appendages[].affordances such as {group!r} for mascots that can do it, "
+            "or choose safer acting for appendages that cannot"
+        )
 
 
 def validate_anatomy_contract(
@@ -559,6 +763,16 @@ def validate_anatomy_contract(
                 errors.append(f"{item_name}.count must be an integer >= 1")
             else:
                 counted_appendages += count
+            affordances = appendage.get("affordances")
+            if affordances is not None:
+                if not isinstance(affordances, list) or not affordances:
+                    errors.append(f"{item_name}.affordances must be a non-empty array when present")
+                else:
+                    for affordance_index, affordance in enumerate(affordances):
+                        if not isinstance(affordance, str) or not affordance.strip():
+                            errors.append(
+                                f"{item_name}.affordances[{affordance_index}] must be a non-empty string"
+                            )
 
     if total_appendages is not None and isinstance(appendages, list) and counted_appendages != total_appendages:
         errors.append(
@@ -635,6 +849,7 @@ def validate_style_metadata(
                 state.get("enhancer"),
                 f"states.{state_name}.enhancer",
                 anatomy_class=anatomy_class if isinstance(anatomy_class, str) else None,
+                anatomy_contract=anatomy_contract if isinstance(anatomy_contract, dict) else None,
             )
 
     if state_clarity == "pose-only" and states_with_enhancers:

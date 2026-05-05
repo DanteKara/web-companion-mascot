@@ -136,6 +136,7 @@ class ManifestValidatorTests(unittest.TestCase):
             "kind": "glowing slate",
             "attachment": "held",
             "description": "A small work slate held low by the mascot's existing side fins.",
+            "requiredAffordances": ["grip"],
             "anatomyGuard": {
                 "limbPolicy": "no-new-limbs",
                 "allowedInteractors": ["left side fin", "right side fin"],
@@ -180,6 +181,7 @@ class ManifestValidatorTests(unittest.TestCase):
             "kind": "glowing slate",
             "attachment": "held",
             "description": "A small work slate held low by the mascot's existing side fins.",
+            "requiredAffordances": ["grip"],
             "anatomyGuard": {
                 "limbPolicy": "no-new-limbs",
                 "allowedInteractors": ["left side fin", "right side fin"],
@@ -214,6 +216,7 @@ class ManifestValidatorTests(unittest.TestCase):
             "kind": "glowing slate",
             "attachment": "held",
             "description": "A small work slate held low by the mascot's existing side fins.",
+            "requiredAffordances": ["grip"],
             "anatomyGuard": {
                 "limbPolicy": "no-new-limbs",
                 "allowedInteractors": ["left side fin", "right side fin"],
@@ -227,8 +230,20 @@ class ManifestValidatorTests(unittest.TestCase):
                 "bodyCore": "round icy body",
                 "totalAppendages": 2,
                 "appendages": [
-                    {"id": "left-fin", "kind": "fin", "count": 1, "placement": "left side"},
-                    {"id": "right-fin", "kind": "fin", "count": 1, "placement": "right side"},
+                    {
+                        "id": "left-fin",
+                        "kind": "fin",
+                        "count": 1,
+                        "placement": "left side",
+                        "affordances": ["side-bob", "brace"],
+                    },
+                    {
+                        "id": "right-fin",
+                        "kind": "fin",
+                        "count": 1,
+                        "placement": "right side",
+                        "affordances": ["side-bob", "brace"],
+                    },
                 ],
                 "forbiddenAdditions": ["extra fins", "hands", "fingers"],
             },
@@ -245,6 +260,119 @@ class ManifestValidatorTests(unittest.TestCase):
             self.assertFalse(any("style.anatomyContract" in error for error in errors))
             self.assertFalse(any("style.anatomyContract" in warning for warning in warnings))
             self.assertTrue(qa["stateClarity"]["hasAnatomyContract"])
+
+    def test_face_touch_simple_appendage_warns_without_affordance(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff while the left side fin lifts toward the chin.",
+            "anatomyGuard": {
+                "limbPolicy": "no-new-limbs",
+                "allowedInteractors": ["left side fin", "right side fin"],
+                "forbidden": ["extra hands", "new fingers", "duplicate fins"],
+            },
+        }
+        style = {
+            "anatomyClass": "fins-no-hands",
+            "anatomyContract": {
+                "source": "reference-audit",
+                "bodyCore": "round icy body",
+                "totalAppendages": 2,
+                "appendages": [
+                    {
+                        "id": "left-fin",
+                        "kind": "fin",
+                        "count": 1,
+                        "placement": "left side",
+                        "affordances": ["side-bob", "small-wave", "tilt"],
+                    },
+                    {
+                        "id": "right-fin",
+                        "kind": "fin",
+                        "count": 1,
+                        "placement": "right side",
+                        "affordances": ["side-bob", "small-wave", "tilt"],
+                    },
+                ],
+                "forbiddenAdditions": ["extra fins", "hands", "fingers"],
+            },
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, style)
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("face-touch action" in warning for warning in warnings))
+
+    def test_face_touch_hands_accepts_matching_affordance(self) -> None:
+        enhancer = {
+            "kind": "hand-to-chin thought gesture",
+            "attachment": "gesture",
+            "description": "The left hand touches the chin while a small thought cue appears near the head.",
+            "requiredAffordances": ["face-touch"],
+            "anatomyGuard": {
+                "limbPolicy": "no-new-limbs",
+                "allowedInteractors": ["left hand", "right hand"],
+                "forbidden": ["extra hands", "new fingers", "duplicate arms"],
+            },
+        }
+        style = {
+            "anatomyClass": "hands",
+            "anatomyContract": {
+                "source": "reference-audit",
+                "bodyCore": "small chibi torso and head",
+                "totalAppendages": 2,
+                "appendages": [
+                    {
+                        "id": "left-hand",
+                        "kind": "hand",
+                        "count": 1,
+                        "placement": "left side",
+                        "affordances": ["wave", "point", "present", "face-touch", "grip"],
+                    },
+                    {
+                        "id": "right-hand",
+                        "kind": "hand",
+                        "count": 1,
+                        "placement": "right side",
+                        "affordances": ["wave", "point", "present", "face-touch", "grip"],
+                    },
+                ],
+                "forbiddenAdditions": ["extra hands", "duplicate arms"],
+            },
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, style)
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("face-touch action" in warning for warning in warnings))
+
+    def test_required_affordance_unknown_term_warns(self) -> None:
+        enhancer = {
+            "kind": "custom expressive gesture",
+            "attachment": "gesture",
+            "description": "The mascot performs a special gesture.",
+            "requiredAffordances": ["moonwalk"],
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("unknown affordance" in warning for warning in warnings))
 
     def test_no_limb_mascot_rejects_grip_prop_even_with_anatomy_guard(self) -> None:
         enhancer = {

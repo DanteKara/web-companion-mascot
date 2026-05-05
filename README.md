@@ -105,7 +105,7 @@ The skill includes deterministic QA scripts and requires visual inspection befor
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
 - `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, style, creative state readability, and native enhancer look.
-- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, assembly warnings, quality warnings, art-direction blockers, and residual key-colored outline halos.
+- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, art-direction blockers, and residual key-colored outline halos.
 - `generate_react_component.py` emits a TypeScript React component that animates by per-frame manifest durations.
 
 The assembler keeps an outline improver enabled by default:
