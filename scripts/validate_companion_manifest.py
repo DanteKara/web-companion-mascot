@@ -650,12 +650,12 @@ def validate_style_metadata(
         if (
             anatomy_contract is None
             and anatomy_class in ANATOMY_CONTRACT_RECOMMENDED_CLASSES
-            and risky_anatomy_states
+            and states_with_enhancers
         ):
             warnings.append(
                 "style.anatomyContract is recommended for "
-                f"style.anatomyClass {anatomy_class!r} when risky enhancer interactions are used in "
-                + ", ".join(sorted(risky_anatomy_states))
+                f"style.anatomyClass {anatomy_class!r} when enhanced states are used in "
+                + ", ".join(sorted(states_with_enhancers))
             )
 
     qa["stateClarity"] = {

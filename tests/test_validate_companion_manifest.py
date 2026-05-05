@@ -153,6 +153,28 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("style.anatomyContract" in warning for warning in warnings))
 
+    def test_simple_appendage_enhanced_state_recommends_anatomy_contract(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff while one original fin may lift toward the chin.",
+            "anatomyGuard": {
+                "limbPolicy": "no-new-limbs",
+                "allowedInteractors": ["left side fin", "right side fin"],
+                "forbidden": ["extra hands", "new fingers", "duplicate fins"],
+            },
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "fins-no-hands"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("style.anatomyContract" in warning for warning in warnings))
+
     def test_anatomy_contract_total_appendages_must_match_appendage_counts(self) -> None:
         enhancer = {
             "kind": "glowing slate",
