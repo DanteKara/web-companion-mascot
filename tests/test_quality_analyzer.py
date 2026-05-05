@@ -130,6 +130,48 @@ class QualityAnalyzerTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertTrue(any("silhouette core scale range" in warning for warning in result["warnings"]))
 
+    def test_near_face_attached_voice_cue_does_not_require_separate_component(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            atlas = Image.new("RGBA", (1024, 288), (0, 0, 0, 0))
+            for column in range(4):
+                paste_body(atlas, column, 52)
+            atlas.save(tmp_path / "atlas.png")
+            manifest_path = write_manifest(tmp_path)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["style"] = {"stateClarity": "semantic-enhancers", "renderingStyle": "codex-pixel-art"}
+            manifest["states"]["idle"]["enhancer"] = {
+                "kind": "no-text pixel voice cue",
+                "attachment": "near-face",
+                "description": "Tiny voice pixels anchored on or close to the mouth.",
+            }
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            result = analyzer.analyze_manifest_quality(manifest_path)
+
+            self.assertFalse(any("semantic enhancer appears" in warning for warning in result["warnings"]))
+
+    def test_near_head_enhancer_still_requires_separate_component(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            atlas = Image.new("RGBA", (1024, 288), (0, 0, 0, 0))
+            for column in range(4):
+                paste_body(atlas, column, 52)
+            atlas.save(tmp_path / "atlas.png")
+            manifest_path = write_manifest(tmp_path)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["style"] = {"stateClarity": "semantic-enhancers", "renderingStyle": "codex-pixel-art"}
+            manifest["states"]["idle"]["enhancer"] = {
+                "kind": "thought puff",
+                "attachment": "near-head",
+                "description": "A compact thought puff near the head.",
+            }
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            result = analyzer.analyze_manifest_quality(manifest_path)
+
+            self.assertTrue(any("semantic enhancer appears" in warning for warning in result["warnings"]))
+
 
 if __name__ == "__main__":
     unittest.main()

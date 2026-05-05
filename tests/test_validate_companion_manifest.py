@@ -524,6 +524,42 @@ class ManifestValidatorTests(unittest.TestCase):
             self.assertFalse(any("requiredAffordances" in warning for warning in warnings))
             self.assertFalse(any("anatomyGuard" in warning for warning in warnings))
 
+    def test_negated_comma_separated_prop_list_does_not_create_anatomy_risk(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "Small processing glyphs painted on the body surface; no held object, tablet, slate, keyboard, paper, or pencil.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("non-grip enhancer" in error for error in errors))
+            self.assertFalse(any("requiredAffordances" in warning for warning in warnings))
+            self.assertFalse(any("anatomyGuard" in warning for warning in warnings))
+
+    def test_negation_breaker_restores_anatomy_risk_detection(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "No held object, but a tablet appears near the mascot.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("non-grip enhancer" in error for error in errors))
+
     def test_no_text_visual_cue_is_not_text_dependent(self) -> None:
         enhancer = {
             "kind": "tiny no-text voice cue",

@@ -12,7 +12,7 @@ from typing import Any
 from PIL import Image, ImageDraw, ImageFont
 
 
-SEPARATE_ENHANCER_ATTACHMENTS = {"near-head", "near-face", "near-hand", "aura"}
+SEPARATE_ENHANCER_ATTACHMENTS = {"near-head", "near-hand", "aura"}
 
 
 def quantile(sorted_values: list[int], ratio: float) -> int:

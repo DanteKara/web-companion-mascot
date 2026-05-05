@@ -55,6 +55,7 @@ ALLOWED_ENHANCER_ATTACHMENTS = {
 }
 TEXT_DEPENDENT_KIND_TERMS = {"text", "label", "caption", "word", "question-mark", "punctuation"}
 TEXT_NEGATION_TERMS = {"no", "non", "not", "without"}
+TEXT_NEGATION_BREAK_TERMS = {"although", "but", "except", "however", "though", "while", "yet"}
 RISKY_ANATOMY_ATTACHMENTS = {"held", "near-hand"}
 NO_GRIP_ATTACHMENTS = {"held", "near-hand"}
 ACTION_TERMS_BY_AFFORDANCE = {
@@ -464,7 +465,7 @@ def enhancer_text(value: dict[str, Any]) -> str:
 
 def split_term_clauses(value: str) -> list[list[str]]:
     normalized = value.lower().replace("_", "-").replace("/", "-")
-    clauses = re.split(r"[.,;:()[\]{}\"']+", normalized)
+    clauses = re.split(r"[.;:()[\]{}\"']+", normalized)
     return [re.findall(r"[a-z0-9]+", clause) for clause in clauses if clause.strip()]
 
 
@@ -480,7 +481,12 @@ def clause_has_term(tokens: list[str], term: str) -> int | None:
 
 
 def has_prior_negation(tokens: list[str], term_index: int) -> bool:
-    return any(token in TEXT_NEGATION_TERMS for token in tokens[:term_index])
+    scoped_tokens = tokens[:term_index]
+    for index in range(len(scoped_tokens) - 1, -1, -1):
+        if scoped_tokens[index] in TEXT_NEGATION_BREAK_TERMS:
+            scoped_tokens = scoped_tokens[index + 1 :]
+            break
+    return any(token in TEXT_NEGATION_TERMS for token in scoped_tokens)
 
 
 def has_unnegated_term(value: str, terms: set[str]) -> bool:

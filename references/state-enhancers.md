@@ -101,7 +101,7 @@ Use these as starting points, then adapt them to the companion's theme.
 | `listening` | Receiving user input | small sound rings, hand-to-ear, mic only for voice apps | hand cupped to hood/ear, attentive glow rings | lean toward input, eyes tracking |
 | `thinking` | Planning before output | compact thought cloud, idea orb, small processing halo, hand-to-chin | side-origin theme-native thought puff, floating crystal/orb near head, small aura loop, chin pose | head tilt, eyes up/side, blink hold |
 | `working` | Tool/backend activity | laptop, tablet, keyboard, document | parchment, quill, glowing slate, tool, spellbook | focused face, faster hands/prop |
-| `answering` | Streaming response | speech bubble, presenting hand, mouth shapes | speaking gesture, scroll unfurl, guiding prop | mouth shapes, rhythmic hand beats |
+| `answering` | Streaming response | mouth shapes, presenting hand, tiny no-text near-face voice pixels | speaking gesture, scroll unfurl, guiding prop | mouth shapes, rhythmic hand beats |
 | `success` | Completed successfully | small check glint, thumbs up | raised staff/tool, celebratory charm | bounce, proud pose |
 | `error` | Recoverable failure | warning badge, droop, small alert mark | dimmed charm, dropped prop, worried robe slump | worried face, recoil, recovery |
 | `confused` | Needs clarification | small question bubble | tilted charm, searching orb | squint, head tilt |
