@@ -826,7 +826,7 @@ def validate_manifest(
                 errors.append(f"states.{state_name}.row duplicates state {previous}")
             seen_rows[row] = state_name
 
-    if "idle" not in states:
+    if profile != "audition" and "idle" not in states:
         warnings.append("manifest has no idle state")
 
     if atlas_path_raw and isinstance(atlas_path_raw, str):
@@ -871,9 +871,9 @@ def main() -> int:
     parser.add_argument("--manifest", required=True, help="Path to companion manifest.json")
     parser.add_argument(
         "--profile",
-        choices=["generic", "chatbot"],
+        choices=["generic", "chatbot", "audition"],
         default="generic",
-        help="Validation profile. Use chatbot for website assistant companion packs.",
+        help="Validation profile. Use audition for strict single-row or partial-pack tests; use chatbot for full website assistant companion packs.",
     )
     parser.add_argument("--strict", action="store_true", help="Treat warnings as failures")
     parser.add_argument("--key-color", help="Chroma-key color used by the assembler; defaults to assembly report or #FF00FF")

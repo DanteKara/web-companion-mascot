@@ -320,6 +320,25 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("text-dependent" in warning for warning in warnings))
 
+    def test_audition_profile_allows_single_state_without_idle_warning(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("manifest has no idle state" in warning for warning in warnings))
+            self.assertFalse(any("chatbot profile" in warning for warning in warnings))
+            self.assertFalse(any("recommends 12+" in warning for warning in warnings))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -207,7 +207,7 @@ Do not treat "more frames" as duplicated stills. Every used frame should earn it
 - `listening`: attentive lean, blink, eye tracking toward user input, subtle prop/body motion.
 - `thinking`: head tilt, eye movement, hand-to-face or prop tilt, blink, small loopable shifts.
 - For near-head `thinking` enhancers, prefer a side-origin path: the thought cue begins near one side of the head, drifts slightly outward and upward, holds briefly at the clearest point, then settles. The mascot's eyes and mouth should react to that motion.
-- Existing appendages should be allowed to act when they are part of the reference: fins can lift toward the chin, paws can gesture, sleeves can brace a prop, and tentacles can point. QA should reject extra or duplicated anatomy, not legitimate motion from the original appendages.
+- Existing appendages should be allowed to act when they are part of the reference: fins can lift toward the chin, paws can gesture, sleeves can brace a prop, and tentacles can point. QA should reject extra or duplicated anatomy, not legitimate motion from the original appendages. If the acting pose makes a simple appendage look like a new hand, fingered mitten, detached object, or third limb, regenerate with a safer smaller appendage motion and move the acting beat to face, body tilt, blink timing, or the semantic enhancer.
 - `working`: faster but controlled movement, prop/hand/body cycles, focused face.
 - `answering`: speaking mouth shapes or expressive face/hand beats, loopable cadence.
 - `success`: anticipation, bounce or proud pose, cheerful hold, return.

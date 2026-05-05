@@ -122,6 +122,18 @@ Production runs should pass strict validation with zero warnings:
 python scripts/analyze_companion_quality.py \
   --manifest /path/to/run/manifest.json
 
+python scripts/validate_companion_manifest.py \
+  --manifest /path/to/run/manifest.json \
+  --profile audition \
+  --strict \
+  --require-state-clarity \
+  --require-quality-report
+```
+
+Use `--profile audition` for one-row or partial-pack tests. Use the full chatbot profile only after the production pack includes the expected chatbot states:
+
+```bash
+
 python scripts/create_art_direction_review.py \
   --manifest /path/to/run/manifest.json \
   --status pass \
