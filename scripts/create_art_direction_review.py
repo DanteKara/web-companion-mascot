@@ -12,6 +12,7 @@ REQUIRED_CHECKS = [
     "referenceQualityMaintained",
     "identityPreserved",
     "stylePreserved",
+    "pixelArtStyle",
     "creativeStateReadability",
     "nativeEnhancers",
     "integratedEnhancers",

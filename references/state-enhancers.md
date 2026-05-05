@@ -22,7 +22,8 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 - Keep enhancers inside the sprite cell with safe padding for every frame.
 - Avoid text, labels, UI panels, detached punctuation, loose sparkles, and large scenery.
 - Use an enhancer only when pose, expression, and motion are not enough.
-- Keep the mascot's outfit, outline, palette, face, and proportions consistent across all rows.
+- Keep the mascot's outfit, outline, palette, face, proportions, and pixel density consistent across all rows.
+- Production enhancers and state rows must stay in Codex-style pixel art: visible stepped pixel edges, crisp clusters, thick 1-2 px outline, limited palette, flat cel shading, and hard-edged sprite effects. Reject smooth illustration, glossy app-icon art, painterly gradients, 3D shading, vector-flat symbols, high-detail antialiasing, or realistic material texture.
 - Animate the enhancer with follow-through; do not paste the same prop in every frame.
 - Design semantic enhancers with a state-specific motion path, not just a static icon. Name where the effect begins, how it travels, where it holds for readability, and how it settles into the loop.
 - The mascot must emotionally perform the state. Row prompts should specify eyes, mouth, blink, head angle, body settle, and appendage/prop follow-through; reject rows where the symbol reads but the face feels neutral or unrelated.
@@ -31,8 +32,8 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 - Avoid under-designed semantics. Tiny dots, generic particles, or minimal marks are not enough for production unless they clearly look like intentional character art at 64, 96, and 128 px. If a state reads as "status particles" rather than the intended behavior, regenerate with a richer but still anchored concept.
 - Generate production enhancers as part of the mascot artwork. Do not add vector, CSS, or hand-drawn overlays after generation unless the user explicitly wants a throwaway prototype.
 - Do not use local scripts or deterministic compositors to create final enhancer pixels. Scripts may assemble and validate row art, but production semantics must come from `$imagegen` row generation or from user/artist-provided integrated row art.
-- Match the base mascot's line weight, pixel grid or brush texture, palette, lighting direction, shading, antialiasing, and occlusion. A good enhancer should look like it was designed by the same artist in the same pass.
-- Preserve the reference's art quality and personality. Do not simplify a detailed mascot into a flatter or more generic sprite just to make enhancers easier to place.
+- Match the base mascot's line weight, pixel grid, palette, lighting direction, flat shading, edge treatment, pixel density, and occlusion. A good enhancer should look like it was designed by the same pixel artist in the same pass.
+- Preserve the reference's identity and personality while translating it into the Codex pixel companion style. Do not simplify a detailed mascot into a flatter or more generic sprite just to make enhancers easier to place.
 - For held or touched props, the mascot must use only existing hands, paws, fins, sleeves, tentacles, or identity body parts that have a matching `grip`, `brace`, `face-touch`, `typing`, or `writing` affordance. Reject extra hands, duplicate arms, new fingers, cloned sleeves, disconnected mitts, or props held by anatomy the source character does not have.
 - Existing appendages may be expressive when their audited affordances support the action. Do not overconstrain real hands into static side limbs; hands with `face-touch`, `grip`, `point`, or `present` affordances can use rich acting. For fins, paws, sleeves, mitts, tentacles, wings, or similar simple appendages, use only the actions recorded in `style.anatomyContract.appendages[].affordances`. The blocker is invented anatomy or unsupported action, not motion itself.
 - If the mascot has simple or ambiguous limbs, choose props that can sit against the body, tuck under an existing limb, or hover near the head instead of requiring detailed fingers. Face-touch and cross-body gestures are high-risk unless the exact appendage has a `face-touch` affordance and an audition proves it reads as the original appendage.
@@ -65,6 +66,7 @@ Use this compact card in row prompts and QA notes:
 
 ```text
 state: working
+rendering style: codex-pixel-art
 semantic read: backend/tool work
 anatomy class: simple-appendages
 enhancer: theme-native work prop
@@ -78,6 +80,7 @@ For expressive pose states, the same guard should allow motion that the audited 
 
 ```text
 state: thinking
+rendering style: codex-pixel-art
 semantic read: planning before output
 anatomy class: simple-appendages
 enhancer: side-origin theme-native thought cue
@@ -111,6 +114,7 @@ Record the chosen profile so future QA and React integration can understand the 
 ```json
 {
   "style": {
+    "renderingStyle": "codex-pixel-art",
     "stateClarity": "semantic-enhancers",
     "enhancerTheme": "fantasy",
     "anatomyClass": "fins-no-hands",
@@ -207,7 +211,9 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - The enhancer appears in the wrong state or persists into unrelated states.
 - The row relies on text instead of visual meaning.
 - The manifest omits `style.stateClarity` or per-state `enhancer` metadata for enhanced states.
-- The enhancer looks pasted on: mismatched outline thickness, different antialiasing, wrong scale, flat vector styling over painterly/pixel art, inconsistent lighting, or no believable hand/body occlusion.
+- The manifest omits `style.renderingStyle: "codex-pixel-art"` for a new production pack.
+- The enhancer looks pasted on: mismatched outline thickness, different edge treatment, wrong scale, flat vector styling over pixel art, inconsistent lighting, different pixel density, or no believable hand/body occlusion.
+- The row or enhancer looks like smooth illustration, glossy app-icon art, 3D rendering, painterly gradients, high-detail antialiasing, vector-flat symbols, or CSS-scaled smooth art instead of native Codex-style pixel art.
 - The enhancer was added by post-processing instead of generated as integrated row art, unless the package is clearly labeled as a prototype and not accepted as final.
 - A held prop creates extra limbs, duplicate hands, new fingers/paws/fins, or inconsistent sleeves/body parts. This is a production blocker even if validation passes.
 - A pose uses appendage motion but changes the appendage count, invents grip anatomy, detaches a limb, or makes the moving appendage look like a new object instead of the original body part.

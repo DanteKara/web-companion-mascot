@@ -10,6 +10,7 @@ Use this shape for `manifest.json`:
   "displayName": "Tridy",
   "description": "A cheerful chatbot companion.",
   "style": {
+    "renderingStyle": "codex-pixel-art",
     "stateClarity": "pose-only"
   },
   "atlas": {
@@ -57,13 +58,14 @@ For a higher-FPS feel, prefer 12 columns for the atlas. `thinking`, `working`, a
 
 If image generation cannot reliably produce a full 12+ frame row with the correct number of mascot bodies, generate the row in smaller exact-count chunks such as two 6-frame parts and stitch those generated parts with `scripts/stitch_row_parts.py`. The stitch step may concatenate existing generated art only; it must not create missing frames, draw props, resize sprites, or patch anatomy. The stitched row must pass the same assembly, motion, cutout, readability, semantic-anchor, and visual seam QA as a single generated row.
 
-## State Clarity Metadata
+## Style Metadata
 
-New companion packs should include a top-level `style.stateClarity` value:
+New companion packs should include top-level `style.renderingStyle` and `style.stateClarity` values. Production output from this skill must be Codex-style pixel art:
 
 ```json
 {
   "style": {
+    "renderingStyle": "codex-pixel-art",
     "stateClarity": "pose-only"
   }
 }
@@ -74,6 +76,7 @@ or:
 ```json
 {
   "style": {
+    "renderingStyle": "codex-pixel-art",
     "stateClarity": "semantic-enhancers",
     "enhancerTheme": "modern-assistant",
     "anatomyClass": "fins-no-hands",
@@ -102,6 +105,14 @@ or:
   }
 }
 ```
+
+Allowed `renderingStyle` value:
+
+| Value | Meaning |
+| --- | --- |
+| `codex-pixel-art` | Codex digital-pet style: compact chibi pixel sprite, visible stepped pixel edges, thick 1-2 px outline, limited palette, flat cel shading, simple expressive face, and crisp hard-edged effects. |
+
+Reject production rows that look like smooth illustration, glossy app-icon art, 3D rendering, painterly gradients, vector-flat clip art, high-detail antialiasing, or realistic material texture. A non-pixel reference should be translated into this pixel-sprite style while preserving identity, silhouette cues, palette family, must-keep markings, and charm.
 
 Allowed `stateClarity` values:
 
@@ -175,6 +186,7 @@ Minimum contract fields:
 ```json
 {
   "style": {
+    "renderingStyle": "codex-pixel-art",
     "anatomyClass": "fins-no-hands",
     "anatomyContract": {
       "source": "reference-audit",
@@ -309,6 +321,7 @@ For high-frame-count rows, treat body stability as part of the prompt, not just 
 - Treat `qa/quality-report.json` silhouette warnings as blockers: detached fragments, broken-cut symptoms, core scale drift, full-row core scale range, or core center drift mean the row needs regeneration or a better source strip. For production mascots, full-row core scale range should stay at or below `5%`; larger changes are usually visible as body growth/shrink even when the contact sheet looks otherwise clean.
 - For split-generated rows, inspect the stitch boundary and reject visible half-to-half changes in mascot scale, top/bottom anchor, outline thickness, prop size, palette, lighting, expression style, or pixel density even when numeric QA passes.
 - Produce `qa/art-direction-review.json` before production validation. This is the visual gate for reference quality, identity preservation, native enhancers, and creative state readability.
+- Production visual QA must confirm Codex-style pixel art: visible stepped edges, crisp clusters, limited palette, flat cel shading, thick readable outline, and consistent pixel density. Smooth illustration, glossy app-icon rendering, painterly gradients, 3D shading, vector-flat symbols, or high-detail antialiasing are production blockers.
 - Production art must come from `$imagegen` integrated row generation or user/artist-provided integrated row art. Local scripts and deterministic compositors may not draw, synthesize, or paste final mascot props/effects.
 - Review assembly warnings such as equal-width fallback; they indicate the row may need regeneration or manual inspection.
 
@@ -328,6 +341,7 @@ Reject or repair if any of these happen:
 - A row gets its smoothness from duplicates or near-duplicates rather than meaningful in-betweens.
 - `qa/quality-report.json` reports low motion, near-duplicate transitions, body jitter, major area jumps, missing enhancer presence, or semantic anchor drift.
 - `qa/art-direction-review.json` is missing for a production run, has `status` other than `pass`, has `productionUse` other than `true`, contains blockers, or reports any required art-direction check as false.
+- `style.renderingStyle` is missing from a new production pack or is not `codex-pixel-art`.
 - `style.stateClarity` is malformed.
 - `style.stateClarity` is `pose-only` but state rows introduce unrequested semantic props.
 - `style.stateClarity` is `semantic-enhancers` but `thinking`, `working`, `listening`, or `answering` omit `enhancer` metadata.
@@ -338,7 +352,8 @@ Reject or repair if any of these happen:
 - A semantic enhancer is readable only as generic particles or timid decoration rather than intentional, character-native state art.
 - A semantic enhancer is cropped, detached, text-dependent, or appears in unrelated states.
 - A semantic enhancer wanders away from its intended anchor, changes sides without intent, or makes the row read as a different state.
-- A semantic enhancer looks pasted on: mismatched outline, antialiasing, lighting, scale, pixel density, palette, or occlusion.
+- A semantic enhancer looks pasted on: mismatched outline, edge treatment, lighting, scale, pixel density, palette, or occlusion.
+- A row or enhancer looks smooth, painterly, glossy, 3D, vector-flat, heavily antialiased, or otherwise unlike native Codex-style pixel art.
 - A held enhancer causes extra hands, duplicate arms, new fingers/paws/fins, or other anatomy that was not in the source mascot.
 - A state asks an appendage to perform an action outside its recorded affordances, such as face-touch by a fin that only has side-bob/tilt, or typing by a paw without fingers.
 - A simple appendage mascot gains a limb-colored oval, patch, detached blob, or front-body shape that reads as an extra appendage.

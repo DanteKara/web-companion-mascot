@@ -1,6 +1,6 @@
 # Web Companion Mascot
 
-Create high-quality animated mascot companions for React and chatbot websites from character art, screenshots, Codex pets, or generated references.
+Create high-quality pixel-art animated mascot companions for React and chatbot websites from character art, screenshots, Codex pets, or generated references.
 
 This is a Codex skill. It helps produce a web-ready mascot package with:
 
@@ -12,6 +12,8 @@ This is a Codex skill. It helps produce a web-ready mascot package with:
 - a generated React component and companion-state hook
 
 The skill is designed for mascot companions that need to feel alive inside a product UI, especially AI chatbots.
+
+Production mascot art uses the Codex digital-pet pixel-art house style: compact chibi sprites, visible stepped pixel edges, thick readable outlines, limited palettes, flat cel shading, and crisp hard-edged effects. Non-pixel references are translated into that style while preserving identity and charm; smooth illustration, glossy app-icon art, painterly gradients, 3D rendering, and vector-flat clip art are not production passes.
 
 Production mascot art must come from integrated row art generated with `$imagegen` or from finished user/artist-provided row strips. The bundled scripts assemble, clean, validate, and integrate assets; they must not draw or paste final semantic props into production mascot frames.
 
@@ -104,8 +106,8 @@ The skill includes deterministic QA scripts and requires visual inspection befor
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
-- `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, style, creative state readability, and native enhancer look.
-- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, art-direction blockers, and residual key-colored outline halos.
+- `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, Codex pixel-art style, creative state readability, and native enhancer look.
+- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, rendering-style metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, art-direction blockers, and residual key-colored outline halos.
 - `generate_react_component.py` emits a TypeScript React component that animates by per-frame manifest durations.
 
 The assembler keeps an outline improver enabled by default:
@@ -127,6 +129,7 @@ python scripts/validate_companion_manifest.py \
   --profile audition \
   --strict \
   --require-state-clarity \
+  --require-rendering-style \
   --require-quality-report
 ```
 
@@ -143,6 +146,7 @@ python scripts/create_art_direction_review.py \
   --check referenceQualityMaintained=true \
   --check identityPreserved=true \
   --check stylePreserved=true \
+  --check pixelArtStyle=true \
   --check creativeStateReadability=true \
   --check nativeEnhancers=true \
   --check integratedEnhancers=true \
@@ -157,6 +161,7 @@ python scripts/validate_companion_manifest.py \
   --profile chatbot \
   --strict \
   --require-state-clarity \
+  --require-rendering-style \
   --require-quality-report \
   --require-art-direction-review \
   --max-outline-halo-pixels 0

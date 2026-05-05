@@ -37,6 +37,7 @@ CHATBOT_RECOMMENDED_FRAMES = {
 CHATBOT_CORE_STATES = {"idle", "thinking", "working", "answering", "success", "error"}
 MIN_USED_CELL_COVERAGE = 0.015
 STATE_CLARITY_PROFILES = {"pose-only", "semantic-enhancers"}
+RENDERING_STYLES = {"codex-pixel-art"}
 ANATOMY_CLASSES = {"hands", "paws", "fins-no-hands", "no-limbs", "ambiguous-limbs"}
 NO_GRIP_ANATOMY_CLASSES = {"no-limbs"}
 ANATOMY_CONTRACT_RECOMMENDED_CLASSES = {"fins-no-hands", "ambiguous-limbs"}
@@ -293,6 +294,7 @@ def validate_art_direction_review(
         "referenceQualityMaintained",
         "identityPreserved",
         "stylePreserved",
+        "pixelArtStyle",
         "creativeStateReadability",
         "nativeEnhancers",
         "integratedEnhancers",
@@ -818,15 +820,28 @@ def validate_style_metadata(
     warnings: list[str],
     qa: dict[str, Any],
     require_state_clarity: bool,
+    require_rendering_style: bool,
 ) -> None:
     style = data.get("style")
     if style is None:
         if require_state_clarity:
             errors.append("style.stateClarity is required when --require-state-clarity is used")
+        if require_rendering_style:
+            errors.append("style.renderingStyle is required when --require-rendering-style is used")
         return
     if not isinstance(style, dict):
         errors.append("style must be an object")
         return
+
+    rendering_style = style.get("renderingStyle")
+    if rendering_style is None:
+        if require_rendering_style:
+            errors.append("style.renderingStyle is required when --require-rendering-style is used")
+    elif not isinstance(rendering_style, str):
+        errors.append("style.renderingStyle must be a string")
+        rendering_style = None
+    elif rendering_style not in RENDERING_STYLES:
+        errors.append("style.renderingStyle must be codex-pixel-art")
 
     state_clarity = style.get("stateClarity")
     if state_clarity is None:
@@ -896,6 +911,7 @@ def validate_style_metadata(
 
     qa["stateClarity"] = {
         "profile": state_clarity,
+        "renderingStyle": rendering_style,
         "enhancerTheme": enhancer_theme,
         "anatomyClass": anatomy_class,
         "hasAnatomyContract": anatomy_contract is not None,
@@ -909,6 +925,7 @@ def validate_manifest(
     manifest_path: Path,
     profile: str = "generic",
     require_state_clarity: bool = False,
+    require_rendering_style: bool = False,
     require_quality_report: bool = False,
     require_art_direction_review: bool = False,
     key_color: str | None = None,
@@ -1016,7 +1033,15 @@ def validate_manifest(
         for state_name in missing_core:
             warnings.append(f"chatbot profile missing core state: {state_name}")
 
-    validate_style_metadata(data, states, errors, warnings, qa, require_state_clarity)
+    validate_style_metadata(
+        data,
+        states,
+        errors,
+        warnings,
+        qa,
+        require_state_clarity,
+        require_rendering_style,
+    )
     style = data.get("style")
     if (
         isinstance(style, dict)
@@ -1121,6 +1146,11 @@ def main() -> int:
         help="Require style.stateClarity metadata for newly generated companion packs",
     )
     parser.add_argument(
+        "--require-rendering-style",
+        action="store_true",
+        help='Require style.renderingStyle metadata and enforce "codex-pixel-art"',
+    )
+    parser.add_argument(
         "--require-quality-report",
         action="store_true",
         help="Require qa/quality-report.json and include quality warnings in strict validation",
@@ -1138,6 +1168,7 @@ def main() -> int:
         manifest_path,
         profile=args.profile,
         require_state_clarity=args.require_state_clarity,
+        require_rendering_style=args.require_rendering_style,
         require_quality_report=args.require_quality_report,
         require_art_direction_review=args.require_art_direction_review,
         key_color=args.key_color,
@@ -1151,6 +1182,7 @@ def main() -> int:
         "profile": args.profile,
         "strict": args.strict,
         "requireStateClarity": args.require_state_clarity,
+        "requireRenderingStyle": args.require_rendering_style,
         "requireQualityReport": args.require_quality_report,
         "requireArtDirectionReview": args.require_art_direction_review,
         "errors": errors,

@@ -67,6 +67,8 @@ Sprite style:
 }
 ```
 
+Keep `imageRendering: "pixelated"` enabled for production assets from this skill. The atlas should already be native Codex-style pixel art; React should preserve the crisp pixel edges rather than smoothing them with browser scaling.
+
 ## Chatbot State Hook
 
 Use a small adapter layer instead of passing raw backend statuses into the mascot:

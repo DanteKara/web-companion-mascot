@@ -15,7 +15,7 @@ spec.loader.exec_module(validator)
 
 
 def write_manifest(tmp_path: Path, enhancer: dict, style_extra: dict | None = None) -> Path:
-    style = {"stateClarity": "semantic-enhancers"}
+    style = {"stateClarity": "semantic-enhancers", "renderingStyle": "codex-pixel-art"}
     if style_extra:
         style.update(style_extra)
     manifest = {
@@ -47,6 +47,97 @@ def write_manifest(tmp_path: Path, enhancer: dict, style_extra: dict | None = No
 
 
 class ManifestValidatorTests(unittest.TestCase):
+    def test_rendering_style_is_required_when_requested(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            del data["style"]["renderingStyle"]
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+                require_rendering_style=True,
+            )
+
+            self.assertTrue(any("style.renderingStyle is required" in error for error in errors))
+
+    def test_non_pixel_rendering_style_is_rejected(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(
+                Path(raw_tmp),
+                enhancer,
+                {"anatomyClass": "no-limbs", "renderingStyle": "smooth-illustration"},
+            )
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+                require_rendering_style=True,
+            )
+
+            self.assertTrue(any("style.renderingStyle must be codex-pixel-art" in error for error in errors))
+
+    def test_art_direction_review_requires_pixel_art_style_check(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "no-limbs"})
+            source_reference = tmp_path / "source.png"
+            source_reference.write_bytes(b"not-really-an-image")
+            qa_dir = tmp_path / "qa"
+            qa_dir.mkdir()
+            checks = {
+                "referenceQualityMaintained": True,
+                "identityPreserved": True,
+                "stylePreserved": True,
+                "creativeStateReadability": True,
+                "nativeEnhancers": True,
+                "integratedEnhancers": True,
+                "anatomyPreserved": True,
+                "noExtraAnatomy": True,
+                "believableOcclusion": True,
+                "noPrototypeFlattening": True,
+            }
+            (qa_dir / "art-direction-review.json").write_text(
+                json.dumps(
+                    {
+                        "status": "pass",
+                        "generationMethod": "imagegen-integrated-row-art",
+                        "sourceReference": str(source_reference),
+                        "productionUse": True,
+                        "checks": checks,
+                        "blockers": [],
+                        "notes": "Visual review passed.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_art_direction_review=True,
+            )
+
+            self.assertTrue(any("checks.pixelArtStyle is required" in error for error in errors))
+
     def test_risky_working_prop_requires_anatomy_guard(self) -> None:
         enhancer = {
             "kind": "glowing slate",
