@@ -88,6 +88,10 @@ After recording `base`, `references/canonical-base.png` must exist and should be
 
 The preparer may seed enhanced states with draft metadata such as `"kind": "planned during row generation"`. After final row art is selected, replace that draft metadata with the actual accepted visual aid, for example `"kind": "near-face icy voice pixels"` or `"kind": "body-surface processing glyph"`. Strict validation warns on leftover draft enhancer wording so planning placeholders do not become shipped metadata.
 
+Expression language is part of the identity contract. Preserve the source mascot's normal face grammar when communicating state. A calm, browless, icon-like, plush, or abstract mascot should not gain angry eyebrows, hostile eyes, teeth, sweat, blush, or dramatic emotion marks just to show focus. Use eye direction, blink timing, mouth shape, posture, timing, and approved visual aids first; stronger face marks are acceptable only when the source design already supports them or the state genuinely needs them and the result remains character-appropriate.
+
+Semantic cues are part of the cleanup contract too. A cue that only exists as isolated tiny specks, far-away dots, or ultra-thin marks is fragile: default cleanup may remove it, while loosening cleanup can keep neighboring slivers or force the mascot body to shrink around distant effects. For ambiguous states that need a cue, prefer compact body-surface, rim-touching, attached, or close-overlapping artwork that survives default cleanup and reads at 64-96 px.
+
 ## Style Metadata
 
 New companion packs should include top-level `style.renderingStyle` and `style.stateClarity` values. Production output from this skill must be Codex-style pixel art:
@@ -402,6 +406,7 @@ Reject or repair if any of these happen:
 - A frame shows a pink, green, or key-colored edge halo on `qa/cutout-check.png`.
 - `qa/assembly-report.json` is missing, has assembly warnings, or records leftover outline halo pixels.
 - A `semantic-enhancers` pack is missing `qa/state-readability-check.png`.
+- A required semantic enhancer disappears from `qa/contact-sheet.png` or `qa/state-readability-check.png` after cleanup. Regenerate with a larger/attached cue instead of loosening cleanup enough to preserve random noise or neighboring-frame slivers.
 - A row gets its smoothness from duplicates or near-duplicates rather than meaningful in-betweens.
 - `qa/quality-report.json` reports low motion, near-duplicate transitions, body jitter, major area jumps, missing enhancer presence, or semantic anchor drift.
 - `qa/art-direction-review.json` is missing for a production run, has `status` other than `pass`, has `productionUse` other than `true`, contains blockers, or reports any required art-direction check as false.
@@ -420,7 +425,7 @@ Reject or repair if any of these happen:
 - A semantic enhancer is readable only as generic particles or timid decoration rather than intentional, character-native state art.
 - A semantic enhancer is readable but off-vibe: generic gears, circuit diagrams, speech panels, UI windows, or universal symbols that do not belong to the mascot's source world.
 - A semantic enhancer is on-vibe but does not read as the intended state, such as decorative frost that does not communicate active work.
-- The `working` face reads as angry/hostile instead of focused, busy, and character-appropriate.
+- The `working` face reads as angry/hostile, or gains invented angry brows, instead of busy, friendly, and character-appropriate.
 - A semantic enhancer is cropped, detached, text-dependent, or appears in unrelated states.
 - A semantic enhancer wanders away from its intended anchor, changes sides without intent, or makes the row read as a different state.
 - A semantic enhancer looks pasted on: mismatched outline, edge treatment, lighting, scale, pixel density, palette, or occlusion.

@@ -51,7 +51,7 @@ STATE_ACTING = {
     "greeting": "friendly anticipation, small wave or body bounce, warm smile, return to rest",
     "listening": "attentive lean toward the user, eyes tracking, small blink hold",
     "thinking": "curious head tilt, eyes up or to the side, blink hold, small pondering mouth",
-    "working": "focused-but-friendly concentration, eye tracking, lean-in, faster purposeful body or prop motion",
+    "working": "busy-but-friendly concentration, attentive eye tracking, lean-in, faster purposeful body or prop motion; never angry",
     "answering": "speaking mouth shapes, bright eyes, rhythmic face/body beats",
     "success": "cheerful bounce, proud hold, bright face, return to loop",
     "error": "worried recognition, small recoil or slump, recovery beat",
@@ -62,7 +62,7 @@ STATE_ACTING = {
 STATE_VISUAL_AIDS = {
     "listening": "small attached sound rings or attentive pose only when needed",
     "thinking": "compact side-origin thought puff, idea orb, or hand-to-chin only when anatomy supports it",
-    "working": "existing work prop when anatomy supports it; otherwise a tiny processing/work cue with purposeful cycling motion that clearly reads as active work",
+    "working": "existing work prop when anatomy supports it; otherwise a compact attached, rim-touching, or body-surface processing/work cue with purposeful cycling, sorting, checking, or gathering motion that clearly reads as active work, not random sparkle or tiny detached specks",
     "answering": "mouth shapes first; tiny no-text voice pixels or breath puffs close to the face when needed",
     "success": "small check/glint, proud pose, or raised existing prop",
     "error": "attached tear, warning charm, prop droop, or small attached smoke/stars",
@@ -70,7 +70,7 @@ STATE_VISUAL_AIDS = {
 }
 
 STATE_REJECTS = {
-    "working": "anger, hostile eyes, decorative particles that do not read as work, unsupported held tools",
+    "working": "anger, hostile eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues",
     "thinking": "generic icon straight above the head, static dots, face-touch by unsupported appendages",
     "listening": "microphone props for non-voice apps, detached sound clutter",
@@ -258,9 +258,9 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
     if state == "thinking" and anatomy_class in {"fins-no-hands", "no-limbs", "ambiguous-limbs"}:
         visual_aid = "compact side-origin thought puff or idea orb; use eyes, tilt, and blink timing, not hand-to-chin"
     if anatomy_class == "no-limbs" and state == "working":
-        visual_aid = "face/body acting plus tiny attached or near-head processing cue with purposeful cycling motion; no held or near-hand props"
+        visual_aid = "face/body acting plus compact attached, rim-touching, or body-surface processing cue with purposeful cycling, sorting, checking, or gathering motion; no held, near-hand, or tiny detached speck props"
     if anatomy_class in {"fins-no-hands", "ambiguous-limbs"} and state == "working":
-        visual_aid = "focused face/body acting plus tiny attached or near-head processing cue; no held props in the draft plan"
+        visual_aid = "busy-but-friendly face/body acting plus compact attached, rim-touching, or body-surface processing cue; no held props or tiny detached specks in the draft plan"
     if state_clarity == "pose-only":
         visual_aid = "none; communicate through acting, timing, and existing identity props only"
     return {
@@ -416,6 +416,8 @@ Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped p
 
 Identity lock: preserve the same mascot species/body type, face, palette, markings, outline weight, proportions, appendage count, and silhouette from the reference. Do not redesign the character.
 
+Expression lock: preserve the source mascot's expression language. Do not invent angry brows, brow marks, teeth, sweat, blush, or dramatic emotion symbols unless they are already part of the source design or the state explicitly needs them and they remain character-appropriate. For working, show concentration through eye direction, blink timing, mouth shape, lean, pace, and approved props/effects; do not add eyebrows to a browless mascot.
+
 State: {state}
 Semantic read: {state_plan["semanticRead"]}
 Acting first: {state_plan["actingFirst"]}
@@ -432,7 +434,7 @@ Semantic ladder:
 3. Add one tiny attached or anchored visual aid only if the state is still unclear at website size.
 4. Reject a pretty motif-native effect when it does not communicate the state.
 
-Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays focused-but-friendly. For answering, the cue should support mouth/voice motion rather than become a speech panel.
+Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. The cue must remain visible after chroma-key cleanup and readable at 64-96 px; do not rely on isolated tiny specks that cleanup may remove. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays busy-but-friendly and never angry; for simple/no-limb mascots, prefer body-surface, rim-touching, or compact attached cues over detached particles. For answering, the cue should support mouth/voice motion rather than become a speech panel.
 
 Layout guide rule: follow the attached guide's {frame_count} frame boxes and safe padding, but do not reproduce the guide itself. No visible boxes, borders, labels, guide colors, center marks, or guide background may appear in the output.
 
