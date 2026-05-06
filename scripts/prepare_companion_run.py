@@ -102,7 +102,11 @@ NO_HAND_WORK_PROP_POLICY = (
     "For simple/no-hand mascots, a freestanding or resting work prop is allowed when it sits beside or in "
     "front of the mascot and does not require grip anatomy. Use a mascot-native small slate, tablet, "
     "notebook, card stack, or work surface with visible sorting/checking/gathering activity; the mascot "
-    "works by looking, leaning, bobbing, and reacting, not by holding, typing, writing, or inventing hands."
+    "works by looking, leaning, bobbing, and reacting, not by holding, typing, writing, or inventing hands. "
+    "Keep a clear background gap between the mascot and prop; no part of the prop or activity marks may touch "
+    "the body, appendages, outline, or effects. Keep sorting/checking/gathering motion inside or on the prop "
+    "surface, not in the empty gap, because rising pips, sparkles, crystals, or motion marks can merge the "
+    "prop with the mascot body during cleanup and QA."
 )
 
 ANATOMY_GUIDANCE = {
