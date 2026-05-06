@@ -64,6 +64,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("busy-but-friendly", working_prompt)
             self.assertIn("Expression lock", working_prompt)
             self.assertIn("do not add eyebrows to a browless mascot", working_prompt)
+            self.assertIn("no slanted angry eyes", working_prompt)
+            self.assertIn("V-shaped", working_prompt)
             self.assertIn("no held, near-hand", working_prompt)
             self.assertIn("purposeful processing", working_prompt)
             self.assertIn("remain visible after chroma-key cleanup", working_prompt)
@@ -133,6 +135,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("no held props or tiny detached specks in the draft plan", working_prompt)
             self.assertIn("rim-touching", working_prompt)
             self.assertIn("invented angry eyebrows", working_prompt)
+            self.assertIn("slanted angry eyes", working_prompt)
 
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertNotIn("brace", manifest["states"]["working"]["enhancer"]["description"])
@@ -243,7 +246,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
             self.assertIn("freestanding or resting work prop", working_prompt)
-            self.assertIn("small slate, tablet, notebook, card stack, or work surface", working_prompt)
+            self.assertIn("small slate, tablet, blank card stack, token tray, chunky work tile", working_prompt)
             self.assertIn("beside or in front of the mascot", working_prompt)
             self.assertIn("the mascot works by looking, leaning, bobbing, and reacting", working_prompt)
             self.assertIn("not by holding, typing, writing, or inventing hands", working_prompt)
@@ -257,6 +260,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("sorting/checking/gathering", working_prompt)
             self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
             self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
+            self.assertIn("Avoid notebook, paper, page, or parchment-like surfaces", working_prompt)
             self.assertIn("Do not make the work surface read as a tiny document full of writing", working_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
@@ -282,7 +286,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
-            self.assertIn("For any slate, tablet, notebook, card stack, panel, or work surface", working_prompt)
+            self.assertIn("For any slate, tablet, blank card stack, token tray, panel, or work surface", working_prompt)
             self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
             self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
 

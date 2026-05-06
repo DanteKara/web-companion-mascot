@@ -51,7 +51,7 @@ STATE_ACTING = {
     "greeting": "friendly anticipation, small wave or body bounce, warm smile, return to rest",
     "listening": "attentive lean toward the user, eyes tracking, small blink hold",
     "thinking": "curious head tilt, eyes up or to the side, blink hold, small pondering mouth",
-    "working": "busy-but-friendly concentration, attentive eye tracking, lean-in, faster purposeful body or prop motion; never angry",
+    "working": "busy-but-friendly concentration, attentive eye tracking, lean-in, faster purposeful body or prop motion; never angry, no slanted angry eyes, no V-shaped brow or eye marks",
     "answering": "speaking mouth shapes, bright eyes, rhythmic face/body beats",
     "success": "cheerful bounce, proud hold, bright face, return to loop",
     "error": "worried recognition, small recoil or slump, recovery beat",
@@ -70,7 +70,7 @@ STATE_VISUAL_AIDS = {
 }
 
 STATE_REJECTS = {
-    "working": "anger, hostile eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
+    "working": "anger, hostile eyes, slanted angry eyes, V-shaped eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues",
     "thinking": "generic icon straight above the head, oversized second head/body-sized thought orb, static dots, face-touch by unsupported appendages",
     "listening": "microphone props for non-voice apps, detached sound clutter",
@@ -103,7 +103,7 @@ STATE_FRAME_ARCS = {
 NO_HAND_WORK_PROP_POLICY = (
     "For simple/no-hand mascots, a freestanding or resting work prop is allowed when it sits beside or in "
     "front of the mascot and does not require grip anatomy. Use a mascot-native small slate, tablet, "
-    "notebook, card stack, or work surface with visible sorting/checking/gathering activity; the mascot "
+    "blank card stack, token tray, chunky work tile, or solid work surface with visible sorting/checking/gathering activity; the mascot "
     "works by looking, leaning, bobbing, and reacting, not by holding, typing, writing, or inventing hands. "
     "Keep a clear background gap between the mascot and prop; no part of the prop or activity marks may touch "
     "the body, appendages, outline, or effects. Keep sorting/checking/gathering motion inside or on the prop "
@@ -112,11 +112,13 @@ NO_HAND_WORK_PROP_POLICY = (
 )
 
 WORK_PROP_MARK_POLICY = (
-    "For any slate, tablet, notebook, card stack, panel, or work surface, use only chunky non-text progress "
+    "For any slate, tablet, blank card stack, token tray, panel, or work surface, use only chunky non-text progress "
     "blocks, dots, check marks, sliders, or sorting tokens. Use 1-4 large simple marks that can read at "
     "64-96 px; no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, "
-    "ruled notebook lines, or list rows. If anatomy supports typing or writing, show that action through "
-    "hand/body motion while the surface marks remain non-text. Do not make the work surface read as a tiny document full of writing."
+    "ruled notebook lines, or list rows. Avoid notebook, paper, page, or parchment-like surfaces unless the "
+    "user specifically asked for them; if they are used, keep the surface blank except for chunky non-text tokens. "
+    "If anatomy supports typing or writing, show that action through hand/body motion while the surface marks remain non-text. "
+    "Do not make the work surface read as a tiny document full of writing."
 )
 
 ANATOMY_GUIDANCE = {
@@ -135,8 +137,8 @@ ANATOMY_GUIDANCE = {
     ),
     "no-limbs": (
         "Use face, body posture, breathing, attached marks, aura, near-head effects, or freestanding/resting props. "
-        "Do not use held, near-hand, typing, writing, grip, or hand-operated props. Tablets, slates, notebooks, "
-        "cards, and work surfaces are allowed only when they rest beside or in front of the mascot and animate on their own."
+        "Do not use held, near-hand, typing, writing, grip, or hand-operated props. Tablets, slates, blank card stacks, "
+        "token trays, chunky work tiles, and work surfaces are allowed only when they rest beside or in front of the mascot and animate on their own."
     ),
     "ambiguous-limbs": (
         "Treat appendages conservatively until the reference audit proves their affordances. Prefer face/body "
@@ -478,7 +480,7 @@ Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped p
 
 Identity lock: preserve the same mascot species/body type, face, palette, markings, outline weight, proportions, appendage count, and silhouette from the reference. Do not redesign the character.
 
-Expression lock: preserve the source mascot's expression language. Do not invent angry brows, brow marks, teeth, sweat, blush, or dramatic emotion symbols unless they are already part of the source design or the state explicitly needs them and they remain character-appropriate. For working, show concentration through eye direction, blink timing, mouth shape, lean, pace, and approved props/effects; do not add eyebrows to a browless mascot.
+Expression lock: preserve the source mascot's expression language. Do not invent angry brows, brow marks, slanted angry eyes, V-shaped eye/brow marks, teeth, sweat, blush, or dramatic emotion symbols unless they are already part of the source design or the state explicitly needs them and they remain character-appropriate. If the source is calm, cute, sleepy, plush, abstract, or browless, keep that same friendly face grammar while active. For working, show concentration through eye direction, blink timing, mouth shape, lean, pace, and approved props/effects; do not add eyebrows to a browless mascot.
 
 State: {state}
 Semantic read: {state_plan["semanticRead"]}
@@ -499,7 +501,7 @@ Semantic ladder:
 3. Add one tiny attached or anchored visual aid only if the state is still unclear at website size.
 4. Reject a pretty motif-native effect when it does not communicate the state.
 
-Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. The cue must remain visible after chroma-key cleanup and readable at 64-96 px; do not rely on isolated tiny specks that cleanup may remove. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays busy-but-friendly and never angry; for simple/no-limb mascots, use body-surface, rim-touching, compact attached, or freestanding/resting cues placed beside or in front of the mascot, never held or operated by invented hands. For answering, the cue should support mouth/voice motion rather than become a speech panel.
+Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. The cue must remain visible after chroma-key cleanup and readable at 64-96 px; do not rely on isolated tiny specks that cleanup may remove. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays busy-but-friendly, character-appropriate, and never angry or hostile; for simple/no-limb mascots, use body-surface, rim-touching, compact attached, or freestanding/resting cues placed beside or in front of the mascot, never held or operated by invented hands. For answering, the cue should support mouth/voice motion rather than become a speech panel.
 
 Layout guide rule: follow the attached guide's {frame_count} frame boxes and safe padding, but do not reproduce the guide itself. The guide is not output art. No visible boxes, borders, labels, guide colors, center marks, or guide background may appear in the output.
 

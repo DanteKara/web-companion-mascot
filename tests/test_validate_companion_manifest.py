@@ -608,7 +608,7 @@ class ManifestValidatorTests(unittest.TestCase):
             "kind": "freestanding work slate",
             "attachment": "freestanding",
             "description": (
-                "A small slate, tablet, notebook, card stack, or work surface rests beside or in front "
+                "A small slate, tablet, blank card stack, token tray, chunky work tile, or solid work surface rests beside or in front "
                 "of the mascot and animates on its own; not held, not typing, not writing, no grip, no hands, no fingers."
             ),
         }
