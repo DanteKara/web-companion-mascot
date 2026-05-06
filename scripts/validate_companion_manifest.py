@@ -47,12 +47,14 @@ ALLOWED_ENHANCER_ATTACHMENTS = {
     "held",
     "worn",
     "attached",
+    "freestanding",
     "near-head",
     "near-face",
     "near-hand",
     "aura",
     "gesture",
     "body-pose",
+    "resting",
 }
 TEXT_DEPENDENT_KIND_TERMS = {"text", "label", "caption", "word", "question-mark", "punctuation"}
 TEXT_NEGATION_TERMS = {"no", "non", "not", "without"}
@@ -135,6 +137,21 @@ NO_GRIP_PROP_TERMS = RISKY_ANATOMY_PROP_TERMS | {
     "finger",
     "fingers",
     "typing",
+}
+FREESTANDING_PROP_ATTACHMENTS = {"freestanding", "resting"}
+NO_GRIP_ACTION_TERMS = {
+    "brace",
+    "braced",
+    "grip",
+    "hand",
+    "hands",
+    "finger",
+    "fingers",
+    "held",
+    "hold",
+    "holding",
+    "typing",
+    "writing",
 }
 ALLOWED_PRODUCTION_GENERATION_METHODS = {
     "imagegen-integrated-row-art",
@@ -552,6 +569,8 @@ def enhancer_has_anatomy_risk(value: Any) -> bool:
         return False
     attachment = value.get("attachment")
     text = enhancer_text(value)
+    if attachment in FREESTANDING_PROP_ATTACHMENTS:
+        return has_unnegated_term(text, NO_GRIP_ACTION_TERMS) or bool(infer_required_affordance_groups(value))
     return (
         bool(attachment in RISKY_ANATOMY_ATTACHMENTS)
         or has_unnegated_term(text, RISKY_ANATOMY_PROP_TERMS)
@@ -620,9 +639,15 @@ def validate_enhancer(
         if attachment in NO_GRIP_ATTACHMENTS:
             errors.append(
                 f"{name}.attachment {attachment!r} is not allowed for style.anatomyClass {anatomy_class!r}; "
-                "use attached, near-head, near-face, aura, gesture, worn, or body-pose semantics instead"
+                "use attached, near-head, near-face, aura, gesture, worn, body-pose, freestanding, or resting semantics instead"
             )
-        if has_unnegated_term(text, NO_GRIP_PROP_TERMS):
+        if attachment in FREESTANDING_PROP_ATTACHMENTS:
+            if has_unnegated_term(text, NO_GRIP_ACTION_TERMS):
+                errors.append(
+                    f"{name} describes grip/typing/writing anatomy that is unsafe for style.anatomyClass {anatomy_class!r}; "
+                    "freestanding work props must rest beside or in front of the mascot and animate without hands"
+                )
+        elif has_unnegated_term(text, NO_GRIP_PROP_TERMS):
             errors.append(
                 f"{name} describes a grip/typing/writing prop that is unsafe for style.anatomyClass {anatomy_class!r}; "
                 "use a non-grip enhancer such as a body-surface glyph, processing aura, facial animation, or near-head effect"
@@ -632,7 +657,7 @@ def validate_enhancer(
     anatomy_guard = value.get("anatomyGuard")
     if anatomy_risk and anatomy_guard is None:
         warnings.append(
-            f"{name}.anatomyGuard is recommended for held, near-hand, touched, writing, or work-prop enhancers so QA can reject extra limbs/new anatomy"
+            f"{name}.anatomyGuard is recommended for held, near-hand, touched, writing, or appendage-operated work-prop enhancers so QA can reject extra limbs/new anatomy"
         )
     elif anatomy_guard is not None:
         validate_anatomy_guard(errors, warnings, anatomy_guard, f"{name}.anatomyGuard")

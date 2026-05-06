@@ -137,6 +137,71 @@ class PrepareCompanionRunTests(unittest.TestCase):
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertNotIn("brace", manifest["states"]["working"]["enhancer"]["description"])
 
+    def test_thinking_prompt_requires_visible_bubble_growth_arc(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Glace",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--anatomy-class",
+                    "fins-no-hands",
+                    "--compact",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
+            self.assertIn("Frame-by-frame acting arc", thinking_prompt)
+            self.assertIn("small bubble", thinking_prompt)
+            self.assertIn("medium bubble", thinking_prompt)
+            self.assertIn("largest readable", thinking_prompt)
+            self.assertIn("settle back into the loop", thinking_prompt)
+            self.assertIn("not the same bubble pasted in every frame", thinking_prompt)
+
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("frameArc", cue_plan["states"]["thinking"])
+            self.assertIn("small -> medium -> large", cue_plan["states"]["thinking"]["frameArc"])
+
+    def test_no_hand_working_prompt_allows_freestanding_work_props(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Glace",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "working",
+                    "--anatomy-class",
+                    "fins-no-hands",
+                    "--compact",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
+            self.assertIn("freestanding or resting work prop", working_prompt)
+            self.assertIn("small slate, tablet, notebook, card stack, or work surface", working_prompt)
+            self.assertIn("beside or in front of the mascot", working_prompt)
+            self.assertIn("the mascot works by looking, leaning, bobbing, and reacting", working_prompt)
+            self.assertIn("not by holding, typing, writing, or inventing hands", working_prompt)
+            self.assertIn("Frame-by-frame acting arc", working_prompt)
+            self.assertIn("prop wakes up", working_prompt)
+            self.assertIn("sorting/checking/gathering", working_prompt)
+
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("freestandingPropPolicy", cue_plan["states"]["working"])
+
     def test_preparer_writes_hatch_style_imagegen_jobs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp_path = Path(raw_tmp)

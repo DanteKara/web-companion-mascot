@@ -31,7 +31,7 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 - Design semantic enhancers with a state-specific motion path, not just a static icon. Name where the effect begins, how it travels, where it holds for readability, and how it settles into the loop.
 - The mascot must emotionally perform the state. Row prompts should specify eyes, mouth, blink, head angle, body settle, and appendage/prop follow-through; reject rows where the symbol reads but the face feels neutral or unrelated.
 - For near-head bubbles, sound rings, work orbs, and similar detached-but-anchored effects, lock the mascot body footprint first: same body center, same silhouette scale, same top and bottom body edges, and the same appendage count across the row. Animate the effect around the mascot; do not let the model make the character zoom, shrink, or reposition to accommodate the effect.
-- For thinking bubbles or puffs, prefer a believable side-origin trajectory: begin near one side of the head or hood, drift slightly outward and upward, reach a compact readable hold, then settle. Avoid straight-up hovering icons unless that direction is intentionally chosen for the character.
+- For thinking bubbles or puffs, prefer a believable side-origin trajectory: begin near one side of the head or hood, grow from small bubble to medium bubble to the largest readable bubble/orb, hold while the mascot tracks it, then settle. Avoid straight-up hovering icons unless that direction is intentionally chosen for the character, and reject rows where the same bubble is pasted into every frame.
 - Avoid under-designed semantics. Tiny dots, generic particles, or minimal marks are not enough for production unless they clearly look like intentional character art at 64, 96, and 128 px. If a state reads as "status particles" rather than the intended behavior, regenerate with a richer but still anchored concept.
 - Avoid off-vibe semantics, but do not replace them with decorative ambiguity. Generic gears, circuit diagrams, speech panels, UI windows, or universal assistant icons are blockers when the source mascot's world suggests softer or different motifs. So are motif-native effects that do not communicate the state. For example, icy breath can read as `answering`, but a pretty frost shimmer may not read as `working` unless the face, timing, and motion also show purposeful activity.
 - Preserve the mascot's expression grammar. Do not invent angry brows, hostile eyes, teeth, sweat, blush, or dramatic emotion marks as shortcuts for state clarity when the source design does not use them. For `working`, concentration should come from attentive eyes, blink timing, mouth shape, lean, pace, existing props/appendages, or a purposeful processing cue while staying character-appropriate.
@@ -43,10 +43,10 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 - Preserve the reference's identity and personality while translating it into the Codex pixel companion style. Do not simplify a detailed mascot into a flatter or more generic sprite just to make enhancers easier to place.
 - For held or touched props, the mascot must use only existing hands, paws, fins, sleeves, tentacles, or identity body parts that have a matching `grip`, `brace`, `face-touch`, `typing`, or `writing` affordance. Reject extra hands, duplicate arms, new fingers, cloned sleeves, disconnected mitts, or props held by anatomy the source character does not have.
 - Existing appendages may be expressive when their audited affordances support the action. Do not overconstrain real hands into static side limbs; hands with `face-touch`, `grip`, `point`, or `present` affordances can use rich acting. For fins, paws, sleeves, mitts, tentacles, wings, or similar simple appendages, use only the actions recorded in `style.anatomyContract.appendages[].affordances`. The blocker is invented anatomy or unsupported action, not motion itself.
-- If the mascot has simple or ambiguous limbs, choose props that can sit against the body, tuck under an existing limb, or hover near the head instead of requiring detailed fingers. Face-touch and cross-body gestures are high-risk unless the exact appendage has a `face-touch` affordance and an audition proves it reads as the original appendage.
+- If the mascot has simple or ambiguous limbs, choose props that can sit against the body, tuck under an existing limb, hover near the head, or rest beside/in front of the mascot instead of requiring detailed fingers. Face-touch and cross-body gestures are high-risk unless the exact appendage has a `face-touch` affordance and an audition proves it reads as the original appendage.
 - For mascots with fins, sleeves, tentacles, or mitten-like limbs, held/touched props are allowed only when those appendages already exist in the reference and declare a matching `grip` or `brace` affordance. Keep props chunky and easy to brace; avoid finger-dependent typing/writing unless the reference has fingers and `typing` or `writing` affordances. The state card must name the exact existing appendages from `style.anatomyContract` and forbid extra hands, fingers, fins, sleeves, or grip anatomy.
-- For mascots with `style.anatomyClass` set to `no-limbs`, avoid grip semantics entirely. Do not use held/touched/typing/writing props such as slates, tablets, keyboards, pencils, quills, parchment, or paper, even if the prompt says "no extra hands"; these words often cause image models to invent hand-like anatomy. Prefer non-grip semantics: body-surface processing glyphs, pulsing core marks, aura/status bands, near-head work orbs, facial/mouth motion, body-pose, or worn charms.
-- For held, touched, near-hand, writing, or work-prop enhancers, add `enhancer.anatomyGuard` metadata to the manifest. Strict validation treats missing anatomy guards as a production warning, which fails strict runs.
+- For mascots with `style.anatomyClass` set to `no-limbs`, avoid grip semantics entirely. Do not use held/touched/typing/writing props such as slates, tablets, keyboards, pencils, quills, parchment, or paper, even if the prompt says "no extra hands"; these words often cause image models to invent hand-like anatomy. A freestanding or resting work prop is allowed only when it sits beside or in front of the mascot, animates on its own, and the prompt says the mascot works by looking, leaning, bobbing, and reacting, not by holding, typing, writing, or inventing hands. Otherwise prefer non-grip semantics: body-surface processing glyphs, pulsing core marks, aura/status bands, near-head work orbs, facial/mouth motion, body-pose, or worn charms.
+- For held, touched, near-hand, writing, or appendage-operated work-prop enhancers, add `enhancer.anatomyGuard` metadata to the manifest. Strict validation treats missing anatomy guards as a production warning, which fails strict runs.
 - After final row art is selected, replace any draft `enhancer.kind` such as `planned during row generation` with the actual visual aid that passed review. Strict validation warns on leftover planning placeholders.
 
 ## Reference Anatomy Audit
@@ -79,10 +79,27 @@ semantic read: backend/tool work
 anatomy class: simple-appendages
 enhancer: theme-native work prop
 vibe fit: why this prop/effect belongs to the source mascot's world and still reads as work
+frame arc: notice prop -> prop wakes up -> sorting/checking/gathering -> active work peak -> progress/result tick -> settle
 anchor: held low and braced only by the original visible appendages
 required affordance: grip or brace
 allowed anatomy: exact named appendages from style.anatomyContract only, no new grip anatomy
 forbidden: extra hands, extra limbs, new fingers, cloned sleeves, detached prop, pasted-on prop, text labels, copied UI panel
+```
+
+For no-hand mascots, use a non-grip card instead:
+
+```text
+state: working
+rendering style: codex-pixel-art
+semantic read: backend/tool work
+anatomy class: no-limbs or fins-no-hands
+enhancer: freestanding or resting work prop
+vibe fit: why a small slate, tablet, notebook, card stack, or work surface belongs to the mascot
+frame arc: notice prop -> prop wakes up -> sorting/checking/gathering -> active work peak -> progress/result tick -> settle
+anchor: beside or in front of the mascot, close enough to feel integrated, not held
+required affordance: none
+allowed anatomy: mascot looks, leans, bobs, and reacts; no appendage operates the prop
+forbidden: holding, typing, writing, hands, fingers, grip anatomy, decorative particles, static prop, text labels, copied UI panel
 ```
 
 For expressive pose states, the same guard should allow motion that the audited appendages can actually perform:
@@ -100,7 +117,7 @@ allowed anatomy: same named original appendages may move within their affordance
 forbidden: extra limbs, extra hands, fingers, detached mitts, duplicated appendages, changed body scale, pasted-on effect
 ```
 
-The card should change with the mascot. A hooded fantasy character might use parchment and sleeves; a modern bot might use a tablet; a small round icy pet might use cold breath for speaking and a focused lean plus tiny attached snow puffs for activity. A true no-limb mascot should use face/body acting and one small attached or near-head cue instead of a held prop.
+The card should change with the mascot. A hooded fantasy character might use parchment and sleeves; a modern bot might use a tablet; a small round icy pet might use cold breath for speaking and a focused lean plus a tiny frosted work slate resting beside it. A true no-limb mascot should use face/body acting and one non-grip attached, near-head, body-surface, freestanding, or resting cue instead of a held prop.
 
 ## State Patterns
 
@@ -110,7 +127,7 @@ Use these as starting points, then adapt them to the companion's theme.
 | --- | --- | --- | --- | --- |
 | `listening` | Receiving user input | small sound rings, hand-to-ear, mic only for voice apps | hand cupped to hood/ear, attentive glow rings | lean toward input, eyes tracking |
 | `thinking` | Planning before output | compact thought cloud, idea orb, small processing halo, hand-to-chin | side-origin theme-native thought puff, floating crystal/orb near head, small aura loop, chin pose | head tilt, eyes up/side, blink hold |
-| `working` | Tool/backend activity | laptop, tablet, keyboard, document | parchment, quill, glowing slate, tool, spellbook | focused face, faster hands/prop |
+| `working` | Tool/backend activity | laptop/tablet when hands can operate it; freestanding tablet/slate when they cannot | parchment/quill/tool when hands can operate it; freestanding glowing slate/card stack when they cannot | focused face, lean, body bob, purposeful prop/cue motion |
 | `answering` | Streaming response | mouth shapes, presenting hand, tiny no-text near-face voice pixels | speaking gesture, scroll unfurl, guiding prop | mouth shapes, rhythmic hand beats |
 | `success` | Completed successfully | small check glint, thumbs up | raised staff/tool, celebratory charm | bounce, proud pose |
 | `error` | Recoverable failure | warning badge, droop, small alert mark | dimmed charm, dropped prop, worried robe slump | worried face, recoil, recovery |
@@ -198,7 +215,7 @@ For anatomy-risky props, record the guard explicitly:
 Allowed `attachment` values:
 
 ```text
-held, worn, attached, near-head, near-face, near-hand, aura, gesture, body-pose
+held, worn, attached, freestanding, near-head, near-face, near-hand, aura, gesture, body-pose, resting
 ```
 
 Allowed `style.anatomyClass` values:
@@ -207,7 +224,7 @@ Allowed `style.anatomyClass` values:
 hands, paws, fins-no-hands, no-limbs, ambiguous-limbs
 ```
 
-For `no-limbs`, strict validation rejects held/near-hand grip semantics and common typing/writing/work props. For `fins-no-hands` and `ambiguous-limbs`, strict validation allows held props only with `anatomyGuard` metadata and matching appendage affordances; visual QA must still reject any generated extra hands, fingers, duplicate fins, cloned sleeves, or invented grip anatomy.
+For `no-limbs`, strict validation rejects held/near-hand grip semantics and common typing/writing/work props, but allows explicit `freestanding` or `resting` work props that animate without appendage interaction. For `fins-no-hands` and `ambiguous-limbs`, strict validation allows held props only with `anatomyGuard` metadata and matching appendage affordances; visual QA must still reject any generated extra hands, fingers, duplicate fins, cloned sleeves, or invented grip anatomy.
 
 ## QA
 
@@ -247,8 +264,9 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - A simple appendage mascot gains a limb-colored oval, patch, detached blob, or front-body shape that reads as an extra appendage, even if the original side appendages are still present.
 - A face-touching or cross-body simple-appendage gesture reads as a hand, fingered mitten, detached prop, or extra limb. Regenerate with safer side-attached appendage motion and stronger face/enhancer acting.
 - The working state uses a typing/writing prop with hands/fingers the reference character does not have. Use simpler braced/touched props or a non-grip semantic instead.
-- The working state uses a slate, tablet, keyboard, pencil, quill, paper, or other grip prop for a true no-limb mascot. Use a non-grip body-surface, aura, near-head, facial, or pose semantic instead.
-- A held, touched, near-hand, writing, or work-prop enhancer is missing `enhancer.anatomyGuard` metadata.
+- The working state uses a slate, tablet, keyboard, pencil, quill, paper, or other grip prop for a true no-limb mascot. Use a non-grip body-surface, aura, near-head, facial, pose, freestanding, or resting semantic instead.
+- A freestanding/resting work prop is static, too far away, looks like generic UI, or implies hidden hands/typing/writing instead of animating beside or in front of the mascot.
+- A held, touched, near-hand, writing, or appendage-operated work-prop enhancer is missing `enhancer.anatomyGuard` metadata.
 - A held, touched, face-touch, typing, writing, pointing, presenting, or waving enhancer omits `enhancer.requiredAffordances` when the action depends on specific appendages.
 - `enhancer.anatomyGuard.allowedInteractors` says only `existing appendages` or similar vague language instead of exact audited parts.
 - A simple or ambiguous appendage mascot uses risky prop/near-hand semantics without `style.anatomyContract`.

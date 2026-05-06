@@ -62,7 +62,7 @@ STATE_ACTING = {
 STATE_VISUAL_AIDS = {
     "listening": "small attached sound rings or attentive pose only when needed",
     "thinking": "compact side-origin thought puff, idea orb, or hand-to-chin only when anatomy supports it",
-    "working": "existing work prop when anatomy supports it; otherwise a compact attached, rim-touching, or body-surface processing/work cue with purposeful cycling, sorting, checking, or gathering motion that clearly reads as active work, not random sparkle or tiny detached specks",
+    "working": "existing work prop when anatomy supports it; otherwise a freestanding/resting work prop or compact attached processing cue with purposeful cycling, sorting, checking, or gathering motion that clearly reads as active work, not random sparkle or tiny detached specks",
     "answering": "mouth shapes first; tiny no-text voice pixels or breath puffs close to the face when needed",
     "success": "small check/glint, proud pose, or raised existing prop",
     "error": "attached tear, warning charm, prop droop, or small attached smoke/stars",
@@ -70,7 +70,7 @@ STATE_VISUAL_AIDS = {
 }
 
 STATE_REJECTS = {
-    "working": "anger, hostile eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools",
+    "working": "anger, hostile eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, static prop with no work motion",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues",
     "thinking": "generic icon straight above the head, static dots, face-touch by unsupported appendages",
     "listening": "microphone props for non-voice apps, detached sound clutter",
@@ -78,6 +78,32 @@ STATE_REJECTS = {
     "error": "red X labels, detached symbols, scenery",
     "confused": "text labels or large punctuation panels",
 }
+
+STATE_FRAME_ARCS = {
+    "thinking": (
+        "Frame-by-frame acting arc: 1 no cue or tiny first puff, 2 small bubble, "
+        "3 medium bubble, 4 largest readable thought bubble/orb, 5 hold while eyes track it, "
+        "6 settle back into the loop. For longer rows, stretch the same small -> medium -> large -> "
+        "hold -> settle arc; this is not the same bubble pasted in every frame."
+    ),
+    "working": (
+        "Frame-by-frame acting arc: 1 mascot notices the work cue/prop, 2 leans in and the prop wakes up, "
+        "3 first sorting/checking/gathering movement, 4 active work peak, 5 progress or result tick, "
+        "6 settle back while work continues. For longer rows, repeat with meaningful prop and gaze changes, "
+        "not duplicate frames."
+    ),
+    "answering": (
+        "Frame-by-frame acting arc: 1 neutral/listen face, 2 small mouth shape, 3 wider mouth shape, "
+        "4 clearest speaking beat, 5 blink or smile hold, 6 settle back into the loop."
+    ),
+}
+
+NO_HAND_WORK_PROP_POLICY = (
+    "For simple/no-hand mascots, a freestanding or resting work prop is allowed when it sits beside or in "
+    "front of the mascot and does not require grip anatomy. Use a mascot-native small slate, tablet, "
+    "notebook, card stack, or work surface with visible sorting/checking/gathering activity; the mascot "
+    "works by looking, leaning, bobbing, and reacting, not by holding, typing, writing, or inventing hands."
+)
 
 ANATOMY_GUIDANCE = {
     "hands": (
@@ -90,11 +116,13 @@ ANATOMY_GUIDANCE = {
     ),
     "fins-no-hands": (
         "Fins stay side-attached with side-bob, tilt, tuck, or tiny wave. Do not turn fins into hands, fingers, "
-        "detached mitts, arms, or front-body appendage patches."
+        "detached mitts, arms, or front-body appendage patches. Freestanding/resting props may sit beside or "
+        "in front of the mascot; fins must not grip, type, write, or become hands unless a separate audition proves that exact design can safely brace a prop."
     ),
     "no-limbs": (
-        "Use face, body posture, breathing, attached marks, aura, or near-head effects. Do not use held, "
-        "near-hand, typing, writing, tablet, slate, keyboard, paper, pencil, quill, or tool props."
+        "Use face, body posture, breathing, attached marks, aura, near-head effects, or freestanding/resting props. "
+        "Do not use held, near-hand, typing, writing, grip, or hand-operated props. Tablets, slates, notebooks, "
+        "cards, and work surfaces are allowed only when they rest beside or in front of the mascot and animate on their own."
     ),
     "ambiguous-limbs": (
         "Treat appendages conservatively until the reference audit proves their affordances. Prefer face/body "
@@ -255,20 +283,36 @@ def build_visual_language(args: argparse.Namespace) -> dict[str, Any]:
 
 def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict[str, str]:
     visual_aid = STATE_VISUAL_AIDS.get(state, "none unless the pose is unclear")
+    freestanding_prop_policy = ""
     if state == "thinking" and anatomy_class in {"fins-no-hands", "no-limbs", "ambiguous-limbs"}:
         visual_aid = "compact side-origin thought puff or idea orb; use eyes, tilt, and blink timing, not hand-to-chin"
     if anatomy_class == "no-limbs" and state == "working":
-        visual_aid = "face/body acting plus compact attached, rim-touching, or body-surface processing cue with purposeful cycling, sorting, checking, or gathering motion; no held, near-hand, or tiny detached speck props"
+        visual_aid = (
+            "face/body acting plus a freestanding or resting work prop, compact attached processing cue, or "
+            "body-surface processing cue with purposeful cycling, sorting, checking, or gathering motion; "
+            "no held, near-hand, or tiny detached speck props"
+        )
+        freestanding_prop_policy = NO_HAND_WORK_PROP_POLICY
     if anatomy_class in {"fins-no-hands", "ambiguous-limbs"} and state == "working":
-        visual_aid = "busy-but-friendly face/body acting plus compact attached, rim-touching, or body-surface processing cue; no held props or tiny detached specks in the draft plan"
+        visual_aid = (
+            "busy-but-friendly face/body acting plus a freestanding or resting work prop, compact attached cue, "
+            "rim-touching cue, or body-surface processing cue; no held props or tiny detached specks in the draft plan"
+        )
+        freestanding_prop_policy = NO_HAND_WORK_PROP_POLICY
     if state_clarity == "pose-only":
         visual_aid = "none; communicate through acting, timing, and existing identity props only"
+        freestanding_prop_policy = ""
     return {
         "state": state,
         "semanticRead": STATE_PURPOSES.get(state, state),
         "actingFirst": STATE_ACTING.get(state, "clear face, posture, and timing"),
         "visualAidDecision": visual_aid_mode_for(state, state_clarity),
         "suggestedVisualAid": visual_aid,
+        "frameArc": STATE_FRAME_ARCS.get(
+            state,
+            "Frame-by-frame acting arc: each frame must change face, gaze, posture, appendage motion, prop motion, or cue position enough to read as animation.",
+        ),
+        "freestandingPropPolicy": freestanding_prop_policy,
         "rejectIf": STATE_REJECTS.get(state, "unclear state read, off-vibe symbol, identity drift, extra anatomy"),
     }
 
@@ -423,6 +467,8 @@ Semantic read: {state_plan["semanticRead"]}
 Acting first: {state_plan["actingFirst"]}
 Visual aid decision: {state_plan["visualAidDecision"]}
 Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
+{state_plan["frameArc"]}
+{state_plan["freestandingPropPolicy"]}
 Vibe fit: {source_vibe}
 Anatomy class: {anatomy_class}
 Anatomy guidance: {anatomy}
@@ -434,7 +480,7 @@ Semantic ladder:
 3. Add one tiny attached or anchored visual aid only if the state is still unclear at website size.
 4. Reject a pretty motif-native effect when it does not communicate the state.
 
-Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. The cue must remain visible after chroma-key cleanup and readable at 64-96 px; do not rely on isolated tiny specks that cleanup may remove. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays busy-but-friendly and never angry; for simple/no-limb mascots, prefer body-surface, rim-touching, or compact attached cues over detached particles. For answering, the cue should support mouth/voice motion rather than become a speech panel.
+Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. The cue must remain visible after chroma-key cleanup and readable at 64-96 px; do not rely on isolated tiny specks that cleanup may remove. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays busy-but-friendly and never angry; for simple/no-limb mascots, use body-surface, rim-touching, compact attached, or freestanding/resting cues placed beside or in front of the mascot, never held or operated by invented hands. For answering, the cue should support mouth/voice motion rather than become a speech panel.
 
 Layout guide rule: follow the attached guide's {frame_count} frame boxes and safe padding, but do not reproduce the guide itself. No visible boxes, borders, labels, guide colors, center marks, or guide background may appear in the output.
 

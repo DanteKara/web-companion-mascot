@@ -74,7 +74,7 @@ run/
   qa/state-cue-plan.json
 ```
 
-`qa/state-cue-plan.json` is a planning artifact, not production acceptance. It should record the inferred source vibe, state purpose, acting-first beat, whether a visual aid is allowed, the suggested aid, and rejection criteria for each state. Row prompts should use that plan to make the mascot perform the state first through expression, posture, timing, and original appendages, then add a small visual aid only when the state would otherwise be unclear at website size.
+`qa/state-cue-plan.json` is a planning artifact, not production acceptance. It should record the inferred source vibe, state purpose, acting-first beat, frame-by-frame acting arc, whether a visual aid is allowed, the suggested aid, any no-hand freestanding prop policy, and rejection criteria for each state. Row prompts should use that plan to make the mascot perform the state first through expression, posture, timing, and original appendages, then add a small visual aid only when the state would otherwise be unclear at website size. `thinking` should name a visible small -> medium -> large -> hold -> settle cue arc when a bubble/orb is used. `working` should name a visible notice -> prop/cue wakes up -> sorting/checking/gathering -> progress/result -> settle arc when a work cue is used.
 
 `imagegen-jobs.json` follows the hatch-pet-style base-first contract:
 
@@ -90,7 +90,7 @@ The preparer may seed enhanced states with draft metadata such as `"kind": "plan
 
 Expression language is part of the identity contract. Preserve the source mascot's normal face grammar when communicating state. A calm, browless, icon-like, plush, or abstract mascot should not gain angry eyebrows, hostile eyes, teeth, sweat, blush, or dramatic emotion marks just to show focus. Use eye direction, blink timing, mouth shape, posture, timing, and approved visual aids first; stronger face marks are acceptable only when the source design already supports them or the state genuinely needs them and the result remains character-appropriate.
 
-Semantic cues are part of the cleanup contract too. A cue that only exists as isolated tiny specks, far-away dots, or ultra-thin marks is fragile: default cleanup may remove it, while loosening cleanup can keep neighboring slivers or force the mascot body to shrink around distant effects. For ambiguous states that need a cue, prefer compact body-surface, rim-touching, attached, or close-overlapping artwork that survives default cleanup and reads at 64-96 px.
+Semantic cues are part of the cleanup contract too. A cue that only exists as isolated tiny specks, far-away dots, or ultra-thin marks is fragile: default cleanup may remove it, while loosening cleanup can keep neighboring slivers or force the mascot body to shrink around distant effects. For ambiguous states that need a cue, prefer compact body-surface, rim-touching, attached, close-overlapping, freestanding, or resting artwork that survives default cleanup and reads at 64-96 px.
 
 ## Style Metadata
 
@@ -203,7 +203,7 @@ For newly generated semantic-enhancer packs, the agent should infer a visual-lan
 
 `style.visualLanguage` is optional metadata, not a substitute for visual review. It is useful when a state has been failing because generic symbols or off-vibe props keep appearing. Each enhanced state may include `enhancer.visualLanguageFit`, a short note explaining why the state cue matches the reference vibe. Use `scripts/validate_companion_manifest.py --require-visual-language` only for targeted auditions where missing vibe-fit metadata should fail validation.
 
-Held, touched, near-hand, writing, or work-prop enhancers should also include an `anatomyGuard` so prompts and QA do not invent new limbs:
+Held, touched, near-hand, writing, or appendage-operated work-prop enhancers should also include an `anatomyGuard` so prompts and QA do not invent new limbs:
 
 ```json
 {
@@ -230,7 +230,7 @@ Held, touched, near-hand, writing, or work-prop enhancers should also include an
 Allowed `enhancer.attachment` values:
 
 ```text
-held, worn, attached, near-head, near-face, near-hand, aura, gesture, body-pose
+held, worn, attached, freestanding, near-head, near-face, near-hand, aura, gesture, body-pose, resting
 ```
 
 Allowed `style.anatomyClass` values:
@@ -239,7 +239,7 @@ Allowed `style.anatomyClass` values:
 hands, paws, fins-no-hands, no-limbs, ambiguous-limbs
 ```
 
-Set `anatomyClass` when semantic enhancers interact with the mascot body. Existing non-human appendages can support prop or gesture interaction only when the contract says they can: fins, sleeves, tentacles, paws, or mitt-like limbs may hold, brace, tap, point, or touch the face when they are present in the reference, named in `enhancer.anatomyGuard.allowedInteractors`, and backed by matching appendage `affordances`. Strict validation rejects held/near-hand attachments and common typing/writing props only for `no-limbs`; for `fins-no-hands` and `ambiguous-limbs`, strict validation requires anatomy-guard metadata and visual QA must reject any extra hands, fingers, duplicate fins, cloned sleeves, or invented grip anatomy.
+Set `anatomyClass` when semantic enhancers interact with the mascot body. Existing non-human appendages can support prop or gesture interaction only when the contract says they can: fins, sleeves, tentacles, paws, or mitt-like limbs may hold, brace, tap, point, or touch the face when they are present in the reference, named in `enhancer.anatomyGuard.allowedInteractors`, and backed by matching appendage `affordances`. Strict validation rejects held/near-hand attachments and common typing/writing props for `no-limbs`, but allows `freestanding` or `resting` work props when they animate on their own beside or in front of the mascot and explicitly do not require holding, typing, writing, grip, hands, or fingers. For `fins-no-hands` and `ambiguous-limbs`, strict validation requires anatomy-guard metadata for held or appendage-operated risky props, and visual QA must reject any extra hands, fingers, duplicate fins, cloned sleeves, or invented grip anatomy.
 
 ## Reference Anatomy Contract
 
@@ -418,9 +418,9 @@ Reject or repair if any of these happen:
 - `imagegen-jobs.json` is missing for a normal generated pack, row jobs were generated before the base job was recorded, or row jobs omitted the canonical base/layout guide inputs.
 - A production run was completed by manually editing `imagegen-jobs.json` or copying row files into `generated/` instead of recording selected `$imagegen` outputs with provenance.
 - Enhanced state metadata still contains draft planning wording such as `planned during row generation` instead of the accepted visual aid.
-- A held, touched, near-hand, writing, or work-prop enhancer omits `enhancer.anatomyGuard`.
+- A held, touched, near-hand, writing, or appendage-operated work-prop enhancer omits `enhancer.anatomyGuard`.
 - `enhancer.anatomyGuard.allowedInteractors` uses vague language instead of exact named reference appendages or body parts.
-- A `fins-no-hands` or `ambiguous-limbs` mascot uses held, near-hand, touched, writing, or work-prop semantics without a `style.anatomyContract` recording the stable body core, appendage count, appendage placement, and forbidden additions.
+- A `fins-no-hands` or `ambiguous-limbs` mascot uses held, near-hand, touched, writing, or appendage-operated work-prop semantics without a `style.anatomyContract` recording the stable body core, appendage count, appendage placement, and forbidden additions.
 - A semantic enhancer is not readable at 64, 96, and 128 px.
 - A semantic enhancer is readable only as generic particles or timid decoration rather than intentional, character-native state art.
 - A semantic enhancer is readable but off-vibe: generic gears, circuit diagrams, speech panels, UI windows, or universal symbols that do not belong to the mascot's source world.
@@ -433,7 +433,7 @@ Reject or repair if any of these happen:
 - A held enhancer causes extra hands, duplicate arms, new fingers/paws/fins, or other anatomy that was not in the source mascot.
 - A state asks an appendage to perform an action outside its recorded affordances, such as face-touch by a fin that only has side-bob/tilt, or typing by a paw without fingers.
 - A simple appendage mascot gains a limb-colored oval, patch, detached blob, or front-body shape that reads as an extra appendage.
-- A true no-limb mascot uses a held, near-hand, typing, writing, slate, tablet, keyboard, paper, pencil, quill, or similar grip-based semantic. Use non-grip semantics instead.
+- A true no-limb mascot uses a held, near-hand, typing, writing, or grip-based semantic. Freestanding/resting props are allowed only when they sit beside or in front of the mascot, animate on their own, and do not imply hands, fingers, holding, typing, or writing.
 - A fin/no-hand or ambiguous-limb mascot uses a held/touched prop without naming the exact existing fins, sleeves, paws, tentacles, or body parts allowed to interact with the prop in both the prompt and manifest.
 - A held, touched, face-touch, typing, writing, pointing, presenting, or waving enhancer omits `enhancer.requiredAffordances` when the action depends on specific appendages.
 - A state changes mascot scale between frames instead of animating posture. Core silhouette scale drift, full-row core scale range, and core center drift are production blockers because they make the same state feel like multiple different mascots.

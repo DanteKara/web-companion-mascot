@@ -603,6 +603,28 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("non-grip enhancer" in error for error in errors))
 
+    def test_no_limb_mascot_accepts_freestanding_resting_work_prop(self) -> None:
+        enhancer = {
+            "kind": "freestanding work slate",
+            "attachment": "freestanding",
+            "description": (
+                "A small slate, tablet, notebook, card stack, or work surface rests beside or in front "
+                "of the mascot and animates on its own; not held, not typing, not writing, no grip, no hands, no fingers."
+            ),
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("attachment must be one of" in error for error in errors))
+            self.assertFalse(any("non-grip enhancer" in error for error in errors))
+            self.assertFalse(any("anatomyGuard" in warning for warning in warnings))
+
     def test_no_limb_mascot_accepts_body_surface_work_glyph(self) -> None:
         enhancer = {
             "kind": "body-surface-processing-glyph",
