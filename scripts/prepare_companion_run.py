@@ -173,6 +173,14 @@ WORK_RESULT_CUE_POLICY = (
     "language supports product/tool UI; otherwise a check mark should be replaced by a character-native finished state."
 )
 
+WORK_STATE_READ_POLICY = (
+    "Working must not borrow answering, sleeping, or exhaustion visuals. Do not use breath puffs, speech beads, "
+    "panting clouds, sleepy exhale cues, or tired closed-eye holds to show working. A closed-eye frame in working "
+    "may only be a quick blink, not a tired or sleepy beat. Keep the face busy, alert, and character-appropriate; "
+    "working cues must stay at the work target or tool tip, not at the mouth, and must read as sorting, charging, "
+    "checking, tool use, or transformation."
+)
+
 BODY_SURFACE_CUE_POLICY = (
     "For body-surface, rim-touching, or compact attached processing cues on no-limb, fin, wing, paw, or other "
     "simple-appendage mascots, keep the cue inside the body core or as one small rim-touching mark. Do not place "
@@ -230,6 +238,13 @@ VOICE_CUE_POLICY = (
     "smaller returning cue path, not the same puff pasted beside the face. Prefer a compact speech-bead or breath-puff "
     "trail with 2-3 tiny connected pips or one small cloud puff with a mouth-tail; not thinking bubbles, not odd "
     "detached round bubbles, and not a separate chat panel."
+)
+
+ANSWERING_STATE_READ_POLICY = (
+    "Answering must look like engaged speaking, not tired panting or exhaling. Keep the eyes lively, attentive, or "
+    "characterfully focused; avoid sleepy closed-eye holds unless it is a quick speaking blink. Voice cue should "
+    "read as speech/streaming, not breath fatigue: tie it to changing mouth shapes, use short crisp sound pips, rings, "
+    "or one small mouth-tailed puff, and avoid repeated exhale clouds."
 )
 
 EXPRESSION_VARIATION_POLICY = (
@@ -458,8 +473,10 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
         "workTargetFitPolicy": WORK_TARGET_FIT_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workTargetInteractionPolicy": WORK_TARGET_INTERACTION_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workResultCuePolicy": WORK_RESULT_CUE_POLICY if state == "working" and state_clarity != "pose-only" else "",
+        "workStateReadPolicy": WORK_STATE_READ_POLICY if state == "working" else "",
         "bodySurfaceCuePolicy": body_surface_cue_policy,
         "voiceCuePolicy": VOICE_CUE_POLICY if state == "answering" and state_clarity != "pose-only" else "",
+        "answeringStateReadPolicy": ANSWERING_STATE_READ_POLICY if state == "answering" else "",
         "rejectIf": STATE_REJECTS.get(state, "unclear state read, off-vibe symbol, identity drift, extra anatomy"),
     }
 
@@ -630,8 +647,10 @@ Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {state_plan["workTargetFitPolicy"]}
 {state_plan["workTargetInteractionPolicy"]}
 {state_plan["workResultCuePolicy"]}
+{state_plan["workStateReadPolicy"]}
 {state_plan["bodySurfaceCuePolicy"]}
 {state_plan["voiceCuePolicy"]}
+{state_plan["answeringStateReadPolicy"]}
 {ARTISTIC_QUALITY_POLICY}
 {EXPRESSION_VARIATION_POLICY}
 {FACE_TOUCH_SILHOUETTE_POLICY if anatomy_class in {"hands", "paws", "ambiguous-limbs"} else ""}

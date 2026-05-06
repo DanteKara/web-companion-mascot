@@ -80,6 +80,41 @@ def write_anatomy_review(tmp_path: Path, review_extra: dict | None = None) -> No
     (qa_dir / "anatomy-review.json").write_text(json.dumps(review), encoding="utf-8")
 
 
+def write_state_performance_review(tmp_path: Path, review_extra: dict | None = None) -> None:
+    qa_dir = tmp_path / "qa"
+    qa_dir.mkdir(exist_ok=True)
+    checks = {
+        "frameByFrameStateReadReviewed": True,
+        "intendedStateReadable": True,
+        "noWrongStateRead": True,
+        "expressionMatchesState": True,
+        "cueMotionMatchesState": True,
+        "noTiredPantingUnlessStateRequiresIt": True,
+        "noOffVibeGenericCue": True,
+    }
+    review = {
+        "status": "pass",
+        "productionUse": True,
+        "statesReviewed": ["working"],
+        "reviewedFrames": {"working": list(range(1, 13))},
+        "expectedStateReads": {
+            "working": "Active work with a concrete target and purposeful progress; not panting, sleeping, or answering.",
+        },
+        "checks": checks,
+        "blockers": [],
+        "notes": "All used frames were inspected for state readability, expression, and cue motion.",
+    }
+    if review_extra:
+        for key, value in review_extra.items():
+            if key == "checks" and isinstance(value, dict):
+                updated_checks = dict(checks)
+                updated_checks.update(value)
+                review[key] = updated_checks
+            else:
+                review[key] = value
+    (qa_dir / "state-performance-review.json").write_text(json.dumps(review), encoding="utf-8")
+
+
 class ManifestValidatorTests(unittest.TestCase):
     def test_rendering_style_is_required_when_requested(self) -> None:
         enhancer = {
@@ -935,6 +970,108 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertFalse(any("qa/anatomy-review.json" in error for error in errors))
             self.assertEqual(qa["anatomyReview"]["status"], "pass")
+
+    def test_require_state_performance_review_warns_when_missing(self) -> None:
+        enhancer = {
+            "kind": "staff-tip work motes",
+            "attachment": "near-hand",
+            "description": "A small work target changes near the staff tip while the mascot focuses.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_performance_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/state-performance-review.json is missing or unreadable" in warning for warning in warnings)
+            )
+
+    def test_state_performance_review_requires_no_wrong_state_read_check(self) -> None:
+        enhancer = {
+            "kind": "staff-tip work motes",
+            "attachment": "near-hand",
+            "description": "A small work target changes near the staff tip while the mascot focuses.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_state_performance_review(tmp_path, {"checks": {"noWrongStateRead": False}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_performance_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/state-performance-review.json checks.noWrongStateRead must be true" in error for error in errors)
+            )
+
+    def test_state_performance_review_requires_every_used_frame(self) -> None:
+        enhancer = {
+            "kind": "staff-tip work motes",
+            "attachment": "near-hand",
+            "description": "A small work target changes near the staff tip while the mascot focuses.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_state_performance_review(tmp_path, {"reviewedFrames": {"working": [1, 2, 3, 6, 7, 8, 9, 10, 11, 12]}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_performance_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/state-performance-review.json reviewedFrames.working must include every used frame 1..12" in error for error in errors)
+            )
+
+    def test_state_performance_review_requires_expected_state_read(self) -> None:
+        enhancer = {
+            "kind": "staff-tip work motes",
+            "attachment": "near-hand",
+            "description": "A small work target changes near the staff tip while the mascot focuses.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_state_performance_review(tmp_path, {"expectedStateReads": {}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_performance_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/state-performance-review.json expectedStateReads.working must be a non-empty string" in error for error in errors)
+            )
+
+    def test_state_performance_review_passes_when_all_state_frames_are_reviewed(self) -> None:
+        enhancer = {
+            "kind": "staff-tip work motes",
+            "attachment": "near-hand",
+            "description": "A small work target changes near the staff tip while the mascot focuses.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_state_performance_review(tmp_path)
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_performance_review=True,
+            )
+
+            self.assertFalse(any("qa/state-performance-review.json" in error for error in errors))
+            self.assertEqual(qa["statePerformanceReview"]["status"], "pass")
 
 
 if __name__ == "__main__":

@@ -101,6 +101,10 @@ run/
   qa/cutout-check.png
   qa/state-readability-check.png
   qa/quality-report.json
+  qa/anatomy-review.png
+  qa/anatomy-review.json
+  qa/state-performance-review.png
+  qa/state-performance-review.json
   qa/art-direction-review.json
   qa/semantic-anchor-check.png
   qa/motion-quality-check.png
@@ -121,8 +125,10 @@ The skill includes deterministic QA scripts and requires visual inspection befor
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
+- `create_anatomy_review.py` records the manual/agent frame-by-frame anatomy review for appendage count, identity props, and state cues that might be mistaken for anatomy.
+- `create_state_performance_review.py` records the manual/agent frame-by-frame state-performance review for intended state read, expression, cue motion, and wrong-state failures such as `working` reading as panting or `answering` reading as tired exhale.
 - `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, Codex pixel-art style, creative state readability, theme-native state cues, and native enhancer look.
-- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, rendering-style metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, art-direction blockers, and residual key-colored outline halos.
+- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, rendering-style metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, anatomy review blockers, state-performance review blockers, art-direction blockers, and residual key-colored outline halos.
 - `generate_react_component.py` emits a TypeScript React component that animates by per-frame manifest durations.
 
 The assembler keeps an outline improver enabled by default:
@@ -156,6 +162,23 @@ python scripts/record_companion_imagegen_result.py \
 
 python scripts/analyze_companion_quality.py \
   --manifest /path/to/run/manifest.json
+
+# For production, add one --expected-state-read entry for every state in the manifest.
+python scripts/create_state_performance_review.py \
+  --manifest /path/to/run/manifest.json \
+  --status pass \
+  --production-use \
+  --review-all-frames \
+  --expected-state-read working="Active work with concrete target/progress; not panting, sleeping, talking, or decoration." \
+  --expected-state-read answering="Engaged speaking/streaming from the mouth; not tired panting or exhale clouds." \
+  --check frameByFrameStateReadReviewed=true \
+  --check intendedStateReadable=true \
+  --check noWrongStateRead=true \
+  --check expressionMatchesState=true \
+  --check cueMotionMatchesState=true \
+  --check noTiredPantingUnlessStateRequiresIt=true \
+  --check noOffVibeGenericCue=true \
+  --notes "Frame-by-frame state-performance review passed."
 
 python scripts/validate_companion_manifest.py \
   --manifest /path/to/run/manifest.json \
@@ -197,6 +220,7 @@ python scripts/validate_companion_manifest.py \
   --require-state-clarity \
   --require-rendering-style \
   --require-quality-report \
+  --require-state-performance-review \
   --require-art-direction-review \
   --max-outline-halo-pixels 0
 ```

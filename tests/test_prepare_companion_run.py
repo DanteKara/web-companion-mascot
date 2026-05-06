@@ -291,6 +291,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Avoid notebook, paper, page, or parchment-like surfaces", working_prompt)
             self.assertIn("fine stripes, wood-grain lines, plank lines, or parallel grooves", working_prompt)
             self.assertIn("Do not make the work surface read as a tiny document full of writing", working_prompt)
+            self.assertIn(
+                "Do not use breath puffs, speech beads, panting clouds, sleepy exhale cues, or tired closed-eye holds to show working",
+                working_prompt,
+            )
+            self.assertIn("A closed-eye frame in working may only be a quick blink", working_prompt)
+            self.assertIn("working cues must stay at the work target or tool tip, not at the mouth", working_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("freestandingPropPolicy", cue_plan["states"]["working"])
@@ -390,6 +396,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("speech-bead or breath-puff trail", answering_prompt)
             self.assertIn("not thinking bubbles", answering_prompt)
             self.assertIn("not odd detached round bubbles", answering_prompt)
+            self.assertIn("Answering must look like engaged speaking, not tired panting or exhaling", answering_prompt)
+            self.assertIn("avoid sleepy closed-eye holds unless it is a quick speaking blink", answering_prompt)
+            self.assertIn("Voice cue should read as speech/streaming, not breath fatigue", answering_prompt)
 
     def test_hands_thinking_prompt_tracks_hand_roles_for_face_touch_with_identity_prop(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:

@@ -247,6 +247,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - `qa/state-readability-check.png` has not been generated and inspected.
 - `qa/semantic-anchor-check.png`, `qa/motion-quality-check.png`, or `qa/quality-report.json` is missing for a production run.
 - `qa/anatomy-review.png` or `qa/anatomy-review.json` is missing for a production run, or the review does not explicitly cover every used frame of every state.
+- `qa/state-performance-review.png` or `qa/state-performance-review.json` is missing for a production run, or the review does not explicitly cover every used frame of every state for intended state read, expression, cue motion, and wrong-state failures.
 - `qa/art-direction-review.json` is missing, fails, or marks the pack as not ready for production.
 - `qa/quality-report.json` reports semantic anchor drift, missing enhancer presence, near-duplicate animation, body jitter, or large foreground area changes.
 - `qa/quality-report.json` reports detached fragments, broken-cut symptoms, core silhouette scale drift, or core center drift.
@@ -255,6 +256,8 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - The enhancer is on-vibe but does not read as the intended state, such as decorative frost that does not communicate `working`.
 - The working cue clones or echoes a must-keep identity prop, such as a second staff, wand, weapon, badge, emblem, or prop-shaped glyph, instead of using the existing prop to affect a distinct target.
 - The answering cue looks like a thinking bubble, random orb, or detached round bubble rather than mouth-origin speech/voice motion.
+- The working cue borrows answering/sleeping/exhaustion visuals: breath puffs, speech beads, panting clouds, sleepy exhale cues, mouth-origin puffs, or tired closed-eye holds make the frame read as panting, sleeping, or talking instead of working.
+- The answering cue reads as tired panting or exhaling rather than engaged speaking/streaming; use lively or quick-blink eyes, changing mouth shapes, and crisp mouth-origin voice pips/rings or one small mouth-tailed puff.
 - The `working` face becomes angry, hostile, gains invented brows, slanted angry eyes, or V-shaped eye/brow marks, or feels unrelated to the work beat instead of busy, friendly, and character-appropriate.
 - The working prop uses readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, list rows, or tiny-document surfaces instead of chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens.
 - A no-hand work prop defaults to a notebook, paper, page, or parchment-like surface with lines or document texture instead of a slate, tablet, blank card stack, token tray, chunky tile, or blank non-text surface.
