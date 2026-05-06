@@ -749,7 +749,30 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertFalse(any("manifest has no idle state" in warning for warning in warnings))
             self.assertFalse(any("chatbot profile" in warning for warning in warnings))
-            self.assertFalse(any("recommends 12+" in warning for warning in warnings))
+            self.assertFalse(any("recommends" in warning for warning in warnings))
+
+    def test_chatbot_profile_recommends_eight_frame_baseline(self) -> None:
+        enhancer = {
+            "kind": "freestanding work slate",
+            "attachment": "freestanding",
+            "description": "A small work slate rests beside the mascot and animates on its own.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["atlas"]["columns"] = 6
+            data["atlas"]["width"] = 1536
+            data["states"]["working"]["frames"] = 6
+            data["states"]["working"]["durations"] = [120] * 6
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("recommends 8+" in warning for warning in warnings))
 
 
 if __name__ == "__main__":

@@ -43,7 +43,7 @@ Default high-quality sprite geometry:
 
 ```text
 cell: 256x288
-columns: max frame count across states, usually 12
+columns: max frame count across states, usually 8
 rows: one row per website state
 atlas width: columns * 256
 atlas height: rows * 288
@@ -96,20 +96,21 @@ This boundary matters most for `semantic-enhancers`: props/effects must be paint
 
 ## Motion Quality
 
-Default to a high-motion website companion profile rather than the smaller Codex pet frame counts:
+Default to a HatchPet-style 8-frame baseline for production rows. Eight well-acted frames usually preserve identity, appendage count, pixel density, and state readability better than long rows that drift or invent anatomy.
 
 ```text
-standard: idle/listening/greeting/success/error/confused/sleeping 10+ frames; thinking/working/answering 12+ frames
-cinematic: idle/listening/greeting/success/error/confused/sleeping 12+ frames; thinking/working/answering 14+ frames
+audition/compact: 6 frames per tested row
+default production: 8 frames per state
+smooth opt-in: 10-12 frames only after an 8-frame row proves stable, or when the user explicitly requests extra smoothness
 ```
 
-Use the standard profile by default for production chatbot mascots. Use the cinematic profile when the user explicitly asks for extra smoothness or the mascot is simple enough to stay consistent across more frames. Use fewer frames only when the user explicitly prioritizes file size or when a target app has a hard frame limit. For chatbot companions, `thinking`, `working`, and `answering` are the most visible states and should get the richest motion.
+Use the default 8-frame profile for first production passes. `thinking`, `working`, and `answering` are the most visible states, so they should get the richest acting, not automatically more frames. Add frames only when the character has already stayed consistent in a shorter row and the longer row still passes visual QA, quality analysis, and strict validation. A polished 8-frame loop is better than a 12-frame row with body growth, inconsistent expression, extra appendages, or weak state acting.
 
 Design rows as true animation, not static variants:
 
 - Include anticipation, action, and settle frames for one-shot-feeling loops such as `success` and `error`.
 - Treat every state as a short acting beat. The prompt should separately name the face, eyes, mouth, body, appendages, clothing/identity props, and semantic enhancer motion so the mascot performs the state instead of merely carrying a symbol.
-- Include at least two blink or eye-position changes in long idle/thinking rows.
+- Include blink or eye-position changes in idle/thinking rows when the frame count allows it.
 - Include prop or hand follow-through when the mascot holds an item.
 - Stagger face, body, robe/clothing, and prop motion so the row feels alive.
 - For near-head semantic effects such as thought bubbles, sound rings, or work orbs, give the effect a readable motion path: origin, travel, hold, and settle. Avoid straight-up static hovering unless the character design specifically calls for it.
@@ -119,9 +120,9 @@ Design rows as true animation, not static variants:
 
 When testing smoother motion or a new enhancer style, run a small row audition before committing to a full production pack. Generate 1-4 representative rows, assemble them with the real outline cleanup, run the quality analyzer, and validate with `--profile audition` so partial packs can be strict without requiring every chatbot state. Regenerate only rows that trigger core scale drift, full-row core scale range, core center drift, semantic anchor drift, clipping, halos, or invented anatomy. Do not show older failed sheets as current output; keep only the latest accepted contact sheet visible in the final response.
 
-For 12+ frame rows, first try a single integrated row when the model reliably follows the count. If it returns too few or too many mascot bodies, switch to split-row generation: generate two 6-frame parts, or small chunks whose counts are reliable, then stitch the generated parts with `scripts/stitch_row_parts.py`. This is assembly, not art creation; do not use scripts to draw missing frames. Split rows must still pass contact-sheet QA, and any visible half-to-half seam in scale, outline, palette, vertical anchor, prop size, or expression quality is a blocker.
+For opt-in 10-12 frame rows, first try a single integrated row when the model reliably follows the count. If it returns too few or too many mascot bodies, switch to split-row generation: generate smaller exact-count chunks whose counts are reliable, then stitch those generated parts with `scripts/stitch_row_parts.py`. This is assembly, not art creation; do not use scripts to draw missing frames. Split rows must still pass contact-sheet QA, and any visible half-to-half seam in scale, outline, palette, vertical anchor, prop size, or expression quality is a blocker.
 
-For high-risk semantic states, do an art-direction audition before a 12-frame row. Generate 2-4 single-frame or 4-frame concepts for the same state, judge them against the source reference and small-size readability, then animate only the strongest concept. This prevents the workflow from optimizing toward technically stable but visually weak symbols.
+For high-risk semantic states, do an art-direction audition before extending beyond 8 frames. Generate 2-4 single-frame or 4-frame concepts for the same state, judge them against the source reference and small-size readability, then animate only the strongest concept. This prevents the workflow from optimizing toward technically stable but visually weak symbols.
 
 ## State Design
 
@@ -194,7 +195,7 @@ For simple appendage mascots, also guard against fake appendages that appear as 
 python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --force
 ```
 
-   Review `qa/state-cue-plan.json`, `prompts/base.md`, and `prompts/rows/<state>.md` before generating. Edit the prompt plan if a high-visibility state needs a stronger or safer read. This step is the web-companion equivalent of `$hatch-pet` preparing row prompts, layout guides, and `imagegen-jobs.json` before image generation.
+   Review `qa/state-cue-plan.json`, `prompts/base.md`, and `prompts/rows/<state>.md` before generating. Edit the prompt plan if a high-visibility state needs a stronger or safer read. This step is the web-companion equivalent of `$hatch-pet` preparing row prompts, layout guides, and `imagegen-jobs.json` before image generation. Layout guides are intentionally empty construction inputs for spacing only; do not present them to the user as mascot output or QA result.
 2. Inspect ready jobs:
 
 ```bash
@@ -223,8 +224,8 @@ python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-
 9. If using `semantic-enhancers`, include the chosen profile and inferred visual-language read in row prompts and generate each enhancer as integrated mascot artwork, not as a post-process overlay. Add only one small anchored enhancer per ambiguous state unless the user explicitly requests more. Before each enhanced row, write a small state card: rendering style, semantic read, acting beat, frame-by-frame arc, prop/effect if any, why it fits the mascot, exact anchor, anatomy class, required appendage affordance, exact allowed body parts from `style.anatomyContract`, forbidden artifacts, and any `anatomyGuard` needed for the manifest. For held, touched, face-touch, pointing, presenting, typing, writing, or appendage-operated work props, explicitly require the mascot's named existing hands, paws, fins, sleeves, tentacles, or other visible appendages to have the matching affordance and forbid extra hands, duplicated arms, detached fingers, cloned sleeves, or new anatomy. Do not use vague `allowedInteractors` values like `existing visible appendages only`; name the exact parts, such as `left side fin` and `right side fin`, `left sleeve` and `right sleeve`, or `front paws`. If the source character truly has no usable appendages, do not choose held, touched, typing, writing, or hand-operated prop semantics. For simple/no-hand mascots, a freestanding or resting work prop may sit beside or in front of the mascot when it animates on its own and the mascot works by looking, leaning, bobbing, and reacting, not by holding, typing, writing, or inventing hands. Keep a clear background gap between the mascot and freestanding prop, and keep the prop's activity marks inside/on the prop surface so pips, sparkles, crystals, or motion marks do not bridge the empty gap and merge the prop with the body during cleanup. Use acting first: focused face, eye tracking, body lean, blink timing, faster attentive motion, and a small attached, near-head, body-surface, rim-touching, or freestanding/resting cue only when it makes the state clearer. If the first motif-native cue is pretty but does not read as the state, reject it.
 10. For near-head effects, held props, and any higher-frame-count waiting state, add explicit silhouette-lock language to the row prompt: same body footprint, same body center, same top-of-head height, same bottom edge, same named appendage count, and enhancer motion around that stable base. The motion should come from expression, blink, small pose beats, prop follow-through, or enhancer changes, not from resizing the mascot.
 11. Generate at least two visual approaches or row candidates for high-visibility states when the first pass looks bland, overly literal, drifty, non-pixel, or less polished than the source. Prefer regenerating the row over post-processing a weak one into compliance. If a candidate has pasted-on semantics, mismatched art style, smooth illustration rendering, invented anatomy, core scale drift, or core center drift, discard the candidate; do not repair it by compositing.
-12. Seed `manifest.json` with the state rows, frame counts, durations, `id`, `displayName`, `style.renderingStyle: "codex-pixel-art"`, `style.stateClarity`, `style.anatomyClass`, `style.anatomyContract.appendages[].affordances` when used, and per-state `enhancer` metadata including `requiredAffordances` for appendage-dependent actions. The preparer may write draft enhancer metadata such as `planned during row generation`; after selecting the final row art, replace those placeholders with the actual accepted visual aid before production validation.
-13. If a 12+ frame row repeatedly misses the requested frame count, generate shorter row parts with exact count prompts and stitch the accepted generated parts before atlas assembly:
+12. Seed `manifest.json` with the state rows, frame counts, durations, `id`, `displayName`, `style.renderingStyle: "codex-pixel-art"`, `style.stateClarity`, `style.anatomyClass`, `style.anatomyContract.appendages[].affordances` when used, and per-state `enhancer` metadata including `requiredAffordances` for appendage-dependent actions. The preparer defaults to 8 frames per state and may write draft enhancer metadata such as `planned during row generation`; after selecting the final row art, replace those placeholders with the actual accepted visual aid before production validation.
+13. If an opt-in 10-12 frame row repeatedly misses the requested frame count, generate shorter row parts with exact count prompts and stitch the accepted generated parts before atlas assembly:
 
 ```bash
 python scripts/stitch_row_parts.py --parts /path/to/state-part-a.png /path/to/state-part-b.png --out /path/to/run/row-strips/state.png --json-out /path/to/run/qa/state-stitch-report.json
@@ -235,7 +236,7 @@ python scripts/stitch_row_parts.py --parts /path/to/state-part-a.png /path/to/st
    For row strips with detached bubbles, voice marks, or aura components, prefer `--extraction-mode component`. If a large semantic effect is mistaken for an extra body component, raise `--body-component-area` rather than accepting equal slicing; the effect should be assigned to the nearest real body, not treated as a mascot.
 
 ```bash
-python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 12 --cell-width 256 --cell-height 288 --max-outline-halo-pixels 0 --no-equal-fallback
+python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --cell-width 256 --cell-height 288 --max-outline-halo-pixels 0 --no-equal-fallback
 ```
 
 15. Create the small-size readability QA sheet for semantic states:
@@ -281,7 +282,7 @@ Prefer sprite-readable animation over decorative effects.
 - For `semantic-enhancers`, add one small anchored enhancer for ambiguous states, such as a thought bubble near the head, an anatomy-supported held paper/tablet/tool, a freestanding/resting work surface, listening rings, or a small success/error charm. The enhancer must match the mascot's theme.
 - Use a semantic ladder, not a symbol-first shortcut: first make the face, eyes, mouth, posture, timing, and original appendages perform the state; next use existing identity props or appendages if they can do the action; only then add a small attached or anchored effect. A motif-native effect that does not read as the state is still a failure.
 - Semantic cues must come from the mascot's visual language and still communicate the state. A tech bot may use tablets or UI glyphs; an icy pet might use cold breath or snow puffs for speaking, but a decorative frost shimmer alone may not read as `working`. Reject generic gears, circuit diagrams, speech panels, universal icons, and also pretty motif marks that do not convey the intended behavior.
-- For `thinking`, prefer a side-origin thought cue over a generic icon directly above the head: the effect should begin near one side of the head/hood/face, grow from small bubble to medium bubble to the largest readable bubble/orb, hold while the eyes track it, then settle back into a loop. The row should show a real frame-by-frame thinking arc, not the same bubble pasted into every frame.
+- For `thinking`, prefer a side-origin thought cue over a generic icon directly above the head: the effect should begin near one side of the head/hood/face, grow from small bubble to medium bubble to the largest compact bubble/orb, hold while the eyes track it, then settle back into a loop. The largest thought cue must stay secondary to the mascot, never larger than about one-third of the mascot body width, and must not become a second head/body-sized orb. The row should show a real frame-by-frame thinking arc, not the same bubble pasted into every frame.
 - Do not freeze expressive appendages just to avoid anatomy mistakes. Existing fins, paws, sleeves, mitts, tentacles, wings, hands, or other visible appendages may move, brace props, gesture, touch the face, or settle when that action matches the source character and the appendage's recorded affordances. The prompt must name the exact existing appendages, include any `requiredAffordances`, and forbid extra copies, new fingers, detached mitts, duplicated sleeves, or changed appendage count.
 - If a simple appendage gesture makes a fin, sleeve, paw, tentacle, or mitt-like limb read as a new hand, fingered mitten, or third limb, regenerate with safer acting: keep appendages side-attached, let them tilt or tuck only slightly, and carry the state through eyes, mouth, body tilt, blink timing, and the anchored enhancer instead.
 - If a simple appendage mascot gains a limb-colored oval, patch, detached blob, or front-body shape that could be read as a new appendage, reject the row even when the appendage count looks correct at the sides. Regenerate with plain body-surface shading and keep semantic effects clearly near-head, worn, aura-like, or otherwise distinct from the appendages.
@@ -314,7 +315,7 @@ python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /p
 python scripts/companion_job_status.py --run-dir /path/to/run
 python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id base --source /path/to/$CODEX_HOME/generated_images/.../ig_*.png
 python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id thinking --source /path/to/$CODEX_HOME/generated_images/.../ig_*.png
-python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 12 --cell-width 256 --cell-height 288 --no-equal-fallback
+python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --cell-width 256 --cell-height 288 --no-equal-fallback
 python scripts/stitch_row_parts.py --parts /path/to/part-a.png /path/to/part-b.png --out /path/to/run/row-strips/state.png
 python scripts/create_state_readability_sheet.py --manifest /path/to/run/manifest.json
 python scripts/analyze_companion_quality.py --manifest /path/to/run/manifest.json
@@ -378,8 +379,8 @@ Use `--extraction-mode component` when row sources contain detached but integrat
 - Per-state body scale stays consistent: no unresolved core silhouette scale drift, full-row core scale range, core center drift, detached fragments, or broken-cut warnings in `qa/quality-report.json`.
 - Production final art uses `imagegen-integrated-row-art`, `user-provided-integrated-row-art`, or `artist-provided-integrated-row-art`; deterministic local drawing/compositing is a prototype-only failure path.
 - If `pose-only` is selected, no new semantic props appear unless the user explicitly requested them.
-- `thinking`, `working`, and `answering` have 12+ frames by default unless the user requested a smaller atlas.
-- `idle`, `greeting`, `listening`, `success`, `error`, `confused`, and `sleeping` have 10+ frames by default unless the user requested a smaller atlas.
+- Each default production state has 8 frames unless the user explicitly requested a compact audition or a smoother opt-in row count.
+- Longer 10-12 frame rows are accepted only when they preserve identity, body scale, appendage count, state readability, and pixel-art quality better than or equal to the 8-frame baseline.
 - Every requested chatbot state is visually distinct enough to read at website size.
 - Contact sheet and at least one preview format are produced.
 - React component can display `idle`, `thinking`, `working`, `answering`, `success`, and `error`.

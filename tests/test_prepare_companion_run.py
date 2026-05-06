@@ -161,13 +161,65 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Frame-by-frame acting arc", thinking_prompt)
             self.assertIn("small bubble", thinking_prompt)
             self.assertIn("medium bubble", thinking_prompt)
-            self.assertIn("largest readable", thinking_prompt)
+            self.assertIn("largest compact bubble", thinking_prompt)
+            self.assertIn("secondary to the mascot", thinking_prompt)
+            self.assertIn("never larger than about one-third of the mascot body width", thinking_prompt)
+            self.assertIn("do not let the thought cue become a second head/body-sized orb", thinking_prompt)
             self.assertIn("settle back into the loop", thinking_prompt)
             self.assertIn("not the same bubble pasted in every frame", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("frameArc", cue_plan["states"]["thinking"])
-            self.assertIn("small -> medium -> large", cue_plan["states"]["thinking"]["frameArc"])
+            self.assertIn("small -> medium -> largest compact", cue_plan["states"]["thinking"]["frameArc"])
+
+    def test_default_frame_counts_use_hatch_style_eight_frame_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Glace",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "idle,thinking,working,answering",
+                    "--anatomy-class",
+                    "fins-no-hands",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["atlas"]["columns"], 8)
+            self.assertEqual(manifest["states"]["idle"]["frames"], 8)
+            self.assertEqual(manifest["states"]["thinking"]["frames"], 8)
+            self.assertEqual(manifest["states"]["working"]["frames"], 8)
+            self.assertEqual(manifest["states"]["answering"]["frames"], 8)
+
+    def test_layout_guides_are_labeled_as_construction_not_output_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Guidey",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            request = json.loads((out_dir / "companion_request.json").read_text(encoding="utf-8"))
+            usage = request["layoutGuides"][0]["usage"]
+            self.assertIn("construction input only", usage)
+            self.assertIn("intentionally empty", usage)
+            self.assertIn("not a mascot preview", usage)
 
     def test_no_hand_working_prompt_allows_freestanding_work_props(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:

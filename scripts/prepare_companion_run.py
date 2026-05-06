@@ -61,7 +61,7 @@ STATE_ACTING = {
 
 STATE_VISUAL_AIDS = {
     "listening": "small attached sound rings or attentive pose only when needed",
-    "thinking": "compact side-origin thought puff, idea orb, or hand-to-chin only when anatomy supports it",
+    "thinking": "compact side-origin thought puff, idea orb, or hand-to-chin only when anatomy supports it; the largest cue stays secondary to the mascot",
     "working": "existing work prop when anatomy supports it; otherwise a freestanding/resting work prop or compact attached processing cue with purposeful cycling, sorting, checking, or gathering motion that clearly reads as active work, not random sparkle or tiny detached specks",
     "answering": "mouth shapes first; tiny no-text voice pixels or breath puffs close to the face when needed",
     "success": "small check/glint, proud pose, or raised existing prop",
@@ -72,7 +72,7 @@ STATE_VISUAL_AIDS = {
 STATE_REJECTS = {
     "working": "anger, hostile eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, static prop with no work motion",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues",
-    "thinking": "generic icon straight above the head, static dots, face-touch by unsupported appendages",
+    "thinking": "generic icon straight above the head, oversized second head/body-sized thought orb, static dots, face-touch by unsupported appendages",
     "listening": "microphone props for non-voice apps, detached sound clutter",
     "success": "large confetti, loose sparkles, text labels",
     "error": "red X labels, detached symbols, scenery",
@@ -82,8 +82,10 @@ STATE_REJECTS = {
 STATE_FRAME_ARCS = {
     "thinking": (
         "Frame-by-frame acting arc: 1 no cue or tiny first puff, 2 small bubble, "
-        "3 medium bubble, 4 largest readable thought bubble/orb, 5 hold while eyes track it, "
-        "6 settle back into the loop. For longer rows, stretch the same small -> medium -> large -> "
+        "3 medium bubble, 4 largest compact bubble/orb, 5 hold while eyes track it, "
+        "6 settle back into the loop. Keep the thought cue secondary to the mascot: the largest bubble "
+        "is never larger than about one-third of the mascot body width, and do not let the thought cue "
+        "become a second head/body-sized orb. For longer rows, stretch the same small -> medium -> largest compact -> "
         "hold -> settle arc; this is not the same bubble pasted in every frame."
     ),
     "working": (
@@ -160,7 +162,7 @@ def rel(path: Path, root: Path) -> str:
 def frame_count_for(state: str, compact: bool) -> int:
     if compact:
         return 6 if state in LONG_STATES else 6
-    return 12 if state in LONG_STATES else 10
+    return 8
 
 
 def durations_for(state: str, frames: int) -> list[int]:
@@ -386,7 +388,10 @@ def create_layout_guide(
         "cellHeight": cell_height,
         "safeMarginX": LAYOUT_GUIDE_SAFE_MARGIN_X,
         "safeMarginY": LAYOUT_GUIDE_SAFE_MARGIN_Y,
-        "usage": "layout guide input only; do not copy visible guide lines into generated sprite strips",
+        "usage": (
+            "construction input only; intentionally empty frame boxes for spacing and safe padding, "
+            "not a mascot preview; do not copy visible guide lines into generated sprite strips"
+        ),
     }
 
 
@@ -456,7 +461,7 @@ def build_prompt(
     key_name = chroma_key["name"] if chroma_key else "flat"
     return f"""# {name} {state} row prompt
 
-Use the attached reference image(s) for original identity, the attached canonical base sprite as the approved design, and the attached layout guide only for frame count, slot spacing, centering, and safe padding. Infer the mascot's vibe from the reference before choosing the pose or visual aid.
+Use the attached reference image(s) for original identity, the attached canonical base sprite as the approved design, and the attached layout guide only for frame count, slot spacing, centering, and safe padding. The layout guide is a construction input only: it is intentionally empty and is not a mascot preview. Infer the mascot's vibe from the reference before choosing the pose or visual aid.
 
 Create one horizontal sprite row strip with exactly {frame_count} separated frames on a perfectly flat pure {key_name} {key_hex} chroma-key background.
 
@@ -486,7 +491,7 @@ Semantic ladder:
 
 Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. The cue must remain visible after chroma-key cleanup and readable at 64-96 px; do not rely on isolated tiny specks that cleanup may remove. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays busy-but-friendly and never angry; for simple/no-limb mascots, use body-surface, rim-touching, compact attached, or freestanding/resting cues placed beside or in front of the mascot, never held or operated by invented hands. For answering, the cue should support mouth/voice motion rather than become a speech panel.
 
-Layout guide rule: follow the attached guide's {frame_count} frame boxes and safe padding, but do not reproduce the guide itself. No visible boxes, borders, labels, guide colors, center marks, or guide background may appear in the output.
+Layout guide rule: follow the attached guide's {frame_count} frame boxes and safe padding, but do not reproduce the guide itself. The guide is not output art. No visible boxes, borders, labels, guide colors, center marks, or guide background may appear in the output.
 
 Frame layout: keep each pose fully inside an implied {cell_width}x{cell_height} cell with safe padding. Keep body center, top-of-head height, bottom edge, silhouette scale, and appendage count stable across the row. Every frame must have a meaningful change in face, pose, body motion, prop, or visual aid. Do not use {key_hex}, pure {key_name}, or colors close to that chroma key in the mascot, prop, outline, highlights, or effects.
 """
@@ -544,7 +549,10 @@ def make_jobs(
                     *reference_inputs,
                     {
                         "path": f"{LAYOUT_GUIDE_DIR}/{state}.png",
-                        "role": f"layout guide for {frames} frame slots; use for spacing only, do not copy guide lines",
+                        "role": (
+                            f"construction layout guide for {frames} frame slots; intentionally empty spacing input, "
+                            "not a mascot preview, do not copy guide lines"
+                        ),
                     },
                     {"path": CANONICAL_BASE_PATH, "role": "canonical identity reference"},
                     {"path": BASE_OUTPUT_PATH, "role": "approved base companion sprite"},
@@ -576,7 +584,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--forbid-cue", action="append", default=[], help="Generic/off-vibe cue to avoid; can be repeated")
     parser.add_argument("--cell-width", type=int, default=256)
     parser.add_argument("--cell-height", type=int, default=288)
-    parser.add_argument("--columns", type=int, default=12)
+    parser.add_argument("--columns", type=int, help="Atlas columns; defaults to max generated frame count")
     parser.add_argument(
         "--chroma-key",
         default="auto",
@@ -619,7 +627,7 @@ def main(argv: list[str] | None = None) -> int:
 
     visual_language = build_visual_language(args)
     frames_by_state = {state: frame_count_for(state, args.compact) for state in states}
-    columns = max(args.columns, max(frames_by_state.values()))
+    columns = max(args.columns or 0, max(frames_by_state.values()))
     chroma_key = choose_chroma_key(copied_ref_paths, args.chroma_key)
     layout_guides = create_layout_guides(out_dir, states, frames_by_state, args.cell_width, args.cell_height)
 
@@ -681,6 +689,7 @@ def main(argv: list[str] | None = None) -> int:
         "states": {},
         "notes": [
             "This is a prompt/state-cue plan, not final art acceptance.",
+            "Layout guide PNGs are intentionally empty construction inputs, not mascot previews or QA output.",
             "After row generation, update enhancer metadata to match the actual accepted visual aid.",
             "Reject rows where the state read is unclear even if the effect matches the mascot vibe.",
         ],

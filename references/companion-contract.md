@@ -15,9 +15,9 @@ Use this shape for `manifest.json`:
   },
   "atlas": {
     "path": "atlas.webp",
-    "width": 3072,
+    "width": 2048,
     "height": 2880,
-    "columns": 12,
+    "columns": 8,
     "rows": 10,
     "cellWidth": 256,
     "cellHeight": 288
@@ -41,22 +41,22 @@ Recommended defaults:
 
 | State | Frames | Purpose |
 | --- | ---: | --- |
-| idle | 10 | Resting breathing/blink loop |
-| greeting | 10 | Chat opens or first visit |
-| listening | 10 | User is typing or speaking |
-| thinking | 12 | Model is planning before output |
-| working | 12 | Tools, retrieval, search, or backend work |
-| answering | 12 | Response is streaming |
-| success | 10 | Task complete or answer finished |
-| error | 10 | Request failed or warning state |
-| confused | 10 | Input unclear or needs clarification |
-| sleeping | 10 | Inactive, minimized, or offline |
+| idle | 8 | Resting breathing/blink loop |
+| greeting | 8 | Chat opens or first visit |
+| listening | 8 | User is typing or speaking |
+| thinking | 8 | Model is planning before output |
+| working | 8 | Tools, retrieval, search, or backend work |
+| answering | 8 | Response is streaming |
+| success | 8 | Task complete or answer finished |
+| error | 8 | Request failed or warning state |
+| confused | 8 | Input unclear or needs clarification |
+| sleeping | 8 | Inactive, minimized, or offline |
 
 Use fewer rows only when the user asks for a smaller pack. Use more states when the product needs them, but keep the frame size and manifest explicit.
 
-For a higher-FPS feel, prefer 12 columns for the atlas. `thinking`, `working`, and `answering` should get 12 frames by default because users stare at those states while waiting for the chatbot. A cinematic profile can use 14 frames for those waiting states and 12 for the others, but only if the rows remain consistent and pass quality QA. Fewer stronger frames are better than more frames with character drift or invented anatomy.
+Default production companion atlases should use an 8-column baseline like `$hatch-pet`. `thinking`, `working`, and `answering` are the most visible waiting states, but they should get richer acting inside 8 frames before they get more frames. Use 10-12 frame rows only as an opt-in smoothness pass after a shorter row proves identity, scale, appendage count, state readability, and pixel-art quality are stable. Fewer stronger frames are better than more frames with character drift or invented anatomy.
 
-If image generation cannot reliably produce a full 12+ frame row with the correct number of mascot bodies, generate the row in smaller exact-count chunks such as two 6-frame parts and stitch those generated parts with `scripts/stitch_row_parts.py`. The stitch step may concatenate existing generated art only; it must not create missing frames, draw props, resize sprites, or patch anatomy. The stitched row must pass the same assembly, motion, cutout, readability, semantic-anchor, and visual seam QA as a single generated row.
+If image generation cannot reliably produce an opt-in 10-12 frame row with the correct number of mascot bodies, generate the row in smaller exact-count chunks and stitch those generated parts with `scripts/stitch_row_parts.py`. The stitch step may concatenate existing generated art only; it must not create missing frames, draw props, resize sprites, or patch anatomy. The stitched row must pass the same assembly, motion, cutout, readability, semantic-anchor, and visual seam QA as a single generated row.
 
 ## Prompt Planning Artifacts
 
@@ -74,7 +74,7 @@ run/
   qa/state-cue-plan.json
 ```
 
-`qa/state-cue-plan.json` is a planning artifact, not production acceptance. It should record the inferred source vibe, state purpose, acting-first beat, frame-by-frame acting arc, whether a visual aid is allowed, the suggested aid, any no-hand freestanding prop policy, and rejection criteria for each state. Row prompts should use that plan to make the mascot perform the state first through expression, posture, timing, and original appendages, then add a small visual aid only when the state would otherwise be unclear at website size. `thinking` should name a visible small -> medium -> large -> hold -> settle cue arc when a bubble/orb is used. `working` should name a visible notice -> prop/cue wakes up -> sorting/checking/gathering -> progress/result -> settle arc when a work cue is used. For freestanding work props, prompts should keep all prop activity inside or on the prop surface and keep a clear background gap from the mascot so cleanup and QA do not merge the prop with the body core.
+`qa/state-cue-plan.json` is a planning artifact, not production acceptance. It should record the inferred source vibe, state purpose, acting-first beat, frame-by-frame acting arc, whether a visual aid is allowed, the suggested aid, any no-hand freestanding prop policy, and rejection criteria for each state. Layout guide PNGs are also planning inputs: they are intentionally empty construction guides for spacing and safe padding, not mascot previews or QA output. Row prompts should use that plan to make the mascot perform the state first through expression, posture, timing, and original appendages, then add a small visual aid only when the state would otherwise be unclear at website size. `thinking` should name a visible small -> medium -> largest compact -> hold -> settle cue arc when a bubble/orb is used, with the largest cue still secondary to the mascot and never larger than about one-third of the body width. `working` should name a visible notice -> prop/cue wakes up -> sorting/checking/gathering -> progress/result -> settle arc when a work cue is used. For freestanding work props, prompts should keep all prop activity inside or on the prop surface and keep a clear background gap from the mascot so cleanup and QA do not merge the prop with the body core.
 
 `imagegen-jobs.json` follows the hatch-pet-style base-first contract:
 
@@ -341,8 +341,8 @@ Do not treat "more frames" as duplicated stills. Every used frame should earn it
 - `idle`: slow breathing, 1-2 blink/eye frames, tiny hand/prop settle.
 - `greeting`: anticipation, arm/prop rise, peak gesture, return, friendly hold.
 - `listening`: attentive lean, blink, eye tracking toward user input, subtle prop/body motion.
-- `thinking`: head tilt, eye movement, hand-to-face or prop tilt, blink, small loopable shifts.
-- For near-head `thinking` enhancers, prefer a side-origin path: the thought cue begins near one side of the head, drifts slightly outward and upward, holds briefly at the clearest point, then settles. The mascot's eyes and mouth should react to that motion.
+- `thinking`: head tilt, eye movement, hand-to-face or prop tilt when anatomy supports it, blink, small loopable shifts.
+- For near-head `thinking` enhancers, prefer a side-origin path: the thought cue begins near one side of the head, grows from small to medium to largest compact, drifts slightly outward and upward, holds briefly at the clearest point, then settles. The largest cue must stay secondary to the mascot, never larger than about one-third of the mascot body width, and must not become a second head/body-sized orb. The mascot's eyes and mouth should react to that motion.
 - Existing appendages should be allowed to act when they are part of the reference and their recorded affordances support the action: hands can touch the chin, paws can gesture, sleeves can brace a prop, and tentacles can point when the contract says they can. QA should reject extra or duplicated anatomy, not legitimate motion from original appendages. If the acting pose makes a simple appendage look like a new hand, fingered mitten, detached object, or third limb, regenerate with a safer smaller appendage motion and move the acting beat to face, body tilt, blink timing, or the semantic enhancer.
 - `working`: faster but controlled movement, prop/hand/body cycles, focused face.
 - `answering`: speaking mouth shapes or expressive face/hand beats, loopable cadence.
@@ -442,7 +442,7 @@ Reject or repair if any of these happen:
 - `qa/art-direction-review.json` has a production generation method other than `imagegen-integrated-row-art`, `user-provided-integrated-row-art`, or `artist-provided-integrated-row-art`.
 - `qa/art-direction-review.json` does not record `checks.themeNativeStateCues: true` for production acceptance.
 - `qa/art-direction-review.json` does not record the original source reference that was used for visual comparison.
-- A key chatbot state has too few frames: use 12+ for `thinking`, `working`, and `answering`; use 10+ for the other default states.
+- A key chatbot state has too few frames: use 8 frames for default production rows, 6 only for compact auditions, and 10-12 only for explicit smoothness passes that preserve identity and anatomy.
 - A row contains floating symbols, shadows, glows, dust, speed lines, text, UI panels, or scenery that the user did not request.
 - The atlas dimensions do not match the manifest.
 - `frames` does not match the number of `durations`.

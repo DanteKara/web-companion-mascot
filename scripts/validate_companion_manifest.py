@@ -22,16 +22,16 @@ REQUIRED_ATLAS_FIELDS = {
 }
 
 CHATBOT_RECOMMENDED_FRAMES = {
-    "idle": 10,
-    "greeting": 10,
-    "listening": 10,
-    "thinking": 12,
-    "working": 12,
-    "answering": 12,
-    "success": 10,
-    "error": 10,
-    "confused": 10,
-    "sleeping": 10,
+    "idle": 8,
+    "greeting": 8,
+    "listening": 8,
+    "thinking": 8,
+    "working": 8,
+    "answering": 8,
+    "success": 8,
+    "error": 8,
+    "confused": 8,
+    "sleeping": 8,
 }
 
 CHATBOT_CORE_STATES = {"idle", "thinking", "working", "answering", "success", "error"}

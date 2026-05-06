@@ -15,6 +15,8 @@ The skill is designed for mascot companions that need to feel alive inside a pro
 
 Production mascot art uses the Codex digital-pet pixel-art house style: compact chibi sprites, visible stepped pixel edges, thick readable outlines, limited palettes, flat cel shading, and crisp hard-edged effects. Non-pixel references are translated into that style while preserving identity and charm; smooth illustration, glossy app-icon art, painterly gradients, 3D rendering, and vector-flat clip art are not production passes.
 
+Generated production rows default to an 8-frame HatchPet-style baseline. Use 6-frame rows for compact auditions and longer 10-12 frame rows only as an explicit smoothness pass after the mascot stays stable.
+
 Production mascot art must come from integrated row art generated with `$imagegen` or from finished user/artist-provided row strips. The bundled scripts assemble, clean, validate, and integrate assets; they must not draw or paste final semantic props into production mascot frames.
 
 ## Install
@@ -106,6 +108,8 @@ run/
   react/CompanionMascot.tsx
   react/useCompanionState.ts
 ```
+
+`references/layout-guides/<state>.png` files are intentionally empty construction inputs for spacing and safe padding. They are not mascot previews; inspect `qa/contact-sheet.png`, `qa/state-readability-check.png`, previews, and the final atlas for visual output.
 
 ## Quality Gates
 
