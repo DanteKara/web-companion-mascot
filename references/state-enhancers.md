@@ -245,6 +245,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - `thinking`, `working`, `listening`, or `answering` are unclear at 64, 96, and 128 px.
 - `qa/state-readability-check.png` has not been generated and inspected.
 - `qa/semantic-anchor-check.png`, `qa/motion-quality-check.png`, or `qa/quality-report.json` is missing for a production run.
+- `qa/anatomy-review.png` or `qa/anatomy-review.json` is missing for a production run, or the review does not explicitly cover every used frame of every state.
 - `qa/art-direction-review.json` is missing, fails, or marks the pack as not ready for production.
 - `qa/quality-report.json` reports semantic anchor drift, missing enhancer presence, near-duplicate animation, body jitter, or large foreground area changes.
 - `qa/quality-report.json` reports detached fragments, broken-cut symptoms, core silhouette scale drift, or core center drift.
@@ -275,6 +276,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - The row or enhancer looks like smooth illustration, glossy app-icon art, 3D rendering, painterly gradients, high-detail antialiasing, vector-flat symbols, or CSS-scaled smooth art instead of native Codex-style pixel art.
 - The enhancer was added by post-processing instead of generated as integrated row art, unless the package is clearly labeled as a prototype and not accepted as final.
 - A held prop creates extra limbs, duplicate hands, new fingers/paws/fins, or inconsistent sleeves/body parts. This is a production blocker even if validation passes.
+- A late frame in a row gains an extra hand, arm, sleeve, paw, fin, wing, mitten, or other appendage that earlier frames did not have. This should be caught in `qa/anatomy-review.png` by counting each numbered frame, not only by glancing at the overall contact sheet.
 - A pose uses appendage motion but changes the appendage count, invents grip anatomy, detaches a limb, or makes the moving appendage look like a new object instead of the original body part.
 - A state asks an appendage to perform an action outside its `style.anatomyContract.appendages[].affordances`, such as face-touch by a fin that only has side-bob/tilt, or typing by a paw without fingers.
 - A simple appendage mascot gains a limb-colored oval, patch, detached blob, or front-body shape that reads as an extra appendage, even if the original side appendages are still present.

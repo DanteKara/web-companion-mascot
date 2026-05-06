@@ -46,6 +46,40 @@ def write_manifest(tmp_path: Path, enhancer: dict, style_extra: dict | None = No
     return manifest_path
 
 
+def write_anatomy_review(tmp_path: Path, review_extra: dict | None = None) -> None:
+    qa_dir = tmp_path / "qa"
+    qa_dir.mkdir(exist_ok=True)
+    checks = {
+        "frameByFrameAnatomyReviewed": True,
+        "appendageCountStable": True,
+        "noExtraAppendages": True,
+        "noDuplicatedAppendages": True,
+        "identityPropsStable": True,
+        "stateCuesNotMisreadAsAnatomy": True,
+        "contactAndOverlapBelievable": True,
+    }
+    review = {
+        "status": "pass",
+        "productionUse": True,
+        "expectedAnatomy": "Two original hands/arms only; no third hand, sleeve, paw, fin, or mitten.",
+        "expectedIdentityProps": "Single staff remains one staff on the same side.",
+        "statesReviewed": ["working"],
+        "reviewedFrames": {"working": list(range(1, 13))},
+        "checks": checks,
+        "blockers": [],
+        "notes": "All used frames were inspected at enlarged size against the source reference.",
+    }
+    if review_extra:
+        for key, value in review_extra.items():
+            if key == "checks" and isinstance(value, dict):
+                updated_checks = dict(checks)
+                updated_checks.update(value)
+                review[key] = updated_checks
+            else:
+                review[key] = value
+    (qa_dir / "anatomy-review.json").write_text(json.dumps(review), encoding="utf-8")
+
+
 class ManifestValidatorTests(unittest.TestCase):
     def test_rendering_style_is_required_when_requested(self) -> None:
         enhancer = {
@@ -824,6 +858,83 @@ class ManifestValidatorTests(unittest.TestCase):
             )
 
             self.assertTrue(any("recommends 8+" in warning for warning in warnings))
+
+    def test_require_anatomy_review_warns_when_missing(self) -> None:
+        enhancer = {
+            "kind": "hand-to-chin thought gesture",
+            "attachment": "gesture",
+            "description": "The left hand touches the chin while a small thought cue appears near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_anatomy_review=True,
+            )
+
+            self.assertTrue(any("qa/anatomy-review.json is missing or unreadable" in warning for warning in warnings))
+
+    def test_anatomy_review_requires_frame_by_frame_check(self) -> None:
+        enhancer = {
+            "kind": "hand-to-chin thought gesture",
+            "attachment": "gesture",
+            "description": "The left hand touches the chin while a small thought cue appears near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_anatomy_review(tmp_path, {"checks": {"frameByFrameAnatomyReviewed": False}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_anatomy_review=True,
+            )
+
+            self.assertTrue(any("checks.frameByFrameAnatomyReviewed must be true" in error for error in errors))
+
+    def test_anatomy_review_requires_every_used_frame(self) -> None:
+        enhancer = {
+            "kind": "hand-to-chin thought gesture",
+            "attachment": "gesture",
+            "description": "The left hand touches the chin while a small thought cue appears near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_anatomy_review(tmp_path, {"reviewedFrames": {"working": [1, 2, 3, 4, 7, 8, 9, 10, 11, 12]}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_anatomy_review=True,
+            )
+
+            self.assertTrue(
+                any("reviewedFrames.working must include every used frame 1..12" in error for error in errors)
+            )
+
+    def test_anatomy_review_passes_when_all_state_frames_are_reviewed(self) -> None:
+        enhancer = {
+            "kind": "hand-to-chin thought gesture",
+            "attachment": "gesture",
+            "description": "The left hand touches the chin while a small thought cue appears near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_anatomy_review(tmp_path)
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_anatomy_review=True,
+            )
+
+            self.assertFalse(any("qa/anatomy-review.json" in error for error in errors))
+            self.assertEqual(qa["anatomyReview"]["status"], "pass")
 
 
 if __name__ == "__main__":

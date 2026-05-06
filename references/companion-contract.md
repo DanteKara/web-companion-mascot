@@ -391,6 +391,7 @@ For high-frame-count rows, treat body stability as part of the prompt, not just 
 - Produce `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png` before strict validation.
 - Treat `qa/quality-report.json` silhouette warnings as blockers: detached fragments, broken-cut symptoms, core scale drift, full-row core scale range, or core center drift mean the row needs regeneration or a better source strip. For production mascots, full-row core scale range should stay at or below `5%`; larger changes are usually visible as body growth/shrink even when the contact sheet looks otherwise clean.
 - For split-generated rows, inspect the stitch boundary and reject visible half-to-half changes in mascot scale, top/bottom anchor, outline thickness, prop size, palette, lighting, expression style, or pixel density even when numeric QA passes.
+- Produce `qa/anatomy-review.png` and `qa/anatomy-review.json` before production validation. This is the frame-by-frame visual gate for appendage count, hand/arm/sleeve/fin continuity, identity prop stability, and state cues that might be mistaken for anatomy; numeric QA cannot reliably detect those failures.
 - Produce `qa/art-direction-review.json` before production validation. This is the visual gate for reference quality, identity preservation, native enhancers, and creative state readability.
 - Production art-direction review must also confirm `themeNativeStateCues`: the state cues come from the mascot's visual language rather than generic symbols that merely read as chatbot UI.
 - Production visual QA must confirm Codex-style pixel art: visible stepped edges, crisp clusters, limited palette, flat cel shading, thick readable outline, and consistent pixel density. Smooth illustration, glossy app-icon rendering, painterly gradients, 3D shading, vector-flat symbols, or high-detail antialiasing are production blockers.
@@ -413,6 +414,7 @@ Reject or repair if any of these happen:
 - A required semantic enhancer disappears from `qa/contact-sheet.png` or `qa/state-readability-check.png` after cleanup. Regenerate with a larger/attached cue instead of loosening cleanup enough to preserve random noise or neighboring-frame slivers.
 - A row gets its smoothness from duplicates or near-duplicates rather than meaningful in-betweens.
 - `qa/quality-report.json` reports low motion, near-duplicate transitions, body jitter, major area jumps, missing enhancer presence, or semantic anchor drift.
+- `qa/anatomy-review.json` is missing for a production run, has `status` other than `pass`, omits a used frame from `reviewedFrames`, contains blockers, or reports any required anatomy check as false.
 - `qa/art-direction-review.json` is missing for a production run, has `status` other than `pass`, has `productionUse` other than `true`, contains blockers, or reports any required art-direction check as false.
 - `style.renderingStyle` is missing from a new production pack or is not `codex-pixel-art`.
 - `style.visualLanguage` is required by the run policy but missing, or an enhanced state omits required `enhancer.visualLanguageFit`.

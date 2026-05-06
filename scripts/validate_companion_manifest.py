@@ -199,6 +199,15 @@ ALLOWED_PRODUCTION_GENERATION_METHODS = {
     "user-provided-integrated-row-art",
     "artist-provided-integrated-row-art",
 }
+REQUIRED_ANATOMY_REVIEW_CHECKS = {
+    "frameByFrameAnatomyReviewed",
+    "appendageCountStable",
+    "noExtraAppendages",
+    "noDuplicatedAppendages",
+    "identityPropsStable",
+    "stateCuesNotMisreadAsAnatomy",
+    "contactAndOverlapBelievable",
+}
 DISALLOWED_GENERATION_METHOD_TERMS = {
     "compositor",
     "deterministic",
@@ -303,6 +312,17 @@ def load_art_direction_review(manifest_path: Path) -> dict[str, Any] | None:
     return report if isinstance(report, dict) else None
 
 
+def load_anatomy_review(manifest_path: Path) -> dict[str, Any] | None:
+    report_path = manifest_path.parent / "qa" / "anatomy-review.json"
+    if not report_path.exists():
+        return None
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    return report if isinstance(report, dict) else None
+
+
 def validate_art_direction_review(
     manifest_path: Path,
     review: dict[str, Any],
@@ -387,6 +407,109 @@ def validate_art_direction_review(
     notes = review.get("notes")
     if not isinstance(notes, str) or not notes.strip():
         warnings.append("qa/art-direction-review.json notes should describe why the mascot passes visually")
+
+
+def validate_anatomy_review(
+    review: dict[str, Any],
+    states: dict[str, Any],
+    errors: list[str],
+    warnings: list[str],
+    qa: dict[str, Any],
+) -> None:
+    status = review.get("status")
+    production_use = review.get("productionUse")
+    blockers = review.get("blockers")
+    checks = review.get("checks")
+    states_reviewed = review.get("statesReviewed")
+    reviewed_frames = review.get("reviewedFrames")
+
+    qa["anatomyReview"] = {
+        "status": status,
+        "productionUse": production_use,
+        "statesReviewed": states_reviewed if isinstance(states_reviewed, list) else [],
+        "blockers": blockers if isinstance(blockers, list) else [],
+    }
+
+    if status != "pass":
+        errors.append("qa/anatomy-review.json status must be 'pass' for production validation")
+
+    if production_use is not True:
+        errors.append("qa/anatomy-review.json productionUse must be true for production validation")
+
+    if isinstance(blockers, list) and blockers:
+        for blocker in blockers:
+            errors.append(f"anatomy review blocker: {blocker}")
+    elif blockers is not None and not isinstance(blockers, list):
+        errors.append("qa/anatomy-review.json blockers must be an array")
+
+    for key in ["expectedAnatomy", "expectedIdentityProps"]:
+        value = review.get(key)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"qa/anatomy-review.json {key} must be a non-empty string")
+
+    if not isinstance(checks, dict):
+        errors.append("qa/anatomy-review.json checks must be an object")
+    else:
+        missing_checks = sorted(REQUIRED_ANATOMY_REVIEW_CHECKS - set(checks))
+        for key in missing_checks:
+            errors.append(f"qa/anatomy-review.json checks.{key} is required")
+        for key in sorted(REQUIRED_ANATOMY_REVIEW_CHECKS & set(checks)):
+            if checks.get(key) is not True:
+                errors.append(f"qa/anatomy-review.json checks.{key} must be true")
+
+    required_states = {
+        name
+        for name, state in states.items()
+        if isinstance(name, str) and isinstance(state, dict) and isinstance(state.get("frames"), int)
+    }
+    reviewed_state_names: set[str] = set()
+    if not isinstance(states_reviewed, list) or not states_reviewed:
+        errors.append("qa/anatomy-review.json statesReviewed must be a non-empty array")
+    else:
+        for index, entry in enumerate(states_reviewed):
+            if not isinstance(entry, str) or not entry.strip():
+                errors.append(f"qa/anatomy-review.json statesReviewed[{index}] must be a non-empty string")
+            else:
+                reviewed_state_names.add(entry)
+        missing_states = sorted(required_states - reviewed_state_names)
+        for state_name in missing_states:
+            errors.append(f"qa/anatomy-review.json statesReviewed is missing state {state_name}")
+
+    if not isinstance(reviewed_frames, dict):
+        errors.append("qa/anatomy-review.json reviewedFrames must be an object keyed by state")
+    else:
+        for state_name in sorted(required_states):
+            state = states[state_name]
+            frame_count = int(state["frames"])
+            expected_frames = set(range(1, frame_count + 1))
+            raw_frames = reviewed_frames.get(state_name)
+            if not isinstance(raw_frames, list) or not raw_frames:
+                errors.append(f"qa/anatomy-review.json reviewedFrames.{state_name} must be a non-empty array")
+                continue
+            actual_frames: set[int] = set()
+            for index, entry in enumerate(raw_frames):
+                if not isinstance(entry, int):
+                    errors.append(
+                        f"qa/anatomy-review.json reviewedFrames.{state_name}[{index}] must be an integer frame number"
+                    )
+                    continue
+                actual_frames.add(entry)
+            missing = sorted(expected_frames - actual_frames)
+            if missing:
+                errors.append(
+                    f"qa/anatomy-review.json reviewedFrames.{state_name} must include every used frame 1..{frame_count}; "
+                    f"missing: {', '.join(str(frame) for frame in missing)}"
+                )
+            invalid = sorted(frame for frame in actual_frames if frame < 1 or frame > frame_count)
+            if invalid:
+                errors.append(
+                    f"qa/anatomy-review.json reviewedFrames.{state_name} contains frames outside 1..{frame_count}: "
+                    + ", ".join(str(frame) for frame in invalid)
+                )
+
+    notes = review.get("notes")
+    if not isinstance(notes, str) or not notes.strip():
+        warnings.append("qa/anatomy-review.json notes should describe the frame-by-frame anatomy decision")
 
 
 def inspect_atlas(
@@ -1107,6 +1230,7 @@ def validate_manifest(
     require_visual_language: bool = False,
     require_quality_report: bool = False,
     require_art_direction_review: bool = False,
+    require_anatomy_review: bool = False,
     key_color: str | None = None,
     spill_threshold: int | None = None,
     max_outline_halo_pixels: int = 0,
@@ -1155,6 +1279,11 @@ def validate_manifest(
             warnings.append("qa/art-direction-review.json is missing or unreadable")
     else:
         validate_art_direction_review(manifest_path, art_direction_review, errors, warnings, qa)
+
+    anatomy_review = load_anatomy_review(manifest_path)
+    if anatomy_review is None:
+        if require_anatomy_review:
+            warnings.append("qa/anatomy-review.json is missing or unreadable")
 
     if key_color is None and assembly_report:
         report_key_color = assembly_report.get("keyColor")
@@ -1206,6 +1335,9 @@ def validate_manifest(
     if not isinstance(states, dict) or not states:
         errors.append("states must be a non-empty object")
         states = {}
+
+    if anatomy_review is not None:
+        validate_anatomy_review(anatomy_review, states, errors, warnings, qa)
 
     if profile == "chatbot":
         missing_core = sorted(CHATBOT_CORE_STATES - set(states))
@@ -1345,6 +1477,11 @@ def main() -> int:
         action="store_true",
         help="Require qa/art-direction-review.json so production validation includes visual/art-direction acceptance",
     )
+    parser.add_argument(
+        "--require-anatomy-review",
+        action="store_true",
+        help="Require qa/anatomy-review.json so production validation includes frame-by-frame anatomy continuity acceptance",
+    )
     parser.add_argument("--json-out", help="Optional path to write validation JSON")
     args = parser.parse_args()
 
@@ -1357,6 +1494,7 @@ def main() -> int:
         require_visual_language=args.require_visual_language,
         require_quality_report=args.require_quality_report,
         require_art_direction_review=args.require_art_direction_review,
+        require_anatomy_review=args.require_anatomy_review,
         key_color=args.key_color,
         spill_threshold=args.spill_threshold,
         max_outline_halo_pixels=args.max_outline_halo_pixels,
@@ -1372,6 +1510,7 @@ def main() -> int:
         "requireVisualLanguage": args.require_visual_language,
         "requireQualityReport": args.require_quality_report,
         "requireArtDirectionReview": args.require_art_direction_review,
+        "requireAnatomyReview": args.require_anatomy_review,
         "errors": errors,
         "warnings": warnings,
         "qa": qa,

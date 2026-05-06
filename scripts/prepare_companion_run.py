@@ -159,6 +159,12 @@ WORK_TARGET_INTERACTION_POLICY = (
     "from the floor. The viewer should understand what the mascot is acting on in every frame."
 )
 
+WORK_RESULT_CUE_POLICY = (
+    "Use a theme-native result mark when the work resolves: a tiny settled rune, glow, sorted token, progress block, "
+    "staff-tip glyph, sparkle, or motif-specific success cue. Use generic check marks only when the mascot's visual "
+    "language supports product/tool UI; otherwise a check mark should be replaced by a character-native finished state."
+)
+
 BODY_SURFACE_CUE_POLICY = (
     "For body-surface, rim-touching, or compact attached processing cues on no-limb, fin, wing, paw, or other "
     "simple-appendage mascots, keep the cue inside the body core or as one small rim-touching mark. Do not place "
@@ -185,6 +191,15 @@ FACE_TOUCH_SILHOUETTE_POLICY = (
     "or paw poses rather than tiny fingers unless the reference clearly has fingers."
 )
 
+HAND_ROLE_CONTINUITY_POLICY = (
+    "Hand/appendage role continuity: account for every original hand, arm, paw, sleeve, fin, wing, or tentacle in every "
+    "frame before accepting a face-touch, chin-touch, pointing, presenting, staff/tool, or work-prop gesture. If the "
+    "mascot holds an identity prop, keep the prop-holding appendage attached and identifiable while the other appendage "
+    "acts. In a hand-to-chin thinking pose, one hand may touch the chin only if the other original hand/arm remains "
+    "accounted for as holding, resting, or visible at its normal side. Reject any frame that violates this rule: "
+    "no third hand, extra arm, duplicate sleeve, detached mitten, or new paw/finger cluster allowed."
+)
+
 IDENTITY_PROP_POLICY = (
     "Identity prop contract: preserve must-keep props, emblems, clothing silhouettes, and signature accessories as "
     "part of the mascot identity. Simplify ornate detail into a few readable pixel clusters, not noisy filigree. "
@@ -201,7 +216,10 @@ VOICE_CUE_POLICY = (
     "Answering voice cues must be mouth-origin cues. The first voice pixel, puff, breath mark, or sound ring must "
     "touch or overlap the mouth/lip edge, then travel only a short distance outward with the speaking mouth shapes. "
     "Keep it close enough that a viewer can tell it comes from the mascot speaking. Do not place speech puffs, chat "
-    "bubbles, or loose orbs beside the cheek, hand, staff, or hood if they do not originate from the mouth."
+    "bubbles, or loose orbs beside the cheek, hand, staff, or hood if they do not originate from the mouth. Mouth "
+    "shapes and voice cues must change together: closed/tiny mouth -> small open mouth with small attached cue -> "
+    "clearer outward cue -> smaller returning cue -> closed smile. Use a small attached cue -> clearer outward cue -> "
+    "smaller returning cue path, not the same puff pasted beside the face."
 )
 
 EXPRESSION_VARIATION_POLICY = (
@@ -428,6 +446,7 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
         "workTargetPolicy": WORK_TARGET_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workTargetFitPolicy": WORK_TARGET_FIT_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workTargetInteractionPolicy": WORK_TARGET_INTERACTION_POLICY if state == "working" and state_clarity != "pose-only" else "",
+        "workResultCuePolicy": WORK_RESULT_CUE_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "bodySurfaceCuePolicy": body_surface_cue_policy,
         "voiceCuePolicy": VOICE_CUE_POLICY if state == "answering" and state_clarity != "pose-only" else "",
         "rejectIf": STATE_REJECTS.get(state, "unclear state read, off-vibe symbol, identity drift, extra anatomy"),
@@ -598,11 +617,13 @@ Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {state_plan["workTargetPolicy"]}
 {state_plan["workTargetFitPolicy"]}
 {state_plan["workTargetInteractionPolicy"]}
+{state_plan["workResultCuePolicy"]}
 {state_plan["bodySurfaceCuePolicy"]}
 {state_plan["voiceCuePolicy"]}
 {ARTISTIC_QUALITY_POLICY}
 {EXPRESSION_VARIATION_POLICY}
 {FACE_TOUCH_SILHOUETTE_POLICY if anatomy_class in {"hands", "paws", "ambiguous-limbs"} else ""}
+{HAND_ROLE_CONTINUITY_POLICY if anatomy_class != "no-limbs" else ""}
 Vibe fit: {source_vibe}
 {identity_prop_line}
 {IDENTITY_PROP_POLICY}

@@ -329,6 +329,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("prefer close-contact targets that touch, overlap, hover just above", working_prompt)
             self.assertIn("Avoid floor-level token rows and far-floating targets", working_prompt)
             self.assertIn("The viewer should understand what the mascot is acting on in every frame", working_prompt)
+            self.assertIn("Use a theme-native result mark", working_prompt)
+            self.assertIn("generic check marks only when the mascot's visual language supports product/tool UI", working_prompt)
 
     def test_answering_prompt_requires_mouth_origin_voice_cue(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -354,6 +356,44 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("touch or overlap the mouth/lip edge", answering_prompt)
             self.assertIn("must not appear as a random bubble beside the head", answering_prompt)
             self.assertIn("Expression variation is mandatory", answering_prompt)
+            self.assertIn("Mouth shapes and voice cues must change together", answering_prompt)
+            self.assertIn("small attached cue -> clearer outward cue -> smaller returning cue", answering_prompt)
+
+    def test_hands_thinking_prompt_tracks_hand_roles_for_face_touch_with_identity_prop(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Tridy",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--anatomy-class",
+                    "hands",
+                    "--identity-prop",
+                    "single trident staff held on the left side",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
+            self.assertIn("Hand/appendage role continuity", thinking_prompt)
+            self.assertIn(
+                "account for every original hand, arm, paw, sleeve, fin, wing, or tentacle in every frame",
+                thinking_prompt,
+            )
+            self.assertIn(
+                "one hand may touch the chin only if the other original hand/arm remains accounted for",
+                thinking_prompt,
+            )
+            self.assertIn(
+                "no third hand, extra arm, duplicate sleeve, detached mitten, or new paw/finger cluster",
+                thinking_prompt,
+            )
 
     def test_preparer_writes_hatch_style_imagegen_jobs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
