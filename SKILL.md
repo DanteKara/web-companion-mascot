@@ -61,6 +61,8 @@ Do not accept polished illustration, painterly rendering, 3D/app-icon gloss, sof
 
 The goal is not to make every mascot identical. Preserve the reference's identity, silhouette cues, palette family, face, must-keep markings, and charm, but simplify them into the pixel-sprite language above. Avoid "generic pixel blob" simplification: a good output should clearly be the referenced mascot translated into Codex-style pixel art.
 
+For detailed references, audit signature props, emblems, clothing silhouettes, markings, and accessories as identity, not decoration. Simplify ornate detail into a few readable pixel clusters, but keep must-keep props stable when they appear. A staff, wand, tool, badge, emblem, hat, bag, weapon, shell, or clothing trim should not flicker in and out across frames, duplicate itself, change sides unexpectedly, mutate into a different object, or turn into extra anatomy. If a state is too crowded for a signature prop, omit that prop intentionally for the whole row instead of letting it appear inconsistently.
+
 ## Art Direction Gate
 
 Technical QA is necessary but not sufficient. A mascot can have a clean atlas, no halo pixels, and stable anchors while still being a bad companion. Production output must preserve the reference's identity, silhouette, charm, pixel-sprite art quality, and creative state reads.
@@ -195,10 +197,10 @@ For simple appendage mascots, also guard against fake appendages that appear as 
 
 ## Generation Workflow
 
-1. Establish mascot identity: name, reference image(s), must-keep features, anatomy class, prop rules, palette, target website vibe, state list, state clarity profile (`pose-only` or `semantic-enhancers`), `style.renderingStyle: "codex-pixel-art"`, and an inferred visual-language read. When anatomy matters, audit the reference before generation: stable body core, exact visible appendages with count and placement, appendage affordances, allowed motion for those exact parts, forbidden additions, and any ambiguous marks that are not limbs. Record this as `style.anatomyClass` (`hands`, `paws`, `fins-no-hands`, `no-limbs`, or `ambiguous-limbs`) and, for simple/ambiguous appendages or risky prop interactions, `style.anatomyContract`. For normal runs, start with the preparer so the state acting plan and `$imagegen` job manifest exist before image generation:
+1. Establish mascot identity: name, reference image(s), must-keep features, anatomy class, prop rules, palette, target website vibe, state list, state clarity profile (`pose-only` or `semantic-enhancers`), `style.renderingStyle: "codex-pixel-art"`, and an inferred visual-language read. When anatomy matters, audit the reference before generation: stable body core, exact visible appendages with count and placement, appendage affordances, allowed motion for those exact parts, forbidden additions, signature props/accessories, and any ambiguous marks that are not limbs. Record this as `style.anatomyClass` (`hands`, `paws`, `fins-no-hands`, `no-limbs`, or `ambiguous-limbs`) and, for simple/ambiguous appendages, detailed references, signature props, or risky prop interactions, `style.anatomyContract` plus `style.visualLanguage.identityProps` when useful. For normal runs, start with the preparer so the state acting plan and `$imagegen` job manifest exist before image generation:
 
 ```bash
-python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --force
+python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --identity-prop "single staff held on left side" --force
 ```
 
    Review `qa/state-cue-plan.json`, `prompts/base.md`, and `prompts/rows/<state>.md` before generating. Edit the prompt plan if a high-visibility state needs a stronger or safer read. This step is the web-companion equivalent of `$hatch-pet` preparing row prompts, layout guides, and `imagegen-jobs.json` before image generation. Layout guides are intentionally empty construction inputs for spacing only; do not present them to the user as mascot output or QA result.

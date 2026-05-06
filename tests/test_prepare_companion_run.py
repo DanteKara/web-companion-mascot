@@ -98,6 +98,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
                     "friendly tiny helper robot with real hands",
                     "--motif",
                     "small panel glow",
+                    "--identity-prop",
+                    "single chest screen",
                     "--quiet",
                 ]
             )
@@ -112,9 +114,15 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("visibly connected to its original shoulder/body anchor", thinking_prompt)
             self.assertIn("does not merge into a new cheek", thinking_prompt)
             self.assertIn("broad pixel-mitt", thinking_prompt)
+            self.assertIn("Must-keep identity props/accessories: single chest screen", thinking_prompt)
+            self.assertIn("Identity prop contract", thinking_prompt)
+            self.assertIn("keep its count, side, scale, attachment, and basic silhouette stable", thinking_prompt)
+            self.assertIn("intentionally omit it for the entire row", thinking_prompt)
+            self.assertIn("Do not duplicate signature props", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertEqual(cue_plan["visualLanguage"]["motifs"], ["small panel glow"])
+            self.assertEqual(cue_plan["visualLanguage"]["identityProps"], ["single chest screen"])
             self.assertEqual(cue_plan["states"]["working"]["visualAidDecision"], "use only if acting alone would be unclear at 64-96 px")
 
     def test_simple_fin_draft_plan_stays_conservative(self) -> None:

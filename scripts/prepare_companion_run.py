@@ -149,6 +149,16 @@ FACE_TOUCH_SILHOUETTE_POLICY = (
     "or paw poses rather than tiny fingers unless the reference clearly has fingers."
 )
 
+IDENTITY_PROP_POLICY = (
+    "Identity prop contract: preserve must-keep props, emblems, clothing silhouettes, and signature accessories as "
+    "part of the mascot identity. Simplify ornate detail into a few readable pixel clusters, not noisy filigree. "
+    "If a prop appears in a state row, keep its count, side, scale, attachment, and basic silhouette stable across "
+    "the row; animate it with small pose/angle/follow-through changes instead of redesigning it. If the state would "
+    "make the prop too crowded or unstable, intentionally omit it for the entire row rather than letting it flicker "
+    "in and out across frames. Do not duplicate signature props, turn decorative trim into extra limbs, or mutate a "
+    "staff/tool/emblem into a different object unless that row is explicitly auditioning a new design."
+)
+
 ANATOMY_GUIDANCE = {
     "hands": (
         "Visible hands may point, present, hold, touch the face, type, or write when the reference supports it. "
@@ -312,6 +322,7 @@ def visual_aid_mode_for(state: str, state_clarity: str) -> str:
 
 def build_visual_language(args: argparse.Namespace) -> dict[str, Any]:
     motifs = args.motif or ["infer mascot-native motifs from the reference"]
+    identity_props = args.identity_prop or []
     forbidden = args.forbid_cue or [
         "generic UI symbols that do not fit the reference",
         "text labels",
@@ -321,6 +332,7 @@ def build_visual_language(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "sourceVibe": args.source_vibe or "Infer from the reference before choosing state cues.",
         "motifs": motifs,
+        "identityProps": identity_props,
         "forbiddenGenericCues": forbidden,
     }
 
@@ -469,6 +481,7 @@ def build_base_prompt(
 ) -> str:
     source_vibe = visual_language["sourceVibe"]
     motifs = ", ".join(visual_language.get("motifs", []))
+    identity_props = ", ".join(visual_language.get("identityProps", [])) or "infer must-keep props and signature accessories from the reference"
     forbidden = ", ".join(visual_language.get("forbiddenGenericCues", []))
     key_hex = chroma_key["hex"]
     key_name = chroma_key["name"]
@@ -479,6 +492,7 @@ Create one centered full-body canonical base sprite for a React/chatbot companio
 Reference and concept: {description or "Use the attached reference image(s) as the mascot identity source."}
 Vibe read: {source_vibe}
 Mascot-native motifs to preserve when useful: {motifs}
+Must-keep identity props/accessories: {identity_props}
 Generic cues to avoid: {forbidden}
 Anatomy class: {anatomy_class}
 
@@ -498,11 +512,14 @@ def build_prompt(
     cell_width: int,
     cell_height: int,
     source_vibe: str,
+    identity_props: list[str] | None = None,
     chroma_key: dict[str, Any] | None = None,
 ) -> str:
     anatomy = ANATOMY_GUIDANCE.get(anatomy_class, ANATOMY_GUIDANCE["ambiguous-limbs"])
     key_hex = chroma_key["hex"] if chroma_key else "the chosen chroma-key color"
     key_name = chroma_key["name"] if chroma_key else "flat"
+    props = ", ".join(identity_props or [])
+    identity_prop_line = f"Must-keep identity props/accessories: {props}" if props else "Must-keep identity props/accessories: infer from the reference; keep signature props, emblems, and outfit silhouettes consistent when present."
     return f"""# {name} {state} row prompt
 
 Use the attached reference image(s) for original identity, the attached canonical base sprite as the approved design, and the attached layout guide only for frame count, slot spacing, centering, and safe padding. The layout guide is a construction input only: it is intentionally empty and is not a mascot preview. Infer the mascot's vibe from the reference before choosing the pose or visual aid.
@@ -527,6 +544,8 @@ Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {ARTISTIC_QUALITY_POLICY}
 {FACE_TOUCH_SILHOUETTE_POLICY if anatomy_class in {"hands", "paws", "ambiguous-limbs"} else ""}
 Vibe fit: {source_vibe}
+{identity_prop_line}
+{IDENTITY_PROP_POLICY}
 Anatomy class: {anatomy_class}
 Anatomy guidance: {anatomy}
 Reject if: {state_plan["rejectIf"]}
@@ -629,6 +648,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--anatomy-class", choices=sorted(ANATOMY_GUIDANCE), default="ambiguous-limbs")
     parser.add_argument("--source-vibe", help="Optional inferred vibe note; omit to make prompts infer from reference")
     parser.add_argument("--motif", action="append", default=[], help="Mascot-native motif; can be repeated")
+    parser.add_argument("--identity-prop", action="append", default=[], help="Must-keep identity prop, emblem, clothing shape, or signature accessory; can be repeated")
     parser.add_argument("--forbid-cue", action="append", default=[], help="Generic/off-vibe cue to avoid; can be repeated")
     parser.add_argument("--cell-width", type=int, default=256)
     parser.add_argument("--cell-height", type=int, default=288)
@@ -781,6 +801,7 @@ def main(argv: list[str] | None = None) -> int:
             cell_width=args.cell_width,
             cell_height=args.cell_height,
             source_vibe=visual_language["sourceVibe"],
+            identity_props=visual_language.get("identityProps", []),
             chroma_key=chroma_key,
         )
         write_text(out_dir / "prompts" / f"{state}.md", prompt_text)

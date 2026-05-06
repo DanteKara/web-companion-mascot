@@ -205,6 +205,8 @@ For newly generated semantic-enhancer packs, the agent should infer a visual-lan
 
 `style.visualLanguage` is optional metadata, not a substitute for visual review. It is useful when a state has been failing because generic symbols or off-vibe props keep appearing. Each enhanced state may include `enhancer.visualLanguageFit`, a short note explaining why the state cue matches the reference vibe. Use `scripts/validate_companion_manifest.py --require-visual-language` only for targeted auditions where missing vibe-fit metadata should fail validation.
 
+For detailed references, `style.visualLanguage.identityProps` may list must-keep props, emblems, clothing silhouettes, markings, and signature accessories. These are part of identity, not optional decoration. Simplify ornate detail into readable pixel clusters, but when a signature prop appears in a state row, keep its count, side, scale, attachment, and basic silhouette stable across the row. If a state is too crowded for a signature prop, omit it intentionally for the whole row instead of letting it flicker in and out. Visual QA should reject duplicated staffs/tools, changing emblem placement, mutated props, and trim or accessories that read as extra anatomy.
+
 Held, touched, near-hand, writing, or appendage-operated work-prop enhancers should also include an `anatomyGuard` so prompts and QA do not invent new limbs:
 
 ```json
