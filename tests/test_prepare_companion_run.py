@@ -106,6 +106,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("Visible hands may point, present, hold, touch the face, type, or write", thinking_prompt)
             self.assertIn("friendly tiny helper robot", thinking_prompt)
+            self.assertIn("Art direction floor", thinking_prompt)
+            self.assertIn("polished mascot performance", thinking_prompt)
+            self.assertIn("charming mascot-native acting beat", thinking_prompt)
+            self.assertIn("visibly connected to its original shoulder/body anchor", thinking_prompt)
+            self.assertIn("does not merge into a new cheek", thinking_prompt)
+            self.assertIn("broad pixel-mitt", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertEqual(cue_plan["visualLanguage"]["motifs"], ["small panel glow"])

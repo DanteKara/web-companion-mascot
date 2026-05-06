@@ -71,6 +71,8 @@ Do not accept a semantic enhancer just because it passes geometry QA. A stable b
 
 Before state generation, infer a lightweight visual-language read from the reference: what the mascot feels like, which motifs naturally belong to it, and which generic cues would look out of place. The user should not have to supply this. Record it in `style.visualLanguage` when useful, especially for auditions, but do not let metadata become a substitute for good art direction. The real goal is the same as `$hatch-pet`: the row should look like the referenced character naturally performing the state.
 
+Keep an art direction floor in every row prompt. The mascot should look like a polished character performance, not a checklist of constraints: expressive eyes, mouth shapes, head/body tilt, timing, appendage follow-through, and a tiny state cue only when it improves readability. Reject bland, stiff, generic, or symbol-only rows even when the anatomy is technically correct. The skill should constrain failure modes without flattening the model's ability to make charming, character-native pixel-art choices.
+
 Preserve the reference's expression language as part of identity. Do not make an eyebrowless, calm, sleepy, plush, abstract, or icon-like mascot "focused" by inventing angry brows, hostile eye shapes, slanted angry eyes, V-shaped eye/brow marks, teeth, sweat, blush, or dramatic emotion marks. Use the source's own face grammar first: eye direction, blink timing, mouth shape, head/body tilt, pace, and appendage motion. Add stronger facial marks only when the source design already supports them or the state truly needs them and the result still feels character-appropriate.
 
 State cues must survive the deterministic cleanup. Do not rely on isolated tiny specks, far-away dots, or ultra-thin marks as the only semantic enhancer; chroma-key cleanup may remove them, or preserving them may force the body to shrink around the effect. For simple or no-limb mascots, prefer compact body-surface, rim-touching, attached, or close-overlapping cues that remain readable at 64-96 px without being mistaken for new limbs.
@@ -184,6 +186,8 @@ typing / writing           visible fingers or clearly fingered hands only
 ```
 
 Record those as `style.anatomyContract.appendages[].affordances`. Then choose the acting language from the affordances: real hands can use hand-to-chin thinking, presenting, holding, pointing, and typing; paws or mitts can use broad gestures and chunky braced props; fins, wings, sleeves, and ambiguous simple appendages should usually stay side-attached unless the reference and an audition prove a riskier gesture reads correctly; no-limb mascots should use face, body, aura, near-head, or body-surface semantics.
+
+When real hands, paws, sleeves, tentacles, or arms touch the face, present an idea, brace a prop, or operate a work surface, preserve a clear silhouette path back to the original body anchor. Leave enough outline or tiny negative space for the appendage to read as the original appendage, not a new cheek, nose, detached mitten, duplicated hand, extra paw, or face patch. Prefer broad pixel-mitt/paw gestures over tiny fingers unless the reference clearly has fingers.
 
 For risky enhancer or pose metadata, add `enhancer.requiredAffordances` such as `["face-touch"]`, `["grip"]`, or `["typing"]`. The validator compares those actions against the named interactors in `enhancer.anatomyGuard.allowedInteractors` and the appendage affordances in `style.anatomyContract`.
 

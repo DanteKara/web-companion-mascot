@@ -132,6 +132,23 @@ BODY_SURFACE_CUE_POLICY = (
     "shapes must stay distinct from sprouts, ears, fins, wings, paws, sleeves, tails, or other real anatomy."
 )
 
+ARTISTIC_QUALITY_POLICY = (
+    "Art direction floor: make the row feel like a polished mascot performance, not a checklist of constraints. "
+    "Choose the most charming mascot-native acting beat that still preserves identity: expressive eyes, mouth shapes, "
+    "head/body tilt, timing, appendage follow-through, and a tiny state cue only when it improves readability. "
+    "The result should look like the referenced character naturally doing the state in Codex pixel-pet style, with "
+    "confident simple shapes, tasteful asymmetry, and deliberate frame-to-frame acting. Reject bland, stiff, generic, "
+    "or symbol-only rows even when the anatomy is technically correct."
+)
+
+FACE_TOUCH_SILHOUETTE_POLICY = (
+    "For face-touch, chin-touch, cheek-touch, near-face thinking, presenting, or held-prop gestures, keep every "
+    "interacting hand, paw, sleeve, tentacle, or arm visibly connected to its original shoulder/body anchor with a "
+    "clear silhouette path. Leave a tiny readable gap or outline separation where the appendage nears the face or "
+    "prop so it does not merge into a new cheek, nose, mitten, duplicated hand, or face patch. Use broad pixel-mitt "
+    "or paw poses rather than tiny fingers unless the reference clearly has fingers."
+)
+
 ANATOMY_GUIDANCE = {
     "hands": (
         "Visible hands may point, present, hold, touch the face, type, or write when the reference supports it. "
@@ -507,6 +524,8 @@ Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {state_plan["freestandingPropPolicy"]}
 {state_plan["workPropMarkPolicy"]}
 {state_plan["bodySurfaceCuePolicy"]}
+{ARTISTIC_QUALITY_POLICY}
+{FACE_TOUCH_SILHOUETTE_POLICY if anatomy_class in {"hands", "paws", "ambiguous-limbs"} else ""}
 Vibe fit: {source_vibe}
 Anatomy class: {anatomy_class}
 Anatomy guidance: {anatomy}
