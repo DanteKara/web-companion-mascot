@@ -326,6 +326,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Fantasy or magic mascots should use spell circles, rune tiles, charm tokens", working_prompt)
             self.assertIn("the mascot's gaze, hand, body, or identity prop must visibly cause the change", working_prompt)
             self.assertIn("near the active hand, paw, mouth, tool tip, staff tip", working_prompt)
+            self.assertIn("prefer close-contact targets that touch, overlap, hover just above", working_prompt)
+            self.assertIn("Avoid floor-level token rows and far-floating targets", working_prompt)
             self.assertIn("The viewer should understand what the mascot is acting on in every frame", working_prompt)
 
     def test_answering_prompt_requires_mouth_origin_voice_cue(self) -> None:

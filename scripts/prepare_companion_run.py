@@ -153,7 +153,10 @@ WORK_TARGET_INTERACTION_POLICY = (
     "Place the work target in a believable interaction zone: near the active hand, paw, mouth, tool tip, staff tip, "
     "or directly in front of the mascot's gaze. Do not let the target drift to the floor, far side, or empty space "
     "unless a visible gaze line, hand pose, tool/staff alignment, aura connection, or body lean makes the causal "
-    "relationship obvious. The viewer should understand what the mascot is acting on in every frame."
+    "relationship obvious. For mascots with real hands, paws, staffs, wands, tools, or held identity props, prefer "
+    "close-contact targets that touch, overlap, hover just above, or sit within a few pixels of the active hand/tool "
+    "tip. Avoid floor-level token rows and far-floating targets unless the whole character design naturally works "
+    "from the floor. The viewer should understand what the mascot is acting on in every frame."
 )
 
 BODY_SURFACE_CUE_POLICY = (
