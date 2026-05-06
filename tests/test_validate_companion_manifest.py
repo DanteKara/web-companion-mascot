@@ -749,6 +749,23 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("text-like work marks" in warning for warning in warnings))
 
+    def test_work_prop_fine_surface_lines_warn(self) -> None:
+        enhancer = {
+            "kind": "freestanding work tray",
+            "attachment": "freestanding",
+            "description": "A small tray beside the mascot with wood-grain lines and parallel grooves.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("text-like work marks" in warning for warning in warnings))
+
     def test_negated_text_like_work_mark_language_does_not_warn(self) -> None:
         enhancer = {
             "kind": "freestanding work slate",

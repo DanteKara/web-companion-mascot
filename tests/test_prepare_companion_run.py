@@ -71,6 +71,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("remain visible after chroma-key cleanup", working_prompt)
             self.assertIn("tiny detached speck", working_prompt)
             self.assertIn("Reject a pretty motif-native effect when it does not communicate the state", working_prompt)
+            self.assertIn("Do not place repeated leaf, oval, wing, mitten, paw, droplet", working_prompt)
+            self.assertIn("inside the body core", working_prompt)
 
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["style"]["renderingStyle"], "codex-pixel-art")
@@ -136,6 +138,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("rim-touching", working_prompt)
             self.assertIn("invented angry eyebrows", working_prompt)
             self.assertIn("slanted angry eyes", working_prompt)
+            self.assertIn("extra wings", working_prompt)
+            self.assertIn("Cue colors and shapes must stay distinct", working_prompt)
 
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertNotIn("brace", manifest["states"]["working"]["enhancer"]["description"])
@@ -261,6 +265,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
             self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
             self.assertIn("Avoid notebook, paper, page, or parchment-like surfaces", working_prompt)
+            self.assertIn("fine stripes, wood-grain lines, plank lines, or parallel grooves", working_prompt)
             self.assertIn("Do not make the work surface read as a tiny document full of writing", working_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
@@ -288,6 +293,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
             self.assertIn("For any slate, tablet, blank card stack, token tray, panel, or work surface", working_prompt)
             self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
+            self.assertIn("solid and unruled", working_prompt)
             self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
 
     def test_preparer_writes_hatch_style_imagegen_jobs(self) -> None:

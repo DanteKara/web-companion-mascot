@@ -117,8 +117,19 @@ WORK_PROP_MARK_POLICY = (
     "64-96 px; no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, "
     "ruled notebook lines, or list rows. Avoid notebook, paper, page, or parchment-like surfaces unless the "
     "user specifically asked for them; if they are used, keep the surface blank except for chunky non-text tokens. "
+    "Keep tray/tile/slate surfaces solid and unruled; avoid fine stripes, wood-grain lines, plank lines, or "
+    "parallel grooves that can read as notebook rules or pseudo-writing at small sizes. "
     "If anatomy supports typing or writing, show that action through hand/body motion while the surface marks remain non-text. "
     "Do not make the work surface read as a tiny document full of writing."
+)
+
+BODY_SURFACE_CUE_POLICY = (
+    "For body-surface, rim-touching, or compact attached processing cues on no-limb, fin, wing, paw, or other "
+    "simple-appendage mascots, keep the cue inside the body core or as one small rim-touching mark. Do not place "
+    "repeated leaf, oval, wing, mitten, paw, droplet, or appendage-colored tokens along the lower rim or side edges "
+    "where they read as feet, extra limbs, extra wings, new paws, or detached appendages. Prefer one small central "
+    "glyph/status band or 1-3 high-contrast square, dot, check, or token marks inside the silhouette. Cue colors and "
+    "shapes must stay distinct from sprouts, ears, fins, wings, paws, sleeves, tails, or other real anatomy."
 )
 
 ANATOMY_GUIDANCE = {
@@ -300,6 +311,7 @@ def build_visual_language(args: argparse.Namespace) -> dict[str, Any]:
 def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict[str, str]:
     visual_aid = STATE_VISUAL_AIDS.get(state, "none unless the pose is unclear")
     freestanding_prop_policy = ""
+    body_surface_cue_policy = ""
     if state == "thinking" and anatomy_class in {"fins-no-hands", "no-limbs", "ambiguous-limbs"}:
         visual_aid = "compact side-origin thought puff or idea orb; use eyes, tilt, and blink timing, not hand-to-chin"
     if anatomy_class == "no-limbs" and state == "working":
@@ -309,15 +321,18 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
             "no held, near-hand, or tiny detached speck props"
         )
         freestanding_prop_policy = NO_HAND_WORK_PROP_POLICY
+        body_surface_cue_policy = BODY_SURFACE_CUE_POLICY
     if anatomy_class in {"fins-no-hands", "ambiguous-limbs"} and state == "working":
         visual_aid = (
             "busy-but-friendly face/body acting plus a freestanding or resting work prop, compact attached cue, "
             "rim-touching cue, or body-surface processing cue; no held props or tiny detached specks in the draft plan"
         )
         freestanding_prop_policy = NO_HAND_WORK_PROP_POLICY
+        body_surface_cue_policy = BODY_SURFACE_CUE_POLICY
     if state_clarity == "pose-only":
         visual_aid = "none; communicate through acting, timing, and existing identity props only"
         freestanding_prop_policy = ""
+        body_surface_cue_policy = ""
     return {
         "state": state,
         "semanticRead": STATE_PURPOSES.get(state, state),
@@ -330,6 +345,7 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
         ),
         "freestandingPropPolicy": freestanding_prop_policy,
         "workPropMarkPolicy": WORK_PROP_MARK_POLICY if state == "working" and state_clarity != "pose-only" else "",
+        "bodySurfaceCuePolicy": body_surface_cue_policy,
         "rejectIf": STATE_REJECTS.get(state, "unclear state read, off-vibe symbol, identity drift, extra anatomy"),
     }
 
@@ -490,6 +506,7 @@ Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {state_plan["frameArc"]}
 {state_plan["freestandingPropPolicy"]}
 {state_plan["workPropMarkPolicy"]}
+{state_plan["bodySurfaceCuePolicy"]}
 Vibe fit: {source_vibe}
 Anatomy class: {anatomy_class}
 Anatomy guidance: {anatomy}

@@ -87,6 +87,16 @@ TEXT_LIKE_WORK_MARK_TERMS = {
     "notebook lines",
     "list row",
     "list rows",
+    "fine stripe",
+    "fine stripes",
+    "wood grain",
+    "wood-grain",
+    "wood-grain line",
+    "wood-grain lines",
+    "plank line",
+    "plank lines",
+    "parallel groove",
+    "parallel grooves",
 }
 TEXT_NEGATION_TERMS = {"no", "non", "not", "without"}
 TEXT_NEGATION_BREAK_TERMS = {"although", "but", "except", "however", "though", "while", "yet"}
