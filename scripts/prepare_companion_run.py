@@ -70,7 +70,7 @@ STATE_VISUAL_AIDS = {
 }
 
 STATE_REJECTS = {
-    "working": "anger, hostile eyes, slanted angry eyes, V-shaped eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
+    "working": "anger, hostile eyes, slanted angry eyes, V-shaped eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, duplicate identity props, prop-shaped glyph copies, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues",
     "thinking": "generic icon straight above the head, oversized second head/body-sized thought orb, static dots, face-touch by unsupported appendages",
     "listening": "microphone props for non-voice apps, detached sound clutter",
@@ -132,12 +132,20 @@ WORK_PROP_MARK_POLICY = (
 
 WORK_TARGET_POLICY = (
     "Working must show the mascot working on a concrete target, not merely posing beside status icons. Choose one "
-    "small mascot-native work target: slate, tablet, token tray, card stack, work tile, tool, staff-tip glyph, "
-    "magical work circle, sorting tokens, or an existing identity prop used as a pointer/brace. The target needs a "
+    "small mascot-native work target: slate, tablet, token tray, card stack, work tile, small rune tile, "
+    "magical work circle, sorting tokens, or an existing identity prop used only as a pointer/brace. The target needs a "
     "visible before/during/after transformation: inactive or blank -> being operated/sorted/checked -> progress/result. "
     "For mascots with a staff, wand, tool, or held identity prop, preserve that prop and place the work target near "
     "the prop tip or free hand so the action reads as deliberate work. Do not use random decorative squares, generic "
     "floating UI icons, loose sparkles, or a check mark with no preceding work action."
+)
+
+WORK_IDENTITY_PROP_EFFECT_POLICY = (
+    "Use the existing held prop as the source of the action when the mascot already has a staff, wand, weapon, tool, "
+    "badge, emblem, or other signature prop; do not summon, draw, or echo a second copy of that prop as the work cue. "
+    "Do not shape the work cue like a duplicate of the mascot's identity prop: no second staff, wand, tool, weapon, "
+    "badge, emblem, or prop-shaped glyph. The target should be a distinct small rune, tile, mote, orb, tray, panel, "
+    "or token that the existing prop/hand/gaze affects."
 )
 
 WORK_TARGET_FIT_POLICY = (
@@ -161,7 +169,7 @@ WORK_TARGET_INTERACTION_POLICY = (
 
 WORK_RESULT_CUE_POLICY = (
     "Use a theme-native result mark when the work resolves: a tiny settled rune, glow, sorted token, progress block, "
-    "staff-tip glyph, sparkle, or motif-specific success cue. Use generic check marks only when the mascot's visual "
+    "staff-tip glow, sparkle, or motif-specific success cue. Use generic check marks only when the mascot's visual "
     "language supports product/tool UI; otherwise a check mark should be replaced by a character-native finished state."
 )
 
@@ -219,7 +227,9 @@ VOICE_CUE_POLICY = (
     "bubbles, or loose orbs beside the cheek, hand, staff, or hood if they do not originate from the mouth. Mouth "
     "shapes and voice cues must change together: closed/tiny mouth -> small open mouth with small attached cue -> "
     "clearer outward cue -> smaller returning cue -> closed smile. Use a small attached cue -> clearer outward cue -> "
-    "smaller returning cue path, not the same puff pasted beside the face."
+    "smaller returning cue path, not the same puff pasted beside the face. Prefer a compact speech-bead or breath-puff "
+    "trail with 2-3 tiny connected pips or one small cloud puff with a mouth-tail; not thinking bubbles, not odd "
+    "detached round bubbles, and not a separate chat panel."
 )
 
 EXPRESSION_VARIATION_POLICY = (
@@ -444,6 +454,7 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
         "freestandingPropPolicy": freestanding_prop_policy,
         "workPropMarkPolicy": WORK_PROP_MARK_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workTargetPolicy": WORK_TARGET_POLICY if state == "working" and state_clarity != "pose-only" else "",
+        "workIdentityPropEffectPolicy": WORK_IDENTITY_PROP_EFFECT_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workTargetFitPolicy": WORK_TARGET_FIT_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workTargetInteractionPolicy": WORK_TARGET_INTERACTION_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "workResultCuePolicy": WORK_RESULT_CUE_POLICY if state == "working" and state_clarity != "pose-only" else "",
@@ -615,6 +626,7 @@ Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {state_plan["freestandingPropPolicy"]}
 {state_plan["workPropMarkPolicy"]}
 {state_plan["workTargetPolicy"]}
+{state_plan["workIdentityPropEffectPolicy"]}
 {state_plan["workTargetFitPolicy"]}
 {state_plan["workTargetInteractionPolicy"]}
 {state_plan["workResultCuePolicy"]}

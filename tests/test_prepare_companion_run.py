@@ -331,6 +331,35 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("The viewer should understand what the mascot is acting on in every frame", working_prompt)
             self.assertIn("Use a theme-native result mark", working_prompt)
             self.assertIn("generic check marks only when the mascot's visual language supports product/tool UI", working_prompt)
+            self.assertIn("Do not shape the work cue like a duplicate of the mascot's identity prop", working_prompt)
+            self.assertIn("no second staff, wand, tool, weapon, badge, emblem, or prop-shaped glyph", working_prompt)
+
+    def test_working_prompt_forbids_cloned_identity_prop_effects(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "PropMage",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "working",
+                    "--anatomy-class",
+                    "hands",
+                    "--identity-prop",
+                    "single trident staff held on the left side",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
+            self.assertIn("Must-keep identity props/accessories: single trident staff held on the left side", working_prompt)
+            self.assertIn("Use the existing held prop as the source of the action", working_prompt)
+            self.assertIn("do not summon, draw, or echo a second copy of that prop", working_prompt)
+            self.assertIn("target should be a distinct small rune, tile, mote, orb, tray, panel, or token", working_prompt)
 
     def test_answering_prompt_requires_mouth_origin_voice_cue(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -358,6 +387,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Expression variation is mandatory", answering_prompt)
             self.assertIn("Mouth shapes and voice cues must change together", answering_prompt)
             self.assertIn("small attached cue -> clearer outward cue -> smaller returning cue", answering_prompt)
+            self.assertIn("speech-bead or breath-puff trail", answering_prompt)
+            self.assertIn("not thinking bubbles", answering_prompt)
+            self.assertIn("not odd detached round bubbles", answering_prompt)
 
     def test_hands_thinking_prompt_tracks_hand_roles_for_face_touch_with_identity_prop(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
