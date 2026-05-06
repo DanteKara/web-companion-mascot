@@ -6,9 +6,17 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+
+CANONICAL_BASE_PATH = "references/canonical-base.png"
+BASE_OUTPUT_PATH = "generated/base.png"
+LAYOUT_GUIDE_DIR = "references/layout-guides"
+LAYOUT_GUIDE_SAFE_MARGIN_X = 24
+LAYOUT_GUIDE_SAFE_MARGIN_Y = 22
 
 DEFAULT_STATES = [
     "idle",
@@ -94,6 +102,15 @@ ANATOMY_GUIDANCE = {
     ),
 }
 
+CHROMA_KEY_CANDIDATES = [
+    ("magenta", "#FF00FF"),
+    ("cyan", "#00FFFF"),
+    ("yellow", "#FFFF00"),
+    ("blue", "#0000FF"),
+    ("orange", "#FF7F00"),
+    ("green", "#00FF00"),
+]
+
 
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
@@ -102,6 +119,10 @@ def slugify(value: str) -> str:
 
 def parse_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def rel(path: Path, root: Path) -> str:
+    return str(path.resolve().relative_to(root.resolve()))
 
 
 def frame_count_for(state: str, compact: bool) -> int:
@@ -122,6 +143,93 @@ def durations_for(state: str, frames: int) -> list[int]:
     durations = [base[index % len(base)] for index in range(frames)]
     durations[-1] = max(durations[-1], 180)
     return durations
+
+
+def parse_hex_color(value: str) -> tuple[int, int, int]:
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+        raise SystemExit(f"invalid chroma key color: {value}; expected #RRGGBB")
+    return tuple(int(value[index : index + 2], 16) for index in (1, 3, 5))
+
+
+def rgb_to_hex(rgb: tuple[int, int, int]) -> str:
+    return f"#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
+
+
+def color_distance(left: tuple[int, int, int], right: tuple[int, int, int]) -> float:
+    return sum((left[index] - right[index]) ** 2 for index in range(3)) ** 0.5
+
+
+def image_metadata(path: Path) -> dict[str, Any]:
+    from PIL import Image
+
+    with Image.open(path) as image:
+        return {
+            "path": str(path),
+            "width": image.width,
+            "height": image.height,
+            "mode": image.mode,
+            "format": image.format,
+        }
+
+
+def sampled_reference_pixels(paths: list[Path]) -> list[tuple[int, int, int]]:
+    from PIL import Image
+
+    pixels: list[tuple[int, int, int]] = []
+    for path in paths:
+        with Image.open(path) as opened:
+            image = opened.convert("RGBA")
+            image.thumbnail((128, 128), Image.Resampling.LANCZOS)
+            data = image.tobytes()
+            for index in range(0, len(data), 4):
+                red, green, blue, alpha = data[index : index + 4]
+                if alpha <= 16:
+                    continue
+                pixels.append((red, green, blue))
+
+    non_background = [
+        pixel
+        for pixel in pixels
+        if not (pixel[0] > 244 and pixel[1] > 244 and pixel[2] > 244)
+    ]
+    return non_background or pixels
+
+
+def choose_chroma_key(reference_paths: list[Path], requested: str) -> dict[str, Any]:
+    if requested.lower() != "auto":
+        rgb = parse_hex_color(requested)
+        return {
+            "hex": rgb_to_hex(rgb),
+            "rgb": list(rgb),
+            "name": "user-selected",
+            "selection": "manual",
+        }
+
+    pixels = sampled_reference_pixels(reference_paths) if reference_paths else []
+    if not pixels:
+        rgb = parse_hex_color("#FF00FF")
+        return {
+            "hex": "#FF00FF",
+            "rgb": list(rgb),
+            "name": "magenta",
+            "selection": "fallback",
+        }
+
+    scored: list[tuple[float, int, str, tuple[int, int, int]]] = []
+    for preference_index, (name, hex_color) in enumerate(CHROMA_KEY_CANDIDATES):
+        rgb = parse_hex_color(hex_color)
+        distances = sorted(color_distance(rgb, pixel) for pixel in pixels)
+        percentile_index = max(0, min(len(distances) - 1, int(len(distances) * 0.01)))
+        scored.append((distances[percentile_index], -preference_index, name, rgb))
+
+    score, _preference, name, rgb = max(scored)
+    return {
+        "hex": rgb_to_hex(rgb),
+        "rgb": list(rgb),
+        "name": name,
+        "selection": "auto",
+        "score": round(score, 2),
+    }
 
 
 def visual_aid_mode_for(state: str, state_clarity: str) -> str:
@@ -165,6 +273,124 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
     }
 
 
+def draw_dashed_line(
+    draw: Any,
+    start: tuple[int, int],
+    end: tuple[int, int],
+    *,
+    fill: str,
+    dash: int = 8,
+    gap: int = 6,
+) -> None:
+    x1, y1 = start
+    x2, y2 = end
+    if x1 == x2:
+        for y in range(min(y1, y2), max(y1, y2), dash + gap):
+            draw.line((x1, y, x2, min(y + dash, max(y1, y2))), fill=fill)
+        return
+    if y1 == y2:
+        for x in range(min(x1, x2), max(x1, x2), dash + gap):
+            draw.line((x, y1, min(x + dash, max(x1, x2)), y2), fill=fill)
+        return
+    raise ValueError("draw_dashed_line only supports horizontal or vertical lines")
+
+
+def create_layout_guide(
+    path: Path,
+    *,
+    state: str,
+    frames: int,
+    cell_width: int,
+    cell_height: int,
+) -> dict[str, Any]:
+    from PIL import Image, ImageDraw
+
+    width = frames * cell_width
+    height = cell_height
+    image = Image.new("RGB", (width, height), "#f7f7f7")
+    draw = ImageDraw.Draw(image)
+
+    for index in range(frames):
+        left = index * cell_width
+        right = left + cell_width - 1
+        draw.rectangle((left, 0, right, height - 1), outline="#111111", width=2)
+
+        safe_left = left + LAYOUT_GUIDE_SAFE_MARGIN_X
+        safe_top = LAYOUT_GUIDE_SAFE_MARGIN_Y
+        safe_right = right - LAYOUT_GUIDE_SAFE_MARGIN_X
+        safe_bottom = height - 1 - LAYOUT_GUIDE_SAFE_MARGIN_Y
+        draw.rectangle((safe_left, safe_top, safe_right, safe_bottom), outline="#2f80ed", width=2)
+
+        center_x = left + cell_width // 2
+        center_y = height // 2
+        draw_dashed_line(draw, (center_x, safe_top), (center_x, safe_bottom), fill="#b8b8b8")
+        draw_dashed_line(draw, (safe_left, center_y), (safe_right, center_y), fill="#b8b8b8")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path)
+    return {
+        "state": state,
+        "path": str(path),
+        "width": width,
+        "height": height,
+        "frames": frames,
+        "cellWidth": cell_width,
+        "cellHeight": cell_height,
+        "safeMarginX": LAYOUT_GUIDE_SAFE_MARGIN_X,
+        "safeMarginY": LAYOUT_GUIDE_SAFE_MARGIN_Y,
+        "usage": "layout guide input only; do not copy visible guide lines into generated sprite strips",
+    }
+
+
+def create_layout_guides(
+    run_dir: Path,
+    states: list[str],
+    frames_by_state: dict[str, int],
+    cell_width: int,
+    cell_height: int,
+) -> list[dict[str, Any]]:
+    guide_dir = run_dir / LAYOUT_GUIDE_DIR
+    return [
+        create_layout_guide(
+            guide_dir / f"{state}.png",
+            state=state,
+            frames=frames_by_state[state],
+            cell_width=cell_width,
+            cell_height=cell_height,
+        )
+        for state in states
+    ]
+
+
+def build_base_prompt(
+    *,
+    name: str,
+    description: str,
+    visual_language: dict[str, Any],
+    anatomy_class: str,
+    chroma_key: dict[str, Any],
+) -> str:
+    source_vibe = visual_language["sourceVibe"]
+    motifs = ", ".join(visual_language.get("motifs", []))
+    forbidden = ", ".join(visual_language.get("forbiddenGenericCues", []))
+    key_hex = chroma_key["hex"]
+    key_name = chroma_key["name"]
+    return f"""# {name} canonical base companion prompt
+
+Create one centered full-body canonical base sprite for a React/chatbot companion mascot named {name}.
+
+Reference and concept: {description or "Use the attached reference image(s) as the mascot identity source."}
+Vibe read: {source_vibe}
+Mascot-native motifs to preserve when useful: {motifs}
+Generic cues to avoid: {forbidden}
+Anatomy class: {anatomy_class}
+
+Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped pixel edges, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite details, simple expressive face, readable silhouette at website sizes. No smooth illustration, glossy rendering, 3D, painterly gradients, vector-flat icon style, text, labels, scenery, shadows, UI panels, or marketing artwork.
+
+Output one neutral full-body mascot sprite pose only on a perfectly flat pure {key_name} {key_hex} chroma-key background. Preserve the reference identity, silhouette cues, palette family, face, must-keep markings, appendage count, and charm. Do not include state props, speech bubbles, thought bubbles, detached particles, scenery, or extra anatomy. Do not use {key_hex}, pure {key_name}, or colors close to that chroma key in the mascot, outline, highlights, or effects.
+"""
+
+
 def build_prompt(
     *,
     name: str,
@@ -175,13 +401,16 @@ def build_prompt(
     cell_width: int,
     cell_height: int,
     source_vibe: str,
+    chroma_key: dict[str, Any] | None = None,
 ) -> str:
     anatomy = ANATOMY_GUIDANCE.get(anatomy_class, ANATOMY_GUIDANCE["ambiguous-limbs"])
+    key_hex = chroma_key["hex"] if chroma_key else "the chosen chroma-key color"
+    key_name = chroma_key["name"] if chroma_key else "flat"
     return f"""# {name} {state} row prompt
 
-Use the provided reference image(s) as the identity source. Infer the mascot's vibe from the reference before choosing the pose or visual aid.
+Use the attached reference image(s) for original identity, the attached canonical base sprite as the approved design, and the attached layout guide only for frame count, slot spacing, centering, and safe padding. Infer the mascot's vibe from the reference before choosing the pose or visual aid.
 
-Create one horizontal sprite row strip with exactly {frame_count} separated frames on a flat removable chroma-key background.
+Create one horizontal sprite row strip with exactly {frame_count} separated frames on a perfectly flat pure {key_name} {key_hex} chroma-key background.
 
 Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped pixel edges, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite effects. No smooth illustration, glossy rendering, 3D, painterly gradients, vector-flat icons, text, labels, scenery, shadows, or UI panels.
 
@@ -205,13 +434,80 @@ Semantic ladder:
 
 Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. For working, the cue should look like purposeful processing, sorting, checking, gathering, or tool activity while the face stays focused-but-friendly. For answering, the cue should support mouth/voice motion rather than become a speech panel.
 
-Frame layout: keep each pose fully inside an implied {cell_width}x{cell_height} cell with safe padding. Keep body center, top-of-head height, bottom edge, silhouette scale, and appendage count stable across the row. Every frame must have a meaningful change in face, pose, body motion, prop, or visual aid.
+Layout guide rule: follow the attached guide's {frame_count} frame boxes and safe padding, but do not reproduce the guide itself. No visible boxes, borders, labels, guide colors, center marks, or guide background may appear in the output.
+
+Frame layout: keep each pose fully inside an implied {cell_width}x{cell_height} cell with safe padding. Keep body center, top-of-head height, bottom edge, silhouette scale, and appendage count stable across the row. Every frame must have a meaningful change in face, pose, body motion, prop, or visual aid. Do not use {key_hex}, pure {key_name}, or colors close to that chroma key in the mascot, prop, outline, highlights, or effects.
 """
 
 
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+
+def write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text.rstrip() + "\n", encoding="utf-8")
+
+
+def make_jobs(
+    *,
+    run_dir: Path,
+    states: list[str],
+    frames_by_state: dict[str, int],
+    copied_refs: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    reference_inputs = [
+        {"path": rel(Path(str(ref["copiedPath"])), run_dir), "role": "original mascot reference"}
+        for ref in copied_refs
+    ]
+    jobs: list[dict[str, Any]] = [
+        {
+            "id": "base",
+            "kind": "base-companion",
+            "status": "pending",
+            "prompt_file": "prompts/base.md",
+            "input_images": reference_inputs,
+            "output_path": BASE_OUTPUT_PATH,
+            "depends_on": [],
+            "generation_skill": "$imagegen",
+            "requires_grounded_generation": bool(reference_inputs),
+            "allow_prompt_only_generation": not reference_inputs,
+            "recording_owner": "parent",
+        }
+    ]
+
+    identity_reference_paths = [CANONICAL_BASE_PATH, BASE_OUTPUT_PATH]
+    for state in states:
+        frames = frames_by_state[state]
+        jobs.append(
+            {
+                "id": state,
+                "kind": "row-strip",
+                "status": "pending",
+                "state": state,
+                "frames": frames,
+                "prompt_file": f"prompts/rows/{state}.md",
+                "input_images": [
+                    *reference_inputs,
+                    {
+                        "path": f"{LAYOUT_GUIDE_DIR}/{state}.png",
+                        "role": f"layout guide for {frames} frame slots; use for spacing only, do not copy guide lines",
+                    },
+                    {"path": CANONICAL_BASE_PATH, "role": "canonical identity reference"},
+                    {"path": BASE_OUTPUT_PATH, "role": "approved base companion sprite"},
+                ],
+                "output_path": f"generated/{state}.png",
+                "depends_on": ["base"],
+                "generation_skill": "$imagegen",
+                "requires_grounded_generation": True,
+                "allow_prompt_only_generation": False,
+                "identity_reference_paths": identity_reference_paths,
+                "parallelizable_after": ["base"],
+                "recording_owner": "parent",
+            }
+        )
+    return jobs
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -229,6 +525,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cell-width", type=int, default=256)
     parser.add_argument("--cell-height", type=int, default=288)
     parser.add_argument("--columns", type=int, default=12)
+    parser.add_argument(
+        "--chroma-key",
+        default="auto",
+        help="Chroma key as #RRGGBB, or auto to choose a safe key from reference colors",
+    )
     parser.add_argument("--compact", action="store_true", help="Use 6-frame audition rows")
     parser.add_argument("--force", action="store_true", help="Overwrite an existing run directory")
     parser.add_argument("--quiet", action="store_true", help="Do not print the output summary")
@@ -244,23 +545,43 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"output directory is not empty; use --force to overwrite: {out_dir}")
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "prompts").mkdir(exist_ok=True)
+    (out_dir / "prompts" / "rows").mkdir(parents=True, exist_ok=True)
     (out_dir / "generated").mkdir(exist_ok=True)
     (out_dir / "qa").mkdir(exist_ok=True)
+    (out_dir / "references").mkdir(exist_ok=True)
+
+    copied_refs: list[dict[str, Any]] = []
+    copied_ref_paths: list[Path] = []
+    for index, raw_reference in enumerate(args.reference, start=1):
+        source = Path(raw_reference).expanduser().resolve()
+        if not source.is_file():
+            parser.error(f"reference not found: {source}")
+        suffix = source.suffix.lower() or ".png"
+        copied = out_dir / "references" / f"reference-{index:02d}{suffix}"
+        shutil.copy2(source, copied)
+        meta = image_metadata(copied)
+        meta["sourcePath"] = str(source)
+        meta["copiedPath"] = str(copied)
+        copied_refs.append(meta)
+        copied_ref_paths.append(copied)
 
     visual_language = build_visual_language(args)
     frames_by_state = {state: frame_count_for(state, args.compact) for state in states}
     columns = max(args.columns, max(frames_by_state.values()))
+    chroma_key = choose_chroma_key(copied_ref_paths, args.chroma_key)
+    layout_guides = create_layout_guides(out_dir, states, frames_by_state, args.cell_width, args.cell_height)
 
     manifest: dict[str, Any] = {
         "id": slugify(args.companion_name),
         "displayName": args.companion_name,
         "description": args.description,
-        "references": [str(Path(path).expanduser()) for path in args.reference],
+        "references": [rel(Path(str(ref["copiedPath"])), out_dir) for ref in copied_refs],
         "style": {
             "renderingStyle": "codex-pixel-art",
             "stateClarity": args.state_clarity,
             "anatomyClass": args.anatomy_class,
             "visualLanguage": visual_language,
+            "chromaKey": chroma_key,
         },
         "atlas": {
             "path": "atlas.webp",
@@ -272,6 +593,32 @@ def main(argv: list[str] | None = None) -> int:
             "cellHeight": args.cell_height,
         },
         "states": {},
+    }
+
+    request = {
+        "id": manifest["id"],
+        "displayName": args.companion_name,
+        "description": args.description,
+        "createdAt": datetime.now(timezone.utc).isoformat(),
+        "primaryGenerationSkill": "$imagegen",
+        "renderingStyle": "codex-pixel-art",
+        "stateClarity": args.state_clarity,
+        "anatomyClass": args.anatomy_class,
+        "visualLanguage": visual_language,
+        "chromaKey": chroma_key,
+        "states": states,
+        "framesByState": frames_by_state,
+        "references": [
+            {
+                **ref,
+                "copiedPath": rel(Path(str(ref["copiedPath"])), out_dir),
+            }
+            for ref in copied_refs
+        ],
+        "layoutGuides": [
+            {**guide, "path": rel(Path(str(guide["path"])), out_dir)}
+            for guide in layout_guides
+        ],
     }
 
     plan: dict[str, Any] = {
@@ -286,6 +633,17 @@ def main(argv: list[str] | None = None) -> int:
             "Reject rows where the state read is unclear even if the effect matches the mascot vibe.",
         ],
     }
+
+    write_text(
+        out_dir / "prompts" / "base.md",
+        build_base_prompt(
+            name=args.companion_name,
+            description=args.description,
+            visual_language=visual_language,
+            anatomy_class=args.anatomy_class,
+            chroma_key=chroma_key,
+        ),
+    )
 
     for row, state in enumerate(states):
         frames = frames_by_state[state]
@@ -305,22 +663,40 @@ def main(argv: list[str] | None = None) -> int:
             }
         manifest["states"][state] = manifest_state
         plan["states"][state] = state_plan
-        (out_dir / "prompts" / f"{state}.md").write_text(
-            build_prompt(
-                name=args.companion_name,
-                state=state,
-                state_plan=state_plan,
-                anatomy_class=args.anatomy_class,
-                frame_count=frames,
-                cell_width=args.cell_width,
-                cell_height=args.cell_height,
-                source_vibe=visual_language["sourceVibe"],
-            ),
-            encoding="utf-8",
+        prompt_text = build_prompt(
+            name=args.companion_name,
+            state=state,
+            state_plan=state_plan,
+            anatomy_class=args.anatomy_class,
+            frame_count=frames,
+            cell_width=args.cell_width,
+            cell_height=args.cell_height,
+            source_vibe=visual_language["sourceVibe"],
+            chroma_key=chroma_key,
         )
+        write_text(out_dir / "prompts" / f"{state}.md", prompt_text)
+        write_text(out_dir / "prompts" / "rows" / f"{state}.md", prompt_text)
 
     write_json(out_dir / "manifest.json", manifest)
+    write_json(out_dir / "companion_request.json", request)
     write_json(out_dir / "qa" / "state-cue-plan.json", plan)
+    write_json(
+        out_dir / "imagegen-jobs.json",
+        {
+            "schema_version": 1,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "run_dir": str(out_dir),
+            "primary_generation_skill": "$imagegen",
+            "request": "companion_request.json",
+            "canonical_identity_reference": None,
+            "jobs": make_jobs(
+                run_dir=out_dir,
+                states=states,
+                frames_by_state=frames_by_state,
+                copied_refs=copied_refs,
+            ),
+        },
+    )
     if not args.quiet:
         print(
             json.dumps(
@@ -328,8 +704,11 @@ def main(argv: list[str] | None = None) -> int:
                     "ok": True,
                     "runDir": str(out_dir),
                     "manifest": str(out_dir / "manifest.json"),
+                    "request": str(out_dir / "companion_request.json"),
+                    "jobs": str(out_dir / "imagegen-jobs.json"),
                     "stateCuePlan": str(out_dir / "qa" / "state-cue-plan.json"),
                     "promptsDir": str(out_dir / "prompts"),
+                    "readyJobs": ["base"],
                 },
                 indent=2,
             )

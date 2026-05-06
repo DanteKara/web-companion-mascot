@@ -15,7 +15,8 @@ Recommend `semantic-enhancers` for chatbot companions with `thinking`, `working`
 
 ## Generic Enhancer Rules
 
-- Start normal generated runs with `scripts/prepare_companion_run.py` so each state has a row prompt and `qa/state-cue-plan.json` before image generation. Treat that file as a planning aid, not proof that the final art works.
+- Start normal generated runs with `scripts/prepare_companion_run.py` so each state has a row prompt, layout guide, `imagegen-jobs.json`, and `qa/state-cue-plan.json` before image generation. Treat those files as planning aids, not proof that the final art works.
+- Generate and record the canonical base before semantic rows. Enhanced row jobs should use the original reference, `references/canonical-base.png`, `generated/base.png`, and the state layout guide as grounding inputs.
 - Pick props from the mascot's world, not from a universal icon set.
 - Before picking state cues, infer the mascot's vibe from the reference: source personality, recurring motifs, and generic cues to avoid. The user should not have to provide this. Record it briefly when useful, but treat it as a prompt-planning aid rather than paperwork.
 - Use one enhancer per state by default.
@@ -231,6 +232,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - The enhancer appears in the wrong state or persists into unrelated states.
 - The row relies on text instead of visual meaning.
 - The manifest omits `style.stateClarity` or per-state `enhancer` metadata for enhanced states.
+- The enhanced row was generated without the canonical base and row layout guide listed in `imagegen-jobs.json`.
 - The manifest still contains draft enhancer wording instead of the actual accepted visual aid.
 - The manifest omits `style.renderingStyle: "codex-pixel-art"` for a new production pack.
 - The enhancer looks pasted on: mismatched outline thickness, different edge treatment, wrong scale, flat vector styling over pixel art, inconsistent lighting, different pixel density, or no believable hand/body occlusion.

@@ -17,8 +17,14 @@ Default package:
 
 ```text
 run/
+  companion_request.json
+  imagegen-jobs.json
   manifest.json
+  prompts/base.md
   prompts/<state>.md
+  prompts/rows/<state>.md
+  references/canonical-base.png
+  references/layout-guides/<state>.png
   atlas.webp
   atlas.png
   frames/<state>/*.png
@@ -76,8 +82,11 @@ Do not create, draw, tile, warp, or synthesize final mascot frames with local Py
 Use deterministic code only for:
 
 - preparing manifests, prompts, state cards, and QA files
+- tracking `$imagegen` jobs, canonical base references, selected-source provenance, and ready/blocked row status
 - chroma-key cleanup, frame extraction, atlas assembly, and previews
 - validation, reports, packaging, and React integration
+
+Do not manually edit `imagegen-jobs.json` to mark jobs complete, copy images into `generated/`, or fabricate canonical references. Use `scripts/record_companion_imagegen_result.py` to ingest the selected original `$imagegen` output. For production, the recorded source should be the original `$CODEX_HOME/generated_images/.../ig_*.png` file unless the row art is explicitly user/artist-provided integrated art, in which case pass `--source-provenance user-provided-integrated-row-art` or `--source-provenance artist-provided-integrated-row-art`.
 
 This boundary matters most for `semantic-enhancers`: props/effects must be painted into the row as native character art, with real occlusion by existing body parts. A post-process prop can make a state technically readable while making the mascot look cheap; production QA must reject that.
 
@@ -175,61 +184,82 @@ For simple appendage mascots, also guard against fake appendages that appear as 
 
 ## Generation Workflow
 
-1. Establish mascot identity: name, reference image(s), must-keep features, anatomy class, prop rules, palette, target website vibe, state list, state clarity profile (`pose-only` or `semantic-enhancers`), `style.renderingStyle: "codex-pixel-art"`, and an inferred visual-language read. When anatomy matters, audit the reference before generation: stable body core, exact visible appendages with count and placement, appendage affordances, allowed motion for those exact parts, forbidden additions, and any ambiguous marks that are not limbs. Record this as `style.anatomyClass` (`hands`, `paws`, `fins-no-hands`, `no-limbs`, or `ambiguous-limbs`) and, for simple/ambiguous appendages or risky prop interactions, `style.anatomyContract`. For normal runs, start with the preparer so the state acting plan exists before image generation:
+1. Establish mascot identity: name, reference image(s), must-keep features, anatomy class, prop rules, palette, target website vibe, state list, state clarity profile (`pose-only` or `semantic-enhancers`), `style.renderingStyle: "codex-pixel-art"`, and an inferred visual-language read. When anatomy matters, audit the reference before generation: stable body core, exact visible appendages with count and placement, appendage affordances, allowed motion for those exact parts, forbidden additions, and any ambiguous marks that are not limbs. Record this as `style.anatomyClass` (`hands`, `paws`, `fins-no-hands`, `no-limbs`, or `ambiguous-limbs`) and, for simple/ambiguous appendages or risky prop interactions, `style.anatomyContract`. For normal runs, start with the preparer so the state acting plan and `$imagegen` job manifest exist before image generation:
 
 ```bash
 python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --force
 ```
 
-   Review `qa/state-cue-plan.json` and `prompts/<state>.md` before generating rows. Edit the prompt plan if a high-visibility state needs a stronger or safer read. This step is the web-companion equivalent of `$hatch-pet` preparing row prompts and guides before image generation.
-2. Generate or select one canonical Codex-style pixel-art base sprite with `$imagegen` or a user/artist-provided integrated source image. If the user provided non-pixel art, the base generation translates that reference into the required pixel-sprite style while preserving identity.
-3. Generate one row strip per state with `$imagegen`, using the canonical base and any original references as grounding images. Attach the state card and reference images to every row-generation job. Every row prompt must restate the pixel-art contract: visible stepped pixel edges, thick dark 1-2 px outline, limited palette, flat cel shading, no painterly gradients, no glossy 3D, no smooth vector/cartoon look, no soft antialiasing. Do not generate rows prompt-only unless there is no possible reference image.
-4. Keep all row strips on a clean flat chroma-key background. Pick a key color absent from the character; avoid yellow for gold props, avoid magenta for pink/purple characters, and avoid green for green characters.
-5. Preserve identity and pixel-art treatment across every row: silhouette, face, palette, props, outfit, outline weight, pixel density, stepped edges, and proportions.
-6. If using `semantic-enhancers`, include the chosen profile and inferred visual-language read in row prompts and generate each enhancer as integrated mascot artwork, not as a post-process overlay. Add only one small anchored enhancer per ambiguous state unless the user explicitly requests more. Before each enhanced row, write a small state card: rendering style, semantic read, acting beat, prop/effect if any, why it fits the mascot, exact anchor, anatomy class, required appendage affordance, exact allowed body parts from `style.anatomyContract`, forbidden artifacts, and any `anatomyGuard` needed for the manifest. For held, touched, face-touch, pointing, presenting, typing, writing, or work-prop enhancers, explicitly require the mascot's named existing hands, paws, fins, sleeves, tentacles, or other visible appendages to have the matching affordance and forbid extra hands, duplicated arms, detached fingers, cloned sleeves, or new anatomy. Do not use vague `allowedInteractors` values like `existing visible appendages only`; name the exact parts, such as `left side fin` and `right side fin`, `left sleeve` and `right sleeve`, or `front paws`. If the source character truly has no usable appendages, do not choose held, touched, typing, writing, keyboard, slate, tablet, paper, or pencil semantics. Use acting first: focused face, eye tracking, body lean, blink timing, faster attentive motion, and a small attached or near-head cue only when it makes the state clearer. If the first motif-native cue is pretty but does not read as the state, reject it.
-7. For near-head effects, held props, and any higher-frame-count waiting state, add explicit silhouette-lock language to the row prompt: same body footprint, same body center, same top-of-head height, same bottom edge, same named appendage count, and enhancer motion around that stable base. The motion should come from expression, blink, small pose beats, prop follow-through, or enhancer changes, not from resizing the mascot.
-8. Generate at least two visual approaches or row candidates for high-visibility states when the first pass looks bland, overly literal, drifty, non-pixel, or less polished than the source. Prefer regenerating the row over post-processing a weak one into compliance. If a candidate has pasted-on semantics, mismatched art style, smooth illustration rendering, invented anatomy, core scale drift, or core center drift, discard the candidate; do not repair it by compositing.
-9. Seed `manifest.json` with the state rows, frame counts, durations, `id`, `displayName`, `style.renderingStyle: "codex-pixel-art"`, `style.stateClarity`, `style.anatomyClass`, `style.anatomyContract.appendages[].affordances` when used, and per-state `enhancer` metadata including `requiredAffordances` for appendage-dependent actions. The preparer may write draft enhancer metadata such as `planned during row generation`; after selecting the final row art, replace those placeholders with the actual accepted visual aid before production validation.
-10. If a 12+ frame row repeatedly misses the requested frame count, generate shorter row parts with exact count prompts and stitch the accepted generated parts before atlas assembly:
+   Review `qa/state-cue-plan.json`, `prompts/base.md`, and `prompts/rows/<state>.md` before generating. Edit the prompt plan if a high-visibility state needs a stronger or safer read. This step is the web-companion equivalent of `$hatch-pet` preparing row prompts, layout guides, and `imagegen-jobs.json` before image generation.
+2. Inspect ready jobs:
+
+```bash
+python scripts/companion_job_status.py --run-dir /path/to/run
+```
+
+   The `base` job should be ready first. State row jobs should be blocked until the base job is recorded.
+3. Generate or select the canonical Codex-style pixel-art base sprite with `$imagegen` or a user/artist-provided integrated source image. Use the `base` job prompt and its listed input images from `imagegen-jobs.json`. If the user provided non-pixel art, the base generation translates that reference into the required pixel-sprite style while preserving identity.
+4. Record the selected base output:
+
+```bash
+python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id base --source /absolute/path/to/$CODEX_HOME/generated_images/.../ig_*.png
+```
+
+   Recording the base copies it to `generated/base.png`, creates `references/canonical-base.png`, updates `imagegen-jobs.json`, and stores canonical-reference metadata in `manifest.json` and `companion_request.json`.
+5. Re-run `companion_job_status.py`. Row jobs become ready after the canonical base exists. Generate one row strip per ready state with `$imagegen`, using the row prompt and every input image listed in `imagegen-jobs.json`: original references, `references/canonical-base.png`, `generated/base.png`, and that state's layout guide. Every row prompt must restate the pixel-art contract: visible stepped pixel edges, thick dark 1-2 px outline, limited palette, flat cel shading, no painterly gradients, no glossy 3D, no smooth vector/cartoon look, no soft antialiasing. Do not generate rows prompt-only unless there is no possible reference image.
+6. Record each selected row output:
+
+```bash
+python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id thinking --source /absolute/path/to/$CODEX_HOME/generated_images/.../ig_*.png
+```
+
+   The parent agent owns all recording and manifest writes. If multiple workers or subagents generate row candidates, they should return only the selected original source path and a short QA note; they must not edit manifests or copy files into the run.
+7. Keep all row strips on the prepared flat chroma-key background. The preparer chooses a key color absent from the copied references when possible; avoid yellow for gold props, avoid magenta for pink/purple characters, and avoid green for green characters.
+8. Preserve identity and pixel-art treatment across every row: silhouette, face, palette, props, outfit, outline weight, pixel density, stepped edges, and proportions.
+9. If using `semantic-enhancers`, include the chosen profile and inferred visual-language read in row prompts and generate each enhancer as integrated mascot artwork, not as a post-process overlay. Add only one small anchored enhancer per ambiguous state unless the user explicitly requests more. Before each enhanced row, write a small state card: rendering style, semantic read, acting beat, prop/effect if any, why it fits the mascot, exact anchor, anatomy class, required appendage affordance, exact allowed body parts from `style.anatomyContract`, forbidden artifacts, and any `anatomyGuard` needed for the manifest. For held, touched, face-touch, pointing, presenting, typing, writing, or work-prop enhancers, explicitly require the mascot's named existing hands, paws, fins, sleeves, tentacles, or other visible appendages to have the matching affordance and forbid extra hands, duplicated arms, detached fingers, cloned sleeves, or new anatomy. Do not use vague `allowedInteractors` values like `existing visible appendages only`; name the exact parts, such as `left side fin` and `right side fin`, `left sleeve` and `right sleeve`, or `front paws`. If the source character truly has no usable appendages, do not choose held, touched, typing, writing, keyboard, slate, tablet, paper, or pencil semantics. Use acting first: focused face, eye tracking, body lean, blink timing, faster attentive motion, and a small attached or near-head cue only when it makes the state clearer. If the first motif-native cue is pretty but does not read as the state, reject it.
+10. For near-head effects, held props, and any higher-frame-count waiting state, add explicit silhouette-lock language to the row prompt: same body footprint, same body center, same top-of-head height, same bottom edge, same named appendage count, and enhancer motion around that stable base. The motion should come from expression, blink, small pose beats, prop follow-through, or enhancer changes, not from resizing the mascot.
+11. Generate at least two visual approaches or row candidates for high-visibility states when the first pass looks bland, overly literal, drifty, non-pixel, or less polished than the source. Prefer regenerating the row over post-processing a weak one into compliance. If a candidate has pasted-on semantics, mismatched art style, smooth illustration rendering, invented anatomy, core scale drift, or core center drift, discard the candidate; do not repair it by compositing.
+12. Seed `manifest.json` with the state rows, frame counts, durations, `id`, `displayName`, `style.renderingStyle: "codex-pixel-art"`, `style.stateClarity`, `style.anatomyClass`, `style.anatomyContract.appendages[].affordances` when used, and per-state `enhancer` metadata including `requiredAffordances` for appendage-dependent actions. The preparer may write draft enhancer metadata such as `planned during row generation`; after selecting the final row art, replace those placeholders with the actual accepted visual aid before production validation.
+13. If a 12+ frame row repeatedly misses the requested frame count, generate shorter row parts with exact count prompts and stitch the accepted generated parts before atlas assembly:
 
 ```bash
 python scripts/stitch_row_parts.py --parts /path/to/state-part-a.png /path/to/state-part-b.png --out /path/to/run/row-strips/state.png --json-out /path/to/run/qa/state-stitch-report.json
 ```
 
    Visually inspect the stitched source or contact sheet for a seam between parts. Regenerate the weaker part if the mascot scale, line weight, prop size, anchor, palette, or expression quality changes across the stitch boundary.
-11. Assemble the atlas with the bundled assembler. This script handles variable row-strip spacing, chroma-key gradients, wide gestures, transparent unused cells, extracted frames, contact sheets, GIF previews, and an assembly report. Its outline improver must remain enabled: key-to-alpha removal, edge-spill cleanup, spill-color replacement, transparent RGB cleanup, and premultiplied resizing all protect the sprite edge from chroma halos.
+14. Assemble the atlas with the bundled assembler. This script handles variable row-strip spacing, chroma-key gradients, wide gestures, transparent unused cells, extracted frames, contact sheets, GIF previews, and an assembly report. Its outline improver must remain enabled: key-to-alpha removal, edge-spill cleanup, spill-color replacement, transparent RGB cleanup, and premultiplied resizing all protect the sprite edge from chroma halos.
    For row strips with detached bubbles, voice marks, or aura components, prefer `--extraction-mode component`. If a large semantic effect is mistaken for an extra body component, raise `--body-component-area` rather than accepting equal slicing; the effect should be assigned to the nearest real body, not treated as a mascot.
 
 ```bash
 python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 12 --cell-width 256 --cell-height 288 --max-outline-halo-pixels 0 --no-equal-fallback
 ```
 
-12. Create the small-size readability QA sheet for semantic states:
+15. Create the small-size readability QA sheet for semantic states:
 
 ```bash
 python scripts/create_state_readability_sheet.py --manifest /path/to/run/manifest.json
 ```
 
-13. Run the quality analyzer before acceptance. It writes `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png`; strict production runs should have no analyzer warnings. This catches near-duplicate frames, static rows, body jumps, foreground area jumps that often signal extra limbs or missing props, detached fragments from broken cuts, core silhouette scale drift, full-row core scale range, core center drift, and drifting semantic enhancers. For polished production mascots, full-row mascot core scale range should stay at or below `5%`; values above that usually look like the body grows or shrinks even when the row technically assembles:
+16. Run the quality analyzer before acceptance. It writes `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png`; strict production runs should have no analyzer warnings. This catches near-duplicate frames, static rows, body jumps, foreground area jumps that often signal extra limbs or missing props, detached fragments from broken cuts, core silhouette scale drift, full-row core scale range, core center drift, and drifting semantic enhancers. For polished production mascots, full-row mascot core scale range should stay at or below `5%`; values above that usually look like the body grows or shrinks even when the row technically assembles:
 
 ```bash
 python scripts/analyze_companion_quality.py --manifest /path/to/run/manifest.json
 ```
 
-14. Visually inspect the contact sheet, cutout check, readability sheet, semantic anchor sheet, motion quality sheet, previews, and the original reference before accepting the mascot. If the contact sheet shows neighboring-frame slivers, chopped hands/props, stray specks, off-center sprites, simplified anatomy, inconsistent mascot scale, lower polish than the reference, smooth/non-pixel rendering, or less creative state reads than the brief implies, regenerate the row. If `qa/cutout-check.png` shows pink/magenta halos on dark, white, blue, or green backgrounds, rebuild with stronger chroma cleanup or regenerate the row with a flatter key background. For `semantic-enhancers`, reject rows where the enhancer is unclear at 64, 96, and 128 px, cropped, detached, leaking into other states, visually pasted on, drifting away from its anchor, causing extra anatomy, mismatching pixel density, or changing quality across a split-row stitch.
-15. Write the art-direction review only after the visual inspection passes. Use `status: "pass"` and `productionUse: true` only when the pack preserves the source quality and does not rely on deterministic/vector/post-process overlays for final art:
+17. Visually inspect the contact sheet, cutout check, readability sheet, semantic anchor sheet, motion quality sheet, previews, and the original reference before accepting the mascot. If the contact sheet shows neighboring-frame slivers, chopped hands/props, stray specks, off-center sprites, simplified anatomy, inconsistent mascot scale, lower polish than the reference, smooth/non-pixel rendering, or less creative state reads than the brief implies, regenerate the row. If `qa/cutout-check.png` shows pink/magenta halos on dark, white, blue, or green backgrounds, rebuild with stronger chroma cleanup or regenerate the row with a flatter key background. For `semantic-enhancers`, reject rows where the enhancer is unclear at 64, 96, and 128 px, cropped, detached, leaking into other states, visually pasted on, drifting away from its anchor, causing extra anatomy, mismatching pixel density, or changing quality across a split-row stitch.
+18. Write the art-direction review only after the visual inspection passes. Use `status: "pass"` and `productionUse: true` only when the pack preserves the source quality and does not rely on deterministic/vector/post-process overlays for final art:
 
 ```bash
 python scripts/create_art_direction_review.py --manifest /path/to/run/manifest.json --status pass --production-use --generation-method imagegen-integrated-row-art --source-reference /path/to/original-reference.png --check referenceQualityMaintained=true --check identityPreserved=true --check stylePreserved=true --check pixelArtStyle=true --check creativeStateReadability=true --check themeNativeStateCues=true --check nativeEnhancers=true --check integratedEnhancers=true --check anatomyPreserved=true --check noExtraAnatomy=true --check believableOcclusion=true --check noPrototypeFlattening=true --notes "Preserves the reference identity as Codex-style pixel art, states read clearly through mascot-native cues, enhancers are native/integrated, and no new anatomy appears."
 ```
 
-16. Run manifest validation with the chatbot profile before finishing. Strict validation must fail on assembly warnings, missing readability QA, missing quality report, missing art-direction review, malformed state clarity metadata, cropped sprites, non-transparent unused cells, quality warnings, or any remaining key-colored outline halo pixels:
+19. Run manifest validation with the chatbot profile before finishing. Strict validation must fail on assembly warnings, missing readability QA, missing quality report, missing art-direction review, malformed state clarity metadata, cropped sprites, non-transparent unused cells, quality warnings, or any remaining key-colored outline halo pixels:
 
 ```bash
 python scripts/validate_companion_manifest.py --manifest /path/to/manifest.json --profile chatbot --strict --require-state-clarity --require-rendering-style --require-quality-report --require-art-direction-review --max-outline-halo-pixels 0
 ```
 
-17. Generate the React component only after visual QA and strict validation pass.
+20. Generate the React component only after visual QA and strict validation pass.
 
 When the mascot has side-specific props, text, emblems, handed items, or asymmetric lighting, generate left/right directional states separately instead of mirroring.
 
@@ -277,6 +307,9 @@ Use bundled scripts when useful:
 
 ```bash
 python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --force
+python scripts/companion_job_status.py --run-dir /path/to/run
+python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id base --source /path/to/$CODEX_HOME/generated_images/.../ig_*.png
+python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id thinking --source /path/to/$CODEX_HOME/generated_images/.../ig_*.png
 python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --columns 12 --cell-width 256 --cell-height 288 --no-equal-fallback
 python scripts/stitch_row_parts.py --parts /path/to/part-a.png /path/to/part-b.png --out /path/to/run/row-strips/state.png
 python scripts/create_state_readability_sheet.py --manifest /path/to/run/manifest.json
@@ -289,7 +322,11 @@ python scripts/generate_react_component.py --manifest /path/to/manifest.json --o
 
 If the system `python` cannot import Pillow/PIL, use the Codex bundled workspace runtime instead: call `load_workspace_dependencies`, then run the same scripts with the returned Python executable.
 
-`prepare_companion_run.py` creates the run folder, `manifest.json`, `prompts/<state>.md`, and `qa/state-cue-plan.json`. It does not infer pixels or draw anything; it gives `$imagegen` concise, hatch-pet-style row prompts that say what the state should read as, how the mascot should act first, when a visual aid is allowed, and what to reject.
+`prepare_companion_run.py` creates the run folder, `companion_request.json`, `imagegen-jobs.json`, `manifest.json`, copied references, `references/layout-guides/<state>.png`, `prompts/base.md`, `prompts/<state>.md`, `prompts/rows/<state>.md`, and `qa/state-cue-plan.json`. It does not infer pixels or draw anything; it gives `$imagegen` concise, hatch-pet-style row prompts that say what the state should read as, how the mascot should act first, when a visual aid is allowed, and what to reject.
+
+`companion_job_status.py` reads `imagegen-jobs.json` and shows ready and blocked `$imagegen` jobs. The base job is ready first; row jobs are blocked until the base is recorded.
+
+`record_companion_imagegen_result.py` records the selected original `$imagegen` source for a job, verifies dependencies and required grounding images, copies the source to the expected run output path, stores hashes/metadata/provenance, and creates `references/canonical-base.png` when recording the base job. Use it instead of manually copying files or editing `imagegen-jobs.json`. For finished user/artist row art, pass `--source-provenance user-provided-integrated-row-art` or `--source-provenance artist-provided-integrated-row-art`.
 
 `assemble_companion_atlas.py` reads row strips named `<state>.png`, updates the manifest atlas fields, extracts clean per-frame PNGs, writes `atlas.webp` and `atlas.png`, creates `qa/contact-sheet.png`, creates `qa/cutout-check.png`, creates `qa/previews/*.gif`, and writes `qa/assembly-report.json`. It uses foreground-run center detection rather than naive equal-width slicing, which prevents common generated-strip issues such as variable frame spacing, clipped wide gestures, and neighboring-frame slivers. It fits all frames in the same state row with one shared scale so a growing thought bubble, sound ring, work prop, or other semantic enhancer cannot make only that frame's mascot body shrink. It also runs the outline improver: transparent RGB clearing, key spill removal, key-colored edge cleanup, spill-color replacement, and premultiplied resizing so invisible chroma-key pixels do not bleed into sprite edges. The assembly report records `outlineImprover.totalOutlineHaloPixels`; production runs should keep this at `0`. If it reports `equal-fallback` or outline warnings, review that state manually and prefer regenerating the row if the contact sheet looks uneven.
 
@@ -308,6 +345,8 @@ Use `--extraction-mode component` when row sources contain detached but integrat
 ## Acceptance Criteria
 
 - `manifest.json` lists every state, row, frame count, frame size, durations, and atlas path.
+- `imagegen-jobs.json` exists, records `base` plus one row job per generated state, and shows selected-source provenance for completed jobs.
+- `references/canonical-base.png` exists after the base job is recorded, and row jobs used it as grounding.
 - `prompts/<state>.md` and `qa/state-cue-plan.json` exist or the final answer explains why a prepared prompt plan was not used.
 - Any draft `enhancer.kind` from prompt planning has been replaced with the actual accepted visual aid before production acceptance.
 - `atlas.webp` or `atlas.png` exists, has transparency, and matches manifest dimensions.

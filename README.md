@@ -82,8 +82,14 @@ The default generated package looks like:
 
 ```text
 run/
+  companion_request.json
+  imagegen-jobs.json
   manifest.json
+  prompts/base.md
   prompts/<state>.md
+  prompts/rows/<state>.md
+  references/canonical-base.png
+  references/layout-guides/<state>.png
   atlas.webp
   atlas.png
   frames/<state>/*.png
@@ -106,6 +112,8 @@ run/
 The skill includes deterministic QA scripts and requires visual inspection before accepting a mascot:
 
 - `prepare_companion_run.py` creates the initial manifest draft, per-state row prompts, and `qa/state-cue-plan.json` so vibe inference, acting beats, visual aids, and anatomy limits are planned before image generation.
+- `companion_job_status.py` reports which `$imagegen` jobs are ready or blocked from `imagegen-jobs.json`.
+- `record_companion_imagegen_result.py` records selected `$imagegen` outputs, creates the canonical base reference, and keeps source provenance/hashes out of manual editing.
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets.
@@ -133,6 +141,14 @@ python scripts/prepare_companion_run.py \
   --state-clarity semantic-enhancers \
   --anatomy-class ambiguous-limbs \
   --force
+
+python scripts/companion_job_status.py \
+  --run-dir /path/to/run
+
+python scripts/record_companion_imagegen_result.py \
+  --run-dir /path/to/run \
+  --job-id base \
+  --source /path/to/$CODEX_HOME/generated_images/.../ig_*.png
 
 python scripts/analyze_companion_quality.py \
   --manifest /path/to/run/manifest.json

@@ -64,12 +64,27 @@ Normal companion runs should start with `scripts/prepare_companion_run.py`. The 
 
 ```text
 run/
+  companion_request.json
+  imagegen-jobs.json
   manifest.json
+  prompts/base.md
   prompts/<state>.md
+  prompts/rows/<state>.md
+  references/layout-guides/<state>.png
   qa/state-cue-plan.json
 ```
 
 `qa/state-cue-plan.json` is a planning artifact, not production acceptance. It should record the inferred source vibe, state purpose, acting-first beat, whether a visual aid is allowed, the suggested aid, and rejection criteria for each state. Row prompts should use that plan to make the mascot perform the state first through expression, posture, timing, and original appendages, then add a small visual aid only when the state would otherwise be unclear at website size.
+
+`imagegen-jobs.json` follows the hatch-pet-style base-first contract:
+
+- `base` is the first ready job and may be prompt-only only when no reference exists.
+- row jobs depend on `base` and must list grounding input images.
+- row jobs include the original references, `references/canonical-base.png`, `generated/base.png`, and the row's layout guide.
+- `scripts/record_companion_imagegen_result.py` is the only normal way to mark jobs complete and copy selected `$imagegen` outputs or finished user/artist integrated row art into the run.
+- completed jobs should record source path, source provenance, hashes, metadata, and completion time.
+
+After recording `base`, `references/canonical-base.png` must exist and should be treated as the approved identity source for every row. Do not generate row strips without attaching that canonical base and the row layout guide.
 
 The preparer may seed enhanced states with draft metadata such as `"kind": "planned during row generation"`. After final row art is selected, replace that draft metadata with the actual accepted visual aid, for example `"kind": "near-face icy voice pixels"` or `"kind": "body-surface processing glyph"`. Strict validation warns on leftover draft enhancer wording so planning placeholders do not become shipped metadata.
 
@@ -363,6 +378,8 @@ For high-frame-count rows, treat body stability as part of the prompt, not just 
 - Produce a cutout QA sheet on dark, light, and saturated backgrounds; checkerboards alone can hide chroma-key halos.
 - Produce `qa/state-readability-check.png` for semantic-enhancer packs before strict validation.
 - Produce `qa/state-cue-plan.json` before row generation for normal generated packs, or document why prompt planning was skipped.
+- Produce `imagegen-jobs.json` before visual generation and use it to track base-first job readiness.
+- Record the selected base output before row generation so `references/canonical-base.png` exists.
 - Produce `qa/quality-report.json`, `qa/semantic-anchor-check.png`, and `qa/motion-quality-check.png` before strict validation.
 - Treat `qa/quality-report.json` silhouette warnings as blockers: detached fragments, broken-cut symptoms, core scale drift, full-row core scale range, or core center drift mean the row needs regeneration or a better source strip. For production mascots, full-row core scale range should stay at or below `5%`; larger changes are usually visible as body growth/shrink even when the contact sheet looks otherwise clean.
 - For split-generated rows, inspect the stitch boundary and reject visible half-to-half changes in mascot scale, top/bottom anchor, outline thickness, prop size, palette, lighting, expression style, or pixel density even when numeric QA passes.
@@ -393,6 +410,8 @@ Reject or repair if any of these happen:
 - `style.stateClarity` is malformed.
 - `style.stateClarity` is `pose-only` but state rows introduce unrequested semantic props.
 - `style.stateClarity` is `semantic-enhancers` but `thinking`, `working`, `listening`, or `answering` omit `enhancer` metadata.
+- `imagegen-jobs.json` is missing for a normal generated pack, row jobs were generated before the base job was recorded, or row jobs omitted the canonical base/layout guide inputs.
+- A production run was completed by manually editing `imagegen-jobs.json` or copying row files into `generated/` instead of recording selected `$imagegen` outputs with provenance.
 - Enhanced state metadata still contains draft planning wording such as `planned during row generation` instead of the accepted visual aid.
 - A held, touched, near-hand, writing, or work-prop enhancer omits `enhancer.anatomyGuard`.
 - `enhancer.anatomyGuard.allowedInteractors` uses vague language instead of exact named reference appendages or body parts.
