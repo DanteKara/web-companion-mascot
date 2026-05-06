@@ -50,9 +50,9 @@ STATE_ACTING = {
     "idle": "slow breathing, soft blink, tiny posture settle",
     "greeting": "friendly anticipation, small wave or body bounce, warm smile, return to rest",
     "listening": "attentive lean toward the user, eyes tracking, small blink hold",
-    "thinking": "curious head tilt, eyes up or to the side, blink hold, small pondering mouth",
-    "working": "busy-but-friendly concentration, attentive eye tracking, lean-in, faster purposeful body or prop motion; never angry, no slanted angry eyes, no V-shaped brow or eye marks",
-    "answering": "speaking mouth shapes, bright eyes, rhythmic face/body beats",
+    "thinking": "curious head tilt, eyes up or to the side, hand/appendage pondering pose when supported, changing thoughtful mouth and eye beats",
+    "working": "busy-but-friendly concentration, attentive eye tracking toward the work target, lean-in, faster purposeful body/hand/prop motion; never angry, no slanted angry eyes, no V-shaped brow or eye marks",
+    "answering": "speaking mouth shapes with voice cue originating at the mouth, bright eyes, rhythmic face/body beats",
     "success": "cheerful bounce, proud hold, bright face, return to loop",
     "error": "worried recognition, small recoil or slump, recovery beat",
     "confused": "squint, head tilt, uncertain mouth, small recovery",
@@ -81,22 +81,29 @@ STATE_REJECTS = {
 
 STATE_FRAME_ARCS = {
     "thinking": (
-        "Frame-by-frame acting arc: 1 no cue or tiny first puff, 2 small bubble, "
-        "3 medium bubble, 4 largest compact bubble/orb, 5 hold while eyes track it, "
-        "6 settle back into the loop. Keep the thought cue secondary to the mascot: the largest bubble "
-        "is never larger than about one-third of the mascot body width, and do not let the thought cue "
-        "become a second head/body-sized orb. For longer rows, stretch the same small -> medium -> largest compact -> "
-        "hold -> settle arc; this is not the same bubble pasted in every frame."
+        "Frame-by-frame acting arc: 1 neutral-curious face and stable identity props, 2 eyes glance up/side "
+        "and supported hand/appendage begins a pondering pose, 3 small thinking mouth and small bubble/tiny first puff, "
+        "4 medium bubble with more curious eyes, 5 largest compact bubble/orb while eyes track it, "
+        "6 small blink or pondering hold, 7 small smile/idea recognition, 8 settle back into the loop. "
+        "Keep the thought cue secondary to the mascot: the largest bubble is never larger than about one-third "
+        "of the mascot body width, and do not let the thought cue become a second head/body-sized orb. "
+        "For shorter or longer rows, preserve the same expression-changing neutral -> curious -> pondering -> "
+        "recognition -> settle arc and the same small -> medium -> largest compact cue growth; this is not the "
+        "same face or same bubble pasted in every frame."
     ),
     "working": (
-        "Frame-by-frame acting arc: 1 mascot notices the work cue/prop, 2 leans in and the prop wakes up, "
-        "3 first sorting/checking/gathering movement, 4 active work peak, 5 progress or result tick, "
-        "6 settle back while work continues. For longer rows, repeat with meaningful prop and gaze changes, "
-        "not duplicate frames."
+        "Frame-by-frame acting arc: 1 mascot notices a concrete work target, 2 leans in and the target wakes up while eyes focus on it, "
+        "3 begins an action on the target, 4 active work peak with hand/prop/body follow-through, "
+        "5 visible progress change on the target, 6 small blink/effort or satisfied beat, 7 result/check/sorted state, "
+        "8 settle back while the target remains active. For shorter or longer rows, preserve the same notice -> "
+        "operate/sort/check -> result -> settle arc with meaningful face, gaze, hand/prop, and target changes."
     ),
     "answering": (
-        "Frame-by-frame acting arc: 1 neutral/listen face, 2 small mouth shape, 3 wider mouth shape, "
-        "4 clearest speaking beat, 5 blink or smile hold, 6 settle back into the loop."
+        "Frame-by-frame acting arc: 1 neutral/listen face with closed or tiny smile mouth, 2 small open mouth, "
+        "3 wider speaking mouth and first attached voice pixel at the mouth corner, 4 clearest speaking beat with "
+        "voice cue growing outward from the mouth, 5 smile-open mouth or blink hold, 6 smaller mouth and cue retracts, "
+        "7 closed-mouth smile, 8 settle back into the loop. The voice cue must originate from and overlap/touch the "
+        "mouth or lip edge before drifting outward; it must not appear as a random bubble beside the head."
     ),
 }
 
@@ -121,6 +128,32 @@ WORK_PROP_MARK_POLICY = (
     "parallel grooves that can read as notebook rules or pseudo-writing at small sizes. "
     "If anatomy supports typing or writing, show that action through hand/body motion while the surface marks remain non-text. "
     "Do not make the work surface read as a tiny document full of writing."
+)
+
+WORK_TARGET_POLICY = (
+    "Working must show the mascot working on a concrete target, not merely posing beside status icons. Choose one "
+    "small mascot-native work target: slate, tablet, token tray, card stack, work tile, tool, staff-tip glyph, "
+    "magical work circle, sorting tokens, or an existing identity prop used as a pointer/brace. The target needs a "
+    "visible before/during/after transformation: inactive or blank -> being operated/sorted/checked -> progress/result. "
+    "For mascots with a staff, wand, tool, or held identity prop, preserve that prop and place the work target near "
+    "the prop tip or free hand so the action reads as deliberate work. Do not use random decorative squares, generic "
+    "floating UI icons, loose sparkles, or a check mark with no preceding work action."
+)
+
+WORK_TARGET_FIT_POLICY = (
+    "Choose the work target from the mascot's visual language. Tech/robot mascots can use panels, tablets, sliders, "
+    "or status blocks. Fantasy or magic mascots should use spell circles, rune tiles, charm tokens, staff-tip glyphs, "
+    "or glowing sorted motes rather than app-like UI blocks. Nature mascots can sort leaves, seeds, stones, or wooden "
+    "tokens. Icy/water mascots can use frost tiles, droplets, or crystal tokens. Food/plush/toy mascots should use "
+    "their own simple objects. The target must still communicate work through before/during/after transformation and "
+    "the mascot's gaze, hand, body, or identity prop must visibly cause the change."
+)
+
+WORK_TARGET_INTERACTION_POLICY = (
+    "Place the work target in a believable interaction zone: near the active hand, paw, mouth, tool tip, staff tip, "
+    "or directly in front of the mascot's gaze. Do not let the target drift to the floor, far side, or empty space "
+    "unless a visible gaze line, hand pose, tool/staff alignment, aura connection, or body lean makes the causal "
+    "relationship obvious. The viewer should understand what the mascot is acting on in every frame."
 )
 
 BODY_SURFACE_CUE_POLICY = (
@@ -153,10 +186,25 @@ IDENTITY_PROP_POLICY = (
     "Identity prop contract: preserve must-keep props, emblems, clothing silhouettes, and signature accessories as "
     "part of the mascot identity. Simplify ornate detail into a few readable pixel clusters, not noisy filigree. "
     "If a prop appears in a state row, keep its count, side, scale, attachment, and basic silhouette stable across "
-    "the row; animate it with small pose/angle/follow-through changes instead of redesigning it. If the state would "
-    "make the prop too crowded or unstable, intentionally omit it for the entire row rather than letting it flicker "
-    "in and out across frames. Do not duplicate signature props, turn decorative trim into extra limbs, or mutate a "
-    "staff/tool/emblem into a different object unless that row is explicitly auditioning a new design."
+    "the row; animate it with small pose/angle/follow-through changes instead of redesigning it. Preserve signature "
+    "props by default even when another cue is present; place the cue in available space, near the mouth, near the "
+    "head, or near the prop tip instead of dropping the prop. Omit a must-keep prop only when the state card says "
+    "that exact prop is optional for that whole row, never because a thought bubble, voice puff, or work cue was added. "
+    "Do not duplicate signature props, turn decorative trim into extra limbs, or mutate a staff/tool/emblem into a "
+    "different object unless that row is explicitly auditioning a new design."
+)
+
+VOICE_CUE_POLICY = (
+    "Answering voice cues must be mouth-origin cues. The first voice pixel, puff, breath mark, or sound ring must "
+    "touch or overlap the mouth/lip edge, then travel only a short distance outward with the speaking mouth shapes. "
+    "Keep it close enough that a viewer can tell it comes from the mascot speaking. Do not place speech puffs, chat "
+    "bubbles, or loose orbs beside the cheek, hand, staff, or hood if they do not originate from the mouth."
+)
+
+EXPRESSION_VARIATION_POLICY = (
+    "Expression variation is mandatory for high-visibility states. Across the row, change at least two of: eye "
+    "direction, blink/closed-eye frame, pupil/highlight placement, mouth shape, smile/open-mouth size, cheek/body tilt, "
+    "or hand/appendage pose. Do not keep the same face in every frame while only moving the visual aid."
 )
 
 ANATOMY_GUIDANCE = {
@@ -374,7 +422,11 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
         ),
         "freestandingPropPolicy": freestanding_prop_policy,
         "workPropMarkPolicy": WORK_PROP_MARK_POLICY if state == "working" and state_clarity != "pose-only" else "",
+        "workTargetPolicy": WORK_TARGET_POLICY if state == "working" and state_clarity != "pose-only" else "",
+        "workTargetFitPolicy": WORK_TARGET_FIT_POLICY if state == "working" and state_clarity != "pose-only" else "",
+        "workTargetInteractionPolicy": WORK_TARGET_INTERACTION_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "bodySurfaceCuePolicy": body_surface_cue_policy,
+        "voiceCuePolicy": VOICE_CUE_POLICY if state == "answering" and state_clarity != "pose-only" else "",
         "rejectIf": STATE_REJECTS.get(state, "unclear state read, off-vibe symbol, identity drift, extra anatomy"),
     }
 
@@ -540,8 +592,13 @@ Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {state_plan["frameArc"]}
 {state_plan["freestandingPropPolicy"]}
 {state_plan["workPropMarkPolicy"]}
+{state_plan["workTargetPolicy"]}
+{state_plan["workTargetFitPolicy"]}
+{state_plan["workTargetInteractionPolicy"]}
 {state_plan["bodySurfaceCuePolicy"]}
+{state_plan["voiceCuePolicy"]}
 {ARTISTIC_QUALITY_POLICY}
+{EXPRESSION_VARIATION_POLICY}
 {FACE_TOUCH_SILHOUETTE_POLICY if anatomy_class in {"hands", "paws", "ambiguous-limbs"} else ""}
 Vibe fit: {source_vibe}
 {identity_prop_line}

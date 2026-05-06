@@ -111,13 +111,16 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Art direction floor", thinking_prompt)
             self.assertIn("polished mascot performance", thinking_prompt)
             self.assertIn("charming mascot-native acting beat", thinking_prompt)
+            self.assertIn("Expression variation is mandatory", thinking_prompt)
+            self.assertIn("Do not keep the same face in every frame", thinking_prompt)
             self.assertIn("visibly connected to its original shoulder/body anchor", thinking_prompt)
             self.assertIn("does not merge into a new cheek", thinking_prompt)
             self.assertIn("broad pixel-mitt", thinking_prompt)
             self.assertIn("Must-keep identity props/accessories: single chest screen", thinking_prompt)
             self.assertIn("Identity prop contract", thinking_prompt)
             self.assertIn("keep its count, side, scale, attachment, and basic silhouette stable", thinking_prompt)
-            self.assertIn("intentionally omit it for the entire row", thinking_prompt)
+            self.assertIn("Preserve signature props by default even when another cue is present", thinking_prompt)
+            self.assertIn("Omit a must-keep prop only when the state card says", thinking_prompt)
             self.assertIn("Do not duplicate signature props", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
@@ -183,11 +186,13 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("small bubble", thinking_prompt)
             self.assertIn("medium bubble", thinking_prompt)
             self.assertIn("largest compact bubble", thinking_prompt)
+            self.assertIn("neutral -> curious -> pondering -> recognition -> settle", thinking_prompt)
+            self.assertIn("not the same face", thinking_prompt)
             self.assertIn("secondary to the mascot", thinking_prompt)
             self.assertIn("never larger than about one-third of the mascot body width", thinking_prompt)
             self.assertIn("do not let the thought cue become a second head/body-sized orb", thinking_prompt)
             self.assertIn("settle back into the loop", thinking_prompt)
-            self.assertIn("not the same bubble pasted in every frame", thinking_prompt)
+            self.assertIn("not the same face or same bubble pasted in every frame", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("frameArc", cue_plan["states"]["thinking"])
@@ -274,10 +279,15 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("not in the empty gap", working_prompt)
             self.assertIn("merge the prop with the mascot body", working_prompt)
             self.assertIn("Frame-by-frame acting arc", working_prompt)
-            self.assertIn("prop wakes up", working_prompt)
+            self.assertIn("target wakes up", working_prompt)
             self.assertIn("sorting/checking/gathering", working_prompt)
             self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
             self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
+            self.assertIn("Working must show the mascot working on a concrete target", working_prompt)
+            self.assertIn("visible before/during/after transformation", working_prompt)
+            self.assertIn("not merely posing beside status icons", working_prompt)
+            self.assertIn("Choose the work target from the mascot's visual language", working_prompt)
+            self.assertIn("Place the work target in a believable interaction zone", working_prompt)
             self.assertIn("Avoid notebook, paper, page, or parchment-like surfaces", working_prompt)
             self.assertIn("fine stripes, wood-grain lines, plank lines, or parallel grooves", working_prompt)
             self.assertIn("Do not make the work surface read as a tiny document full of writing", working_prompt)
@@ -309,6 +319,39 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
             self.assertIn("solid and unruled", working_prompt)
             self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
+            self.assertIn("Working must show the mascot working on a concrete target", working_prompt)
+            self.assertIn("staff-tip glyph", working_prompt)
+            self.assertIn("inactive or blank -> being operated/sorted/checked -> progress/result", working_prompt)
+            self.assertIn("Tech/robot mascots can use panels, tablets, sliders, or status blocks", working_prompt)
+            self.assertIn("Fantasy or magic mascots should use spell circles, rune tiles, charm tokens", working_prompt)
+            self.assertIn("the mascot's gaze, hand, body, or identity prop must visibly cause the change", working_prompt)
+            self.assertIn("near the active hand, paw, mouth, tool tip, staff tip", working_prompt)
+            self.assertIn("The viewer should understand what the mascot is acting on in every frame", working_prompt)
+
+    def test_answering_prompt_requires_mouth_origin_voice_cue(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Talky",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "answering",
+                    "--anatomy-class",
+                    "hands",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
+            self.assertIn("voice cue originating at the mouth", answering_prompt)
+            self.assertIn("touch or overlap the mouth/lip edge", answering_prompt)
+            self.assertIn("must not appear as a random bubble beside the head", answering_prompt)
+            self.assertIn("Expression variation is mandatory", answering_prompt)
 
     def test_preparer_writes_hatch_style_imagegen_jobs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
