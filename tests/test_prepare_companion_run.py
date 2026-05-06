@@ -255,9 +255,36 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Frame-by-frame acting arc", working_prompt)
             self.assertIn("prop wakes up", working_prompt)
             self.assertIn("sorting/checking/gathering", working_prompt)
+            self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
+            self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
+            self.assertIn("Do not make the work surface read as a tiny document full of writing", working_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("freestandingPropPolicy", cue_plan["states"]["working"])
+
+    def test_hands_working_prompt_keeps_prop_marks_non_text(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Handbot",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "working",
+                    "--anatomy-class",
+                    "hands",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
+            self.assertIn("For any slate, tablet, notebook, card stack, panel, or work surface", working_prompt)
+            self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
+            self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
 
     def test_preparer_writes_hatch_style_imagegen_jobs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:

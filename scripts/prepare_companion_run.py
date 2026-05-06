@@ -70,7 +70,7 @@ STATE_VISUAL_AIDS = {
 }
 
 STATE_REJECTS = {
-    "working": "anger, hostile eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, static prop with no work motion",
+    "working": "anger, hostile eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues",
     "thinking": "generic icon straight above the head, oversized second head/body-sized thought orb, static dots, face-touch by unsupported appendages",
     "listening": "microphone props for non-voice apps, detached sound clutter",
@@ -109,6 +109,14 @@ NO_HAND_WORK_PROP_POLICY = (
     "the body, appendages, outline, or effects. Keep sorting/checking/gathering motion inside or on the prop "
     "surface, not in the empty gap, because rising pips, sparkles, crystals, or motion marks can merge the "
     "prop with the mascot body during cleanup and QA."
+)
+
+WORK_PROP_MARK_POLICY = (
+    "For any slate, tablet, notebook, card stack, panel, or work surface, use only chunky non-text progress "
+    "blocks, dots, check marks, sliders, or sorting tokens. Use 1-4 large simple marks that can read at "
+    "64-96 px; no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, "
+    "ruled notebook lines, or list rows. If anatomy supports typing or writing, show that action through "
+    "hand/body motion while the surface marks remain non-text. Do not make the work surface read as a tiny document full of writing."
 )
 
 ANATOMY_GUIDANCE = {
@@ -319,6 +327,7 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
             "Frame-by-frame acting arc: each frame must change face, gaze, posture, appendage motion, prop motion, or cue position enough to read as animation.",
         ),
         "freestandingPropPolicy": freestanding_prop_policy,
+        "workPropMarkPolicy": WORK_PROP_MARK_POLICY if state == "working" and state_clarity != "pose-only" else "",
         "rejectIf": STATE_REJECTS.get(state, "unclear state read, off-vibe symbol, identity drift, extra anatomy"),
     }
 
@@ -478,6 +487,7 @@ Visual aid decision: {state_plan["visualAidDecision"]}
 Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
 {state_plan["frameArc"]}
 {state_plan["freestandingPropPolicy"]}
+{state_plan["workPropMarkPolicy"]}
 Vibe fit: {source_vibe}
 Anatomy class: {anatomy_class}
 Anatomy guidance: {anatomy}

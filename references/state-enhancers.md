@@ -83,7 +83,7 @@ frame arc: notice prop -> prop wakes up -> sorting/checking/gathering -> active 
 anchor: held low and braced only by the original visible appendages
 required affordance: grip or brace
 allowed anatomy: exact named appendages from style.anatomyContract only, no new grip anatomy
-forbidden: extra hands, extra limbs, new fingers, cloned sleeves, detached prop, pasted-on prop, text labels, copied UI panel
+forbidden: extra hands, extra limbs, new fingers, cloned sleeves, detached prop, pasted-on prop, text labels, copied UI panel, pseudo-writing, tiny code/text lines
 ```
 
 For no-hand mascots, use a non-grip card instead:
@@ -99,7 +99,8 @@ frame arc: notice prop -> prop wakes up -> sorting/checking/gathering -> active 
 anchor: beside or in front of the mascot, close enough to feel integrated, not held
 required affordance: none
 allowed anatomy: mascot looks, leans, bobs, and reacts; no appendage operates the prop
-forbidden: holding, typing, writing, hands, fingers, grip anatomy, decorative particles, static prop, text labels, copied UI panel, prop touching the body, rising pips/sparkles/crystals in the gap
+allowed prop marks: chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens only; writing/typing gestures may be shown through supported appendage motion while the surface marks stay non-text
+forbidden: holding, typing, writing, hands, fingers, grip anatomy, decorative particles, static prop, text labels, copied UI panel, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, list rows, tiny-document surfaces, prop touching the body, rising pips/sparkles/crystals in the gap
 ```
 
 For expressive pose states, the same guard should allow motion that the audited appendages can actually perform:
@@ -127,7 +128,7 @@ Use these as starting points, then adapt them to the companion's theme.
 | --- | --- | --- | --- | --- |
 | `listening` | Receiving user input | small sound rings, hand-to-ear, mic only for voice apps | hand cupped to hood/ear, attentive glow rings | lean toward input, eyes tracking |
 | `thinking` | Planning before output | compact thought cloud, idea orb, small processing halo, hand-to-chin | side-origin theme-native thought puff, floating crystal/orb near head, small aura loop, chin pose | head tilt, eyes up/side, blink hold |
-| `working` | Tool/backend activity | laptop/tablet when hands can operate it; freestanding tablet/slate when they cannot | parchment/quill/tool when hands can operate it; freestanding glowing slate/card stack when they cannot | focused face, lean, body bob, purposeful prop/cue motion |
+| `working` | Tool/backend activity | laptop/tablet when hands can operate it; freestanding tablet/slate when they cannot; non-text progress/check marks only | parchment/quill/tool when hands can operate it; freestanding glowing slate/card stack when they cannot; non-text progress/check marks only | focused face, lean, body bob, purposeful prop/cue motion |
 | `answering` | Streaming response | mouth shapes, presenting hand, tiny no-text near-face voice pixels | speaking gesture, scroll unfurl, guiding prop | mouth shapes, rhythmic hand beats |
 | `success` | Completed successfully | small check glint, thumbs up | raised staff/tool, celebratory charm | bounce, proud pose |
 | `error` | Recoverable failure | warning badge, droop, small alert mark | dimmed charm, dropped prop, worried robe slump | worried face, recoil, recovery |
@@ -240,6 +241,7 @@ For `semantic-enhancers`, reject or regenerate rows when:
 - The enhancer is technically readable but off-vibe, such as gears, circuit glyphs, speech panels, or generic assistant symbols on a mascot whose visual language suggests different motifs.
 - The enhancer is on-vibe but does not read as the intended state, such as decorative frost that does not communicate `working`.
 - The `working` face becomes angry, hostile, gains invented brows, or feels unrelated to the work beat instead of busy, friendly, and character-appropriate.
+- The working prop uses readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, list rows, or tiny-document surfaces instead of chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens.
 - The working cue disappears in the contact sheet/readability sheet after cleanup, or only remains when cleanup is loosened enough to keep noise/slivers.
 - The enhancer is readable but mechanically placed, such as a bubble that only floats straight above the head with no acting beat, eye tracking, expression change, or believable trajectory.
 - The enhancer is cropped, detached from the character, or visually leaks into neighboring cells.

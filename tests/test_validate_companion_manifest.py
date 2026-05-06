@@ -732,6 +732,40 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("text-dependent" in warning for warning in warnings))
 
+    def test_work_prop_text_like_marks_warn(self) -> None:
+        enhancer = {
+            "kind": "freestanding work notebook",
+            "attachment": "freestanding",
+            "description": "A small notebook beside the mascot with ruled notebook lines and tiny pseudo-writing.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("text-like work marks" in warning for warning in warnings))
+
+    def test_negated_text_like_work_mark_language_does_not_warn(self) -> None:
+        enhancer = {
+            "kind": "freestanding work slate",
+            "attachment": "freestanding",
+            "description": "A small work slate with chunky progress blocks; no writing, no letters, no ruled lines.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("text-like work marks" in warning for warning in warnings))
+
     def test_audition_profile_allows_single_state_without_idle_warning(self) -> None:
         enhancer = {
             "kind": "side-origin thought puff",

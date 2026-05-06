@@ -57,6 +57,37 @@ ALLOWED_ENHANCER_ATTACHMENTS = {
     "resting",
 }
 TEXT_DEPENDENT_KIND_TERMS = {"text", "label", "caption", "word", "question-mark", "punctuation"}
+TEXT_LIKE_WORK_MARK_TERMS = {
+    "text",
+    "label",
+    "caption",
+    "word",
+    "words",
+    "letter",
+    "letters",
+    "number",
+    "numbers",
+    "code",
+    "code line",
+    "code lines",
+    "pseudo writing",
+    "pseudo text",
+    "fake writing",
+    "handwriting",
+    "writing",
+    "ui paragraph",
+    "ui paragraphs",
+    "paragraph",
+    "paragraphs",
+    "ruled line",
+    "ruled lines",
+    "ruled notebook line",
+    "ruled notebook lines",
+    "notebook line",
+    "notebook lines",
+    "list row",
+    "list rows",
+}
 TEXT_NEGATION_TERMS = {"no", "non", "not", "without"}
 TEXT_NEGATION_BREAK_TERMS = {"although", "but", "except", "however", "though", "while", "yet"}
 DRAFT_ENHANCER_KIND_TERMS = {
@@ -635,6 +666,12 @@ def validate_enhancer(
         )
 
     text = enhancer_text(value)
+    if "working" in name and has_unnegated_term(text, TEXT_LIKE_WORK_MARK_TERMS):
+        warnings.append(
+            f"{name}.description mentions text-like work marks; use chunky non-text progress blocks, dots, "
+            "check marks, sliders, or sorting tokens instead"
+        )
+
     if anatomy_class in NO_GRIP_ANATOMY_CLASSES:
         if attachment in NO_GRIP_ATTACHMENTS:
             errors.append(
