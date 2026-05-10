@@ -439,7 +439,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn(
-                "neutral-curious -> noticing -> pondering -> processing hold -> recognition -> pleased settle",
+                "neutral-curious -> noticing -> pondering -> idea lands -> pleased settle",
                 thinking_prompt,
             )
             self.assertIn("not random sad, sleepy, angry, blank, or unrelated faces", thinking_prompt)
@@ -686,15 +686,22 @@ class PrepareCompanionRunTests(unittest.TestCase):
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("Frame-by-frame acting arc", thinking_prompt)
             self.assertIn("Six-frame acting story", thinking_prompt)
-            self.assertIn("two small close puffs sit low beside the head/hood", thinking_prompt)
+            self.assertIn("two small close puffs sit low beside the upper head/hat/hood/face edge", thinking_prompt)
             self.assertIn("two puffs plus a very small third puff form a compact cluster", thinking_prompt)
             self.assertIn("compact three-puff thought bubble", thinking_prompt)
             self.assertIn("one slightly larger main puff and two smaller close support puffs", thinking_prompt)
             self.assertIn("thought cue shrinks to one tiny close remnant or resolves cleanly", thinking_prompt)
-            self.assertIn("neutral-curious -> pondering -> idea lands -> pleased settle", thinking_prompt)
-            self.assertIn("The face and side appendage should sell thinking even before the bubble is noticed", thinking_prompt)
+            self.assertIn("neutral-curious -> noticing -> pondering -> idea lands -> pleased settle", thinking_prompt)
+            self.assertIn("The face, body timing, and any side appendage should sell thinking even before the bubble is noticed", thinking_prompt)
             self.assertIn("Do not make a tall vertical stack", thinking_prompt)
             self.assertIn("Do not let the cue force the mascot smaller", thinking_prompt)
+            self.assertIn("non-flat magenta #FF00FF background", thinking_prompt)
+            self.assertIn("Use only existing side appendages as subtle side-attached bobs", thinking_prompt)
+            self.assertIn("Do not turn fins, sleeves, mitts, or ambiguous side shapes into hands", thinking_prompt)
+            self.assertNotIn("open black eyes", thinking_prompt)
+            self.assertNotIn("white puff", thinking_prompt)
+            self.assertNotIn("free hand or hand-like appendage", thinking_prompt)
+            self.assertNotIn("non-flat green background", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("frameArc", cue_plan["states"]["thinking"])
@@ -724,7 +731,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("do not use loose sparkles, isolated white specks, star glints, diamond flecks, or single-pixel dust", thinking_prompt)
             self.assertIn("The cue must read as one deliberate compact thought puff, bubble cluster, idea orb, or processing aura", thinking_prompt)
             self.assertIn("The final frame must not leave a stray dot", thinking_prompt)
-            self.assertIn("either resolve cleanly to no cue or keep a tiny settled cue still visibly connected to the head", thinking_prompt)
+            self.assertIn("either resolve cleanly to no cue or keep a tiny settled cue still visibly associated with the same state source", thinking_prompt)
 
     def test_near_head_thinking_cues_do_not_merge_into_body_core(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -753,7 +760,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("without making QA measure the cue as body size", thinking_prompt)
             self.assertIn("Near-head cue footprint lock", thinking_prompt)
             self.assertIn("does not become the tallest or widest row element and force atlas assembly to shrink the mascot body", thinking_prompt)
-            self.assertIn("tuck it closer to the head/hood instead of changing mascot scale", thinking_prompt)
+            self.assertIn("tuck it closer to the upper head/hat/hood/face edge instead of changing mascot scale", thinking_prompt)
 
     def test_no_limb_thinking_prompt_forbids_chin_marks_and_worried_faces(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1335,7 +1342,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("HatchPet-style sprite artifact rules", working_prompt)
             self.assertIn("Prefer pose, expression, and silhouette changes over decorative effects", working_prompt)
             self.assertIn("Effects are allowed only when they are state-relevant, opaque, hard-edged, pixel-style", working_prompt)
-            self.assertIn("physically touching or overlapping the mascot silhouette, mouth edge, hand, tool, or worn prop", working_prompt)
+            self.assertIn("source-bound to the mascot silhouette, mouth edge, hand, tool, worn prop, or state source", working_prompt)
             self.assertIn("Freestanding props are a last resort", working_prompt)
             self.assertIn("Prefer body-surface, rim-touching, attached, or overlapping processing cues", working_prompt)
             self.assertIn("freestanding or resting work prop", working_prompt)
