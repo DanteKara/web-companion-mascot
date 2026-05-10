@@ -13,6 +13,16 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 SEPARATE_ENHANCER_ATTACHMENTS = {"near-head", "near-hand", "aura"}
+OVERLAP_OK_COMPONENT_POLICIES = {"overlap-ok", "integrated-ok", "occlusion-ok"}
+
+
+def separate_component_required(enhancer: dict[str, Any], attachment: str) -> bool:
+    component_policy = str(enhancer.get("componentPolicy", "")).strip().lower()
+    if component_policy in OVERLAP_OK_COMPONENT_POLICIES:
+        return False
+    if component_policy == "separate":
+        return True
+    return attachment in SEPARATE_ENHANCER_ATTACHMENTS
 
 
 def quantile(sorted_values: list[int], ratio: float) -> int:
@@ -20,6 +30,16 @@ def quantile(sorted_values: list[int], ratio: float) -> int:
         return 0
     index = int(round((len(sorted_values) - 1) * ratio))
     return sorted_values[min(len(sorted_values) - 1, max(0, index))]
+
+
+def median_value(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    midpoint = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[midpoint]
+    return (ordered[midpoint - 1] + ordered[midpoint]) / 2
 
 
 def component_center(bbox: tuple[int, int, int, int]) -> tuple[float, float]:
@@ -279,6 +299,7 @@ def analyze_manifest_quality(
     max_area_jump_ratio: float = 0.45,
     max_core_scale_drift_ratio: float = 0.12,
     max_core_scale_range_ratio: float = 0.05,
+    max_cross_state_core_scale_drift_ratio: float = 0.10,
     max_core_center_drift_ratio: float = 0.08,
     max_fragment_area_ratio: float = 0.015,
     max_semantic_drift_ratio: float = 0.55,
@@ -425,9 +446,10 @@ def analyze_manifest_quality(
                 attachment = str(enhancer.get("attachment", ""))
                 semantic_metrics = [metric for metric in state_metrics if metric.get("semantic") and metric.get("body")]
                 presence_ratio = len(semantic_metrics) / max(1, len(state_metrics))
-                if attachment in SEPARATE_ENHANCER_ATTACHMENTS and presence_ratio < min_semantic_presence_ratio:
+                if separate_component_required(enhancer, attachment) and presence_ratio < min_semantic_presence_ratio:
                     warnings.append(
-                        f"states.{state_name} semantic enhancer appears in only {presence_ratio:.0%} of frames; check missing or unstable enhancer placement"
+                        f"states.{state_name} semantic enhancer appears in only {presence_ratio:.0%} of frames; "
+                        "check missing, too-small, unstable, or body-fused enhancer placement"
                     )
                 if semantic_metrics:
                     relative_positions = []
@@ -472,6 +494,59 @@ def analyze_manifest_quality(
                 ),
             }
 
+    state_core_summaries: list[dict[str, Any]] = []
+    for state_name, state_metrics in metrics_by_state.items():
+        core_scales = []
+        for metric in state_metrics:
+            body = metric.get("body")
+            if not body:
+                continue
+            core_w, core_h = body.get("coreSize", body["size"])
+            core_scales.append(math.sqrt(max(1, core_w * core_h)))
+        if core_scales:
+            state_core_summaries.append(
+                {
+                    "state": state_name,
+                    "medianCoreScale": median_value(core_scales),
+                    "minCoreScale": min(core_scales),
+                    "maxCoreScale": max(core_scales),
+                }
+            )
+
+    if len(state_core_summaries) > 1:
+        global_median_scale = median_value([entry["medianCoreScale"] for entry in state_core_summaries])
+        if global_median_scale:
+            scale_values = [entry["medianCoreScale"] for entry in state_core_summaries]
+            cross_state_range_ratio = (max(scale_values) - min(scale_values)) / global_median_scale
+            if cross_state_range_ratio > max_cross_state_core_scale_drift_ratio:
+                warnings.append(
+                    f"cross-state median core scale range is {cross_state_range_ratio:.0%}; "
+                    "keep mascot body scale consistent across state rows"
+                )
+            for entry in state_core_summaries:
+                drift = abs(entry["medianCoreScale"] - global_median_scale) / global_median_scale
+                entry["driftFromPackMedianRatio"] = drift
+                if drift > max_cross_state_core_scale_drift_ratio:
+                    warnings.append(
+                        f"states.{entry['state']} median core scale differs from the pack median by {drift:.0%}; "
+                        "keep mascot body scale consistent across state rows"
+                    )
+            qa["crossState"] = {
+                "medianCoreScale": round(global_median_scale, 3),
+                "medianCoreScaleRangeRatio": round(cross_state_range_ratio, 3),
+                "maxAllowedDriftRatio": max_cross_state_core_scale_drift_ratio,
+                "states": [
+                    {
+                        "state": entry["state"],
+                        "medianCoreScale": round(entry["medianCoreScale"], 3),
+                        "minCoreScale": round(entry["minCoreScale"], 3),
+                        "maxCoreScale": round(entry["maxCoreScale"], 3),
+                        "driftFromPackMedianRatio": round(entry.get("driftFromPackMedianRatio", 0.0), 3),
+                    }
+                    for entry in sorted(state_core_summaries, key=lambda item: item["state"])
+                ],
+            }
+
     semantic_path = manifest_path.parent / semantic_anchor_check
     motion_path = manifest_path.parent / motion_quality_check
     make_semantic_anchor_sheet(semantic_path, manifest, frames_by_state, metrics_by_state)
@@ -504,6 +579,7 @@ def main() -> int:
     parser.add_argument("--max-area-jump-ratio", type=float, default=0.45, help="Max consecutive body area jump ratio")
     parser.add_argument("--max-core-scale-drift-ratio", type=float, default=0.12, help="Max mascot core scale drift within one state")
     parser.add_argument("--max-core-scale-range-ratio", type=float, default=0.05, help="Max full mascot core scale range within one state")
+    parser.add_argument("--max-cross-state-core-scale-drift-ratio", type=float, default=0.10, help="Max median mascot core scale drift between state rows")
     parser.add_argument("--max-core-center-drift-ratio", type=float, default=0.08, help="Max mascot core center drift as a ratio of cell min dimension")
     parser.add_argument("--max-fragment-area-ratio", type=float, default=0.015, help="Max detached fragment area as a ratio of foreground area")
     parser.add_argument("--max-semantic-drift-ratio", type=float, default=0.55, help="Max semantic anchor drift in body-widths")
@@ -522,6 +598,7 @@ def main() -> int:
         max_area_jump_ratio=args.max_area_jump_ratio,
         max_core_scale_drift_ratio=args.max_core_scale_drift_ratio,
         max_core_scale_range_ratio=args.max_core_scale_range_ratio,
+        max_cross_state_core_scale_drift_ratio=args.max_cross_state_core_scale_drift_ratio,
         max_core_center_drift_ratio=args.max_core_center_drift_ratio,
         max_fragment_area_ratio=args.max_fragment_area_ratio,
         max_semantic_drift_ratio=args.max_semantic_drift_ratio,

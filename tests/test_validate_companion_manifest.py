@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from PIL import Image
+
 
 ROOT = Path(__file__).resolve().parents[1]
 VALIDATOR_PATH = ROOT / "scripts" / "validate_companion_manifest.py"
@@ -116,6 +118,97 @@ def write_state_performance_review(tmp_path: Path, review_extra: dict | None = N
 
 
 class ManifestValidatorTests(unittest.TestCase):
+    def test_validator_uses_manifest_chroma_key_for_halo_detection_without_report(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            atlas_path = tmp_path / "atlas.png"
+            atlas = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+            atlas.putpixel((16, 16), (0, 255, 0, 255))
+            atlas.save(atlas_path)
+            manifest = {
+                "id": "fixture",
+                "displayName": "Fixture",
+                "style": {
+                    "stateClarity": "pose-only",
+                    "renderingStyle": "codex-pixel-art",
+                    "chromaKey": {"hex": "#00FF00"},
+                },
+                "atlas": {
+                    "path": "atlas.png",
+                    "width": 32,
+                    "height": 32,
+                    "columns": 1,
+                    "rows": 1,
+                    "cellWidth": 32,
+                    "cellHeight": 32,
+                },
+                "states": {
+                    "idle": {
+                        "row": 0,
+                        "frames": 1,
+                        "durations": [120],
+                        "loop": True,
+                    }
+                },
+            }
+            manifest_path = tmp_path / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                max_outline_halo_pixels=0,
+            )
+
+            self.assertTrue(any("key-colored outline/halo pixels" in error for error in errors))
+
+    def test_validator_uses_request_chroma_key_for_halo_detection_without_report(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            atlas_path = tmp_path / "atlas.png"
+            atlas = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+            atlas.putpixel((16, 16), (0, 255, 0, 255))
+            atlas.save(atlas_path)
+            (tmp_path / "companion_request.json").write_text(
+                json.dumps({"chromaKey": {"rgb": [0, 255, 0]}}),
+                encoding="utf-8",
+            )
+            manifest = {
+                "id": "fixture",
+                "displayName": "Fixture",
+                "style": {
+                    "stateClarity": "pose-only",
+                    "renderingStyle": "codex-pixel-art",
+                },
+                "atlas": {
+                    "path": "atlas.png",
+                    "width": 32,
+                    "height": 32,
+                    "columns": 1,
+                    "rows": 1,
+                    "cellWidth": 32,
+                    "cellHeight": 32,
+                },
+                "states": {
+                    "idle": {
+                        "row": 0,
+                        "frames": 1,
+                        "durations": [120],
+                        "loop": True,
+                    }
+                },
+            }
+            manifest_path = tmp_path / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                max_outline_halo_pixels=0,
+            )
+
+            self.assertTrue(any("key-colored outline/halo pixels" in error for error in errors))
+
     def test_rendering_style_is_required_when_requested(self) -> None:
         enhancer = {
             "kind": "body-surface-processing-glyph",
@@ -175,6 +268,7 @@ class ManifestValidatorTests(unittest.TestCase):
             checks = {
                 "referenceQualityMaintained": True,
                 "identityPreserved": True,
+                "eyeGrammarPreserved": True,
                 "stylePreserved": True,
                 "creativeStateReadability": True,
                 "nativeEnhancers": True,
@@ -223,6 +317,7 @@ class ManifestValidatorTests(unittest.TestCase):
             checks = {
                 "referenceQualityMaintained": True,
                 "identityPreserved": True,
+                "eyeGrammarPreserved": True,
                 "stylePreserved": True,
                 "pixelArtStyle": True,
                 "creativeStateReadability": True,
@@ -255,6 +350,56 @@ class ManifestValidatorTests(unittest.TestCase):
             )
 
             self.assertTrue(any("checks.themeNativeStateCues is required" in error for error in errors))
+
+    def test_art_direction_review_requires_eye_grammar_check(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "no-limbs"})
+            source_reference = tmp_path / "source.png"
+            source_reference.write_bytes(b"not-really-an-image")
+            qa_dir = tmp_path / "qa"
+            qa_dir.mkdir()
+            checks = {
+                "referenceQualityMaintained": True,
+                "identityPreserved": True,
+                "stylePreserved": True,
+                "pixelArtStyle": True,
+                "creativeStateReadability": True,
+                "themeNativeStateCues": True,
+                "nativeEnhancers": True,
+                "integratedEnhancers": True,
+                "anatomyPreserved": True,
+                "noExtraAnatomy": True,
+                "believableOcclusion": True,
+                "noPrototypeFlattening": True,
+            }
+            (qa_dir / "art-direction-review.json").write_text(
+                json.dumps(
+                    {
+                        "status": "pass",
+                        "generationMethod": "imagegen-integrated-row-art",
+                        "sourceReference": str(source_reference),
+                        "productionUse": True,
+                        "checks": checks,
+                        "blockers": [],
+                        "notes": "Visual review passed.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_art_direction_review=True,
+            )
+
+            self.assertTrue(any("checks.eyeGrammarPreserved is required" in error for error in errors))
 
     def test_visual_language_is_required_when_requested(self) -> None:
         enhancer = {
@@ -305,6 +450,42 @@ class ManifestValidatorTests(unittest.TestCase):
             self.assertFalse(any("style.visualLanguage" in error for error in errors))
             self.assertFalse(any("enhancer.visualLanguageFit" in error for error in errors))
             self.assertTrue(qa["stateClarity"]["hasVisualLanguage"])
+
+    def test_near_head_overlap_component_policy_is_allowed(self) -> None:
+        enhancer = {
+            "kind": "partly occluded thought puff",
+            "attachment": "near-head",
+            "componentPolicy": "overlap-ok",
+            "description": "A compact thought puff sits close enough to overlap the top of the hood.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("componentPolicy" in error for error in errors))
+
+    def test_unknown_component_policy_is_rejected(self) -> None:
+        enhancer = {
+            "kind": "thought puff",
+            "attachment": "near-head",
+            "componentPolicy": "maybe",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_clarity=True,
+            )
+
+            self.assertTrue(any("componentPolicy must be one of" in error for error in errors))
 
     def test_draft_enhancer_kind_warns_before_production_validation(self) -> None:
         enhancer = {

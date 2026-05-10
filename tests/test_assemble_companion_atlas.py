@@ -1,4 +1,6 @@
 import importlib.util
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -15,6 +17,29 @@ spec.loader.exec_module(assembler)
 
 
 class AssembleCompanionAtlasTests(unittest.TestCase):
+    def test_resolve_key_color_uses_manifest_chroma_key_before_default(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = Path(raw_tmp) / "manifest.json"
+            manifest = {"style": {"chromaKey": {"hex": "#00FF00"}}}
+
+            self.assertEqual(assembler.resolve_key_color(manifest, manifest_path, None), "#00FF00")
+
+    def test_resolve_key_color_uses_companion_request_when_manifest_lacks_key(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = tmp_path / "manifest.json"
+            (tmp_path / "companion_request.json").write_text(
+                json.dumps({"chromaKey": {"hex": "#00FFFF"}}),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(assembler.resolve_key_color({}, manifest_path, None), "#00FFFF")
+
+    def test_resolve_key_color_allows_explicit_override(self) -> None:
+        manifest = {"style": {"chromaKey": {"hex": "#00FF00"}}}
+
+        self.assertEqual(assembler.resolve_key_color(manifest, Path("manifest.json"), "#FF00FF"), "#FF00FF")
+
     def test_component_mode_uses_largest_expected_components_as_bodies(self) -> None:
         strip = Image.new("RGBA", (360, 120), (0, 0, 0, 0))
         draw = ImageDraw.Draw(strip)

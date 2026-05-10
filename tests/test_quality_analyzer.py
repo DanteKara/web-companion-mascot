@@ -44,14 +44,20 @@ def write_manifest(tmp_path: Path, atlas_name: str = "atlas.png") -> Path:
     return manifest_path
 
 
-def paste_body(atlas: Image.Image, column: int, radius: int, center: tuple[int, int] = (128, 160)) -> None:
+def paste_body(
+    atlas: Image.Image,
+    column: int,
+    radius: int,
+    center: tuple[int, int] = (128, 160),
+    row: int = 0,
+) -> None:
     frame = Image.new("RGBA", (256, 288), (0, 0, 0, 0))
     draw = ImageDraw.Draw(frame)
     cx, cy = center
     draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=(230, 245, 255, 255))
     draw.ellipse((cx - 10, cy - 6, cx - 4, cy), fill=(0, 0, 0, 255))
     draw.ellipse((cx + 4, cy - 6, cx + 10, cy), fill=(0, 0, 0, 255))
-    atlas.alpha_composite(frame, (column * 256, 0))
+    atlas.alpha_composite(frame, (column * 256, row * 288))
 
 
 class QualityAnalyzerTests(unittest.TestCase):
@@ -130,6 +136,32 @@ class QualityAnalyzerTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertTrue(any("silhouette core scale range" in warning for warning in result["warnings"]))
 
+    def test_flags_cross_state_core_scale_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            atlas = Image.new("RGBA", (1024, 576), (0, 0, 0, 0))
+            for column in range(4):
+                paste_body(atlas, column, 52, row=0)
+                paste_body(atlas, column, 70, row=1)
+            atlas.save(tmp_path / "atlas.png")
+            manifest_path = write_manifest(tmp_path)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["atlas"]["height"] = 576
+            manifest["atlas"]["rows"] = 2
+            manifest["states"]["answering"] = {
+                "row": 1,
+                "frames": 4,
+                "durations": [120, 120, 120, 120],
+                "loop": True,
+            }
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            result = analyzer.analyze_manifest_quality(manifest_path)
+
+            self.assertFalse(result["ok"])
+            self.assertTrue(any("cross-state median core scale range" in warning for warning in result["warnings"]))
+            self.assertIn("crossState", result["qa"])
+
     def test_near_face_attached_voice_cue_does_not_require_separate_component(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp_path = Path(raw_tmp)
@@ -171,6 +203,28 @@ class QualityAnalyzerTests(unittest.TestCase):
             result = analyzer.analyze_manifest_quality(manifest_path)
 
             self.assertTrue(any("semantic enhancer appears" in warning for warning in result["warnings"]))
+
+    def test_near_head_overlap_policy_does_not_require_separate_component(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            atlas = Image.new("RGBA", (1024, 288), (0, 0, 0, 0))
+            for column in range(4):
+                paste_body(atlas, column, 52)
+            atlas.save(tmp_path / "atlas.png")
+            manifest_path = write_manifest(tmp_path)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["style"] = {"stateClarity": "semantic-enhancers", "renderingStyle": "codex-pixel-art"}
+            manifest["states"]["idle"]["enhancer"] = {
+                "kind": "partly occluded thought puff",
+                "attachment": "near-head",
+                "componentPolicy": "overlap-ok",
+                "description": "A compact thought puff sits close enough to overlap the top of the hood.",
+            }
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            result = analyzer.analyze_manifest_quality(manifest_path)
+
+            self.assertFalse(any("semantic enhancer appears" in warning for warning in result["warnings"]))
 
 
 if __name__ == "__main__":

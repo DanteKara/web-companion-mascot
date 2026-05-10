@@ -66,6 +66,46 @@ def parse_hex_color(value: str) -> tuple[int, int, int]:
     return int(raw[0:2], 16), int(raw[2:4], 16), int(raw[4:6], 16)
 
 
+def hex_from_chroma_key(value: Any) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    hex_value = value.get("hex")
+    if isinstance(hex_value, str) and hex_value.strip():
+        return hex_value
+    rgb = value.get("rgb")
+    if isinstance(rgb, list) and len(rgb) == 3:
+        return "#" + "".join(f"{int(channel):02X}" for channel in rgb)
+    return None
+
+
+def manifest_chroma_key(manifest: dict[str, Any]) -> str | None:
+    style = manifest.get("style")
+    if isinstance(style, dict):
+        key = hex_from_chroma_key(style.get("chromaKey"))
+        if key:
+            return key
+    return hex_from_chroma_key(manifest.get("chromaKey"))
+
+
+def request_chroma_key(manifest_path: Path) -> str | None:
+    request_path = manifest_path.parent / "companion_request.json"
+    if not request_path.is_file():
+        return None
+    try:
+        request = json.loads(request_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(request, dict):
+        return None
+    return hex_from_chroma_key(request.get("chromaKey"))
+
+
+def resolve_key_color(manifest: dict[str, Any], manifest_path: Path, override: str | None) -> str:
+    if override:
+        return override
+    return manifest_chroma_key(manifest) or request_chroma_key(manifest_path) or "#FF00FF"
+
+
 def color_distance(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
     return sum((left - right) ** 2 for left, right in zip(a, b)) ** 0.5
 
@@ -714,9 +754,10 @@ def assemble(args: argparse.Namespace) -> dict[str, Any]:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     args.frames_dir.mkdir(parents=True, exist_ok=True)
     args.previews_dir.mkdir(parents=True, exist_ok=True)
-    args.key_color_rgb = parse_hex_color(args.key_color)
 
     manifest = json.loads(args.manifest.read_text(encoding="utf-8-sig"))
+    args.key_color = resolve_key_color(manifest, args.manifest, args.key_color)
+    args.key_color_rgb = parse_hex_color(args.key_color)
     states = state_items(manifest)
     if args.columns is None:
         args.columns = max(int(state["frames"]) for _name, state in states)
@@ -805,7 +846,10 @@ def main() -> int:
     parser.add_argument("--cell-height", type=int, default=288, help="Atlas cell height")
     parser.add_argument("--columns", type=int, help="Atlas columns; defaults to max state frames")
     parser.add_argument("--padding", type=int, default=10, help="Cell padding around fitted sprites")
-    parser.add_argument("--key-color", default="#FF00FF", help="Chroma-key color as #RRGGBB")
+    parser.add_argument(
+        "--key-color",
+        help="Chroma-key color as #RRGGBB; defaults to manifest/request chromaKey, then #FF00FF",
+    )
     parser.add_argument("--key-tolerance", type=int, default=80, help="Euclidean RGB tolerance for key removal")
     parser.add_argument("--spill-threshold", type=int, default=45, help="Remove magenta spill when R/G and B/G exceed this threshold")
     parser.add_argument("--edge-spill-passes", type=int, default=2, help="Passes that remove key-colored edge pixels touching transparency")

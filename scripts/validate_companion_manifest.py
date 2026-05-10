@@ -56,6 +56,7 @@ ALLOWED_ENHANCER_ATTACHMENTS = {
     "body-pose",
     "resting",
 }
+ALLOWED_ENHANCER_COMPONENT_POLICIES = {"separate", "overlap-ok", "integrated-ok", "occlusion-ok"}
 TEXT_DEPENDENT_KIND_TERMS = {"text", "label", "caption", "word", "question-mark", "punctuation"}
 TEXT_LIKE_WORK_MARK_TERMS = {
     "text",
@@ -241,6 +242,58 @@ def parse_hex_color(value: str) -> tuple[int, int, int]:
     return int(raw[0:2], 16), int(raw[2:4], 16), int(raw[4:6], 16)
 
 
+def hex_from_chroma_key(value: Any) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    hex_value = value.get("hex")
+    if isinstance(hex_value, str) and hex_value.strip():
+        return hex_value
+    rgb = value.get("rgb")
+    if isinstance(rgb, list) and len(rgb) == 3:
+        try:
+            return "#" + "".join(f"{int(channel):02X}" for channel in rgb)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def manifest_chroma_key(manifest: dict[str, Any]) -> str | None:
+    style = manifest.get("style")
+    if isinstance(style, dict):
+        key = hex_from_chroma_key(style.get("chromaKey"))
+        if key:
+            return key
+    return hex_from_chroma_key(manifest.get("chromaKey"))
+
+
+def request_chroma_key(manifest_path: Path) -> str | None:
+    request_path = manifest_path.parent / "companion_request.json"
+    if not request_path.is_file():
+        return None
+    try:
+        request = json.loads(request_path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(request, dict):
+        return None
+    return hex_from_chroma_key(request.get("chromaKey"))
+
+
+def resolve_key_color(
+    manifest: dict[str, Any],
+    manifest_path: Path,
+    override: str | None,
+    assembly_report: dict[str, Any] | None,
+) -> str:
+    if override:
+        return override
+    if assembly_report:
+        report_key_color = assembly_report.get("keyColor")
+        if isinstance(report_key_color, str) and report_key_color.strip():
+            return report_key_color
+    return manifest_chroma_key(manifest) or request_chroma_key(manifest_path) or "#FF00FF"
+
+
 def color_distance(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
     return sum((left - right) ** 2 for left, right in zip(a, b)) ** 0.5
 
@@ -401,6 +454,7 @@ def validate_art_direction_review(
     required_checks = {
         "referenceQualityMaintained",
         "identityPreserved",
+        "eyeGrammarPreserved",
         "stylePreserved",
         "pixelArtStyle",
         "creativeStateReadability",
@@ -904,6 +958,18 @@ def validate_enhancer(
         elif attachment not in ALLOWED_ENHANCER_ATTACHMENTS:
             errors.append(
                 f"{name}.attachment must be one of: {', '.join(sorted(ALLOWED_ENHANCER_ATTACHMENTS))}"
+            )
+
+    component_policy = value.get("componentPolicy")
+    if component_policy is not None:
+        if not isinstance(component_policy, str) or component_policy not in ALLOWED_ENHANCER_COMPONENT_POLICIES:
+            errors.append(
+                f"{name}.componentPolicy must be one of: {', '.join(sorted(ALLOWED_ENHANCER_COMPONENT_POLICIES))}"
+            )
+        elif component_policy in {"overlap-ok", "integrated-ok", "occlusion-ok"} and attachment in {"freestanding", "near-hand"}:
+            warnings.append(
+                f"{name}.componentPolicy {component_policy!r} should be reserved for visually reviewed body/hood/head overlap, "
+                "not freestanding or hand-proximate props"
             )
 
     required_affordances = value.get("requiredAffordances")
@@ -1418,14 +1484,10 @@ def validate_manifest(
         if require_state_performance_review:
             warnings.append("qa/state-performance-review.json is missing or unreadable")
 
-    if key_color is None and assembly_report:
-        report_key_color = assembly_report.get("keyColor")
-        key_color = report_key_color if isinstance(report_key_color, str) else None
+    key_color = resolve_key_color(data, manifest_path, key_color, assembly_report)
     if spill_threshold is None and assembly_report:
         report_spill_threshold = assembly_report.get("spillThreshold")
         spill_threshold = report_spill_threshold if isinstance(report_spill_threshold, int) else None
-    if key_color is None:
-        key_color = "#FF00FF"
     if spill_threshold is None:
         spill_threshold = 45
 
@@ -1584,7 +1646,10 @@ def main() -> int:
         help="Validation profile. Use audition for strict single-row or partial-pack tests; use chatbot for full website assistant companion packs.",
     )
     parser.add_argument("--strict", action="store_true", help="Treat warnings as failures")
-    parser.add_argument("--key-color", help="Chroma-key color used by the assembler; defaults to assembly report or #FF00FF")
+    parser.add_argument(
+        "--key-color",
+        help="Chroma-key color used by the assembler; defaults to assembly report, manifest/request chromaKey, then #FF00FF",
+    )
     parser.add_argument("--spill-threshold", type=int, help="Spill threshold used by the assembler; defaults to assembly report or 45")
     parser.add_argument("--max-outline-halo-pixels", type=int, default=0, help="Maximum key-colored outline pixels allowed per used frame")
     parser.add_argument(

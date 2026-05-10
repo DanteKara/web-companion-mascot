@@ -11,6 +11,7 @@ from pathlib import Path
 REQUIRED_CHECKS = [
     "referenceQualityMaintained",
     "identityPreserved",
+    "eyeGrammarPreserved",
     "stylePreserved",
     "pixelArtStyle",
     "creativeStateReadability",
