@@ -76,7 +76,7 @@ STATE_STORY_BEATS = {
 STATE_ACTING_CHOREOGRAPHY_POLICY = (
     "Professional state acting choreography: direct the row like a tiny looped character performance. "
     "Coordinate three synchronized tracks in every frame: expression track, body/appendage track, and "
-    "cue/prop track. The face, body, hands/paws/fins, clothing, held props, and optional state cue should "
+    "cue/prop track. The face, body, existing appendages, surface details, held props, and optional state cue should "
     "take turns carrying the motion so the row feels alive. Do not let all motion live in the prop, bubble, "
     "sparkle, or cue while the mascot stays static. Reject parked hands, frozen appendages, unchanged faces, "
     "and symbol-only rows unless the reference truly has no movable anatomy; in that case use eyes, mouth, "
@@ -91,7 +91,7 @@ STATE_ACTING_CHOREOGRAPHY = {
         "settle beat. Frame 8: return cleanly to the first resting pose."
     ),
     "greeting": (
-        "Frame 1: notices the user. Frame 2: eyes brighten and smile starts. Frame 3: existing hand/paw/fin "
+        "Frame 1: notices the user. Frame 2: eyes brighten and smile starts. Frame 3: an existing appendage "
         "or whole body begins a greeting lift/bounce if anatomy supports it. Frame 4: peak warm greeting. "
         "Frame 5: smile hold with tiny follow-through. Frame 6: gesture lowers. Frame 7: friendly settle. "
         "Frame 8: return to ready rest without a mood jump."
@@ -124,12 +124,12 @@ STATE_ACTING_CHOREOGRAPHY = {
         "Frame 3: wider mouth; free hand begins a small presenting gesture if anatomy supports it. Frame 4: "
         "clearest syllable hold with bright eyes and slight body bob. Frame 5: quick speaking blink or "
         "smile-open beat with a tiny conversational hand bounce. Frame 6: smaller mouth and hand/body "
-        "follow-through. Frame 7: closed smile while the hand settles. Frame 8: ready speaking-rest pose that "
+        "follow-through. Frame 7: closed smile while the body or appendage settles. Frame 8: ready speaking-rest pose that "
         "loops naturally back to frame 1."
     ),
     "success": (
         "Frame 1: anticipation or completion notice. Frame 2: smile grows. Frame 3: tiny upward bounce or proud "
-        "lift. Frame 4: proud peak with hands/paws/appendages lifted only if they already exist. Frame 5: "
+        "lift. Frame 4: proud peak with existing appendages lifted only if the reference supports it. Frame 5: "
         "attached check/glint or mascot-native success cue appears only if needed. Frame 6: pleased hold. "
         "Frame 7: appendages/body lower. Frame 8: warm settled success face ready to loop."
     ),
@@ -154,7 +154,7 @@ STATE_ACTING_CHOREOGRAPHY = {
 
 STATE_VISUAL_AIDS = {
     "listening": "small attached sound rings or attentive pose only when needed",
-    "thinking": "head/eye/mouth acting first with one compact thought bubble, thought puff, or idea orb when needed; it should grow small -> slightly larger -> medium -> smaller -> tiny/settle from the main upper head, hat, hood, or face edge, not from an antenna tip or identity prop, stay close without inflating the mascot body footprint, and make the thinking read unmistakable at 64-96 px",
+    "thinking": "face/eye/mouth/body acting first with one compact thought bubble, thought puff, or idea orb when needed; it should grow small -> slightly larger -> medium -> smaller -> tiny/settle from the inferred thought-cue source near the expression area, not from an unrelated identity prop, stay close without inflating the mascot body footprint, and make the thinking read unmistakable at 64-96 px",
     "working": "existing hands, body lean, gaze, and identity prop motion first; for long held props prefer a compact attached active-end bloom, aura, pulse, or contact mark with purposeful cycling, sorting, checking, charging, or gathering motion when needed",
     "answering": "mouth shapes first; speech pips, sound ticks, tiny rings, breath marks, or voice pixels are optional and should stay secondary when used; omit them if they cannot stay clearly attached to the mouth",
     "success": "small check/glint, proud pose, or raised existing prop",
@@ -165,7 +165,7 @@ STATE_VISUAL_AIDS = {
 STATE_REJECTS = {
     "working": "anger, hostile eyes, slanted angry eyes, V-shaped eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, duplicate identity props, prop-shaped glyph copies, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues, single isolated voice speck, one-frame voice ticks, one-frame sound marks, detached fleck, cheek-mark-like voice cue",
-    "thinking": "generic icon straight above the head, oversized second head/body-sized thought orb, giant bubble peak, thought cue fused into the body core causing body growth, static dots, loose sparkles, isolated white specks, star glints, stray final-frame dot, face-panel skew or body warp, hand contact with the lower face, hand-to-chin or hand-to-mouth pose, hands clasped under the mouth, mitten/bib cluster below the face, lower-face marks, worried frowns, confused/error mouth shapes, cue too subtle to read as thinking",
+    "thinking": "detached icon floating above the mascot, oversized second head/body-sized thought orb, giant bubble peak, thought cue fused into the body core causing body growth, static dots, loose sparkles, isolated white specks, star glints, stray final-frame dot, expression-panel skew or body warp, appendage contact with the lower face, hand-to-chin or hand-to-mouth pose, appendages clasped under the mouth, appendage-like cluster below the face, lower-face marks, worried frowns, confused/error mouth shapes, cue too subtle to read as thinking",
     "listening": "microphone props for non-voice apps, detached sound clutter",
     "success": "large confetti, loose sparkles, text labels",
     "error": "red X labels, detached symbols, scenery",
@@ -175,9 +175,9 @@ STATE_REJECTS = {
 STATE_FRAME_ARCS = {
     "thinking": (
         "Frame-by-frame acting arc for expressive thinking performance: 1 neutral-curious face and stable identity "
-        "props, 2 eyes glance up/side while hands stay side-anchored or begin a tiny side bob when anatomy supports it, "
-        "3 tiny closed pondering mouth or one-pixel thoughtful line and a small bubble/tiny first puff kept close beside the head, 4 slightly larger bubble with more curious eyes and a side-anchored low side or low outer-body hand beat, "
-        "5 compact thought-bubble peak beside the head with one slightly larger main puff and smaller support puffs while the face remains unobscured without changing the body footprint, 6 bubble starts smaller with a quick active processing blink or pondering hold, "
+        "props, 2 eyes glance up/side while appendages stay side-anchored or begin a tiny side bob when anatomy supports it, "
+        "3 tiny closed pondering mouth or one-pixel thoughtful line and a small bubble/tiny first puff kept close to the inferred thought-cue source, 4 slightly larger bubble with more curious eyes and a side-anchored low side or low outer-body appendage beat, "
+        "5 compact thought-bubble peak beside the inferred source with one slightly larger main puff and smaller support puffs while the face remains unobscured without changing the body footprint, 6 bubble starts smaller with a quick active processing blink or pondering hold, "
         "7 small smile/idea recognition as the cue shrinks, 8 settle back into the loop. Use one compact thought bubble, thought puff, "
         "or idea orb when acting alone is unclear; make the thinking read unmistakable at 64-96 px without turning "
         "the cue into the main character. Thinking also covers processing, retrieval, tool-use waiting, and backend "
@@ -186,7 +186,7 @@ STATE_FRAME_ARCS = {
         "than about one-quarter of the mascot body width, and do not let the thought cue become a second "
         "head/body-sized orb. Do not use a giant bubble peak; shrink back down before the loop settles. "
         "For shorter or longer rows, preserve the same expression-changing neutral -> curious -> pondering -> "
-        "recognition -> settle arc and the same small -> slightly larger -> medium -> smaller -> tiny/settle cue growth; this is not the "
+        "idea lands -> settle arc and the same small -> slightly larger -> medium -> smaller -> tiny/settle cue growth; this is not the "
         "same face or same bubble pasted in every frame. Keep the thinking expression story adjacent and character-appropriate, "
         "not random sad, sleepy, angry, blank, or unrelated faces."
     ),
@@ -203,7 +203,7 @@ STATE_FRAME_ARCS = {
         "5 smile-open mouth or quick speaking blink, 6 smaller mouth, 7 closed smile, 8 settle back into the loop. "
         "Use a readable mouth cycle such as closed smile -> small open -> wider open -> syllable hold -> smile, "
         "plus bright eyes, tiny conversational bob, and subtle head/body timing. If a voice cue is used, keep it "
-        "near the mouth/lip edge and secondary to the mouth animation, not as a random bubble beside the head. "
+        "near the mouth/lip edge and secondary to the mouth animation, not as a detached cue away from the mouth. "
         "Voice cues are optional and should be omitted when they cannot stay clearly attached to the mouth; when used, "
         "make a short 2-3 frame outward trail, not a single isolated speck in only one frame and not one-frame voice ticks."
     ),
@@ -442,7 +442,7 @@ WORK_LONG_HELD_PROP_POLICY = (
 
 WORK_MASCOT_ACTING_POLICY = (
     "Every frame must include a visible mascot acting change, not only bloom or cue animation. Add small but readable "
-    "body bob, head tilt, robe/clothing settle, hand grip shift, subtle prop follow-through, eye direction, blink, "
+    "body bob, head tilt, surface/detail settle, appendage grip shift, subtle prop follow-through, eye direction, blink, "
     "mouth shape, or cheek/body tilt changes while preserving identity and stable scale. The emotion arc should read "
     "as notice -> focus -> effort -> progress -> pleased settle, with friendly concentration throughout."
 )
@@ -537,20 +537,20 @@ THINKING_MOOD_CONTINUITY_POLICY = (
 )
 
 THINKING_CUE_CONTINUITY_POLICY = (
-    "Cue continuity lock: if a thought/processing cue is used, it must begin visually associated with the head, "
-    "hood, or face edge, then travel through adjacent frames as a readable small -> slightly larger -> medium -> "
+    "Cue continuity lock: if a thought/processing cue is used, it must begin visually associated with the "
+    "inferred thought-cue source near the expression area, then travel through adjacent frames as a readable small -> slightly larger -> medium -> "
     "smaller -> tiny/settle path while the mascot body footprint stays stable. Keep the cue separate from the body core "
     "whenever touching would make the head/body measure larger: a close 2-4 px chroma-key gap or tiny separated tail dot "
-    "is better than a bubble fused into the outline. Keep the cue separate from identity props: do not use an antenna tip, ear, horn, "
-    "hat, staff head, wand tip, badge, or emblem as the thought-bubble origin unless that prop is explicitly the "
-    "active source for the state. The cue must not cover, replace, recolor, or merge with an antenna bulb or other "
-    "must-keep identity prop. It must not pop in for one frame, jump upward into a giant peak, or drop out abruptly. "
-    "Near-head cue core-separation lock: do not alpha-connect the thought cue to the head, antenna, hood, face panel, "
-    "body core, or outline when it grows; keep a 2-4 px chroma-key gap between the growing cue and the mascot core. "
+    "is better than a bubble fused into the outline. Keep the cue separate from identity props: do not use a prop, accessory, "
+    "marking, or emblem as the thought-bubble origin unless that element is explicitly the "
+    "active source for the state. The cue must not cover, replace, recolor, or merge with any must-keep identity prop. "
+    "It must not pop in for one frame, jump upward into a giant peak, or drop out abruptly. "
+    "Near-head cue core-separation lock: do not alpha-connect the thought cue to the mascot core, expression panel, "
+    "accessory, or outline when it grows; keep a 2-4 px chroma-key gap between the growing cue and the mascot core. "
     "Use proximity, eye tracking, timing, or one tiny separated tail dot to show the cue source without making QA "
     "measure the cue as body size. Near-head cue footprint lock: keep the full cue path low, close, and compact enough "
     "that it does not become the tallest or widest row element and force atlas assembly to shrink the mascot body; if "
-    "the cue needs room, make the cue smaller or tuck it closer to the upper head/hat/hood/face edge instead of changing mascot scale. "
+    "the cue needs room, make the cue smaller or tuck it closer to the inferred thought-cue source instead of changing mascot scale. "
     "The final frame should either keep a tiny settled cue or clearly resolve back to frame 1 without a visual snap."
 )
 
@@ -562,7 +562,7 @@ THINKING_CUE_VOCABULARY_POLICY = (
     "symbol substitution, and no generic icon replacing the mascot's own thinking performance. "
     "Thinking cue solidity lock: do not use loose sparkles, isolated white specks, star glints, diamond flecks, "
     "or single-pixel dust as the primary thinking read. The cue must read as one deliberate compact thought puff, "
-    "bubble cluster, idea orb, or processing aura with hard-edged pixel mass and a clear source near the head. "
+    "bubble cluster, idea orb, or processing aura with hard-edged pixel mass and a clear inferred source near the expression area. "
     "The final frame must not leave a stray dot; either resolve cleanly to no cue or keep a tiny settled cue still visibly "
     "associated with the same state source."
 )
@@ -679,7 +679,7 @@ VOICE_CUE_POLICY = (
     "when they cannot stay clearly attached to the mouth. Mouth shapes must change clearly even when no voice cue is "
     "used: closed smile -> small open -> wider open -> syllable hold -> smile. If a voice cue is used, it must "
     "touch or overlap the mouth/lip edge or begin within 1-2 pixels of it, close enough to support the speaking "
-    "impression instead of carrying the whole state, and not as a random bubble beside the head. Prefer a short "
+    "impression instead of carrying the whole state, and not as a detached cue away from the mouth. Prefer a short "
     "2-3 frame outward trail that starts at the mouth and fades or returns; not a single isolated speck in only "
     "one frame, not one-frame voice ticks or one-frame sound marks. If a cue cannot appear in at least two adjacent "
     "frames with a mouth-origin progression, omit it; not a cheek mark, face marking, or detached fleck. "
@@ -1165,15 +1165,15 @@ def build_thinking_prompt(
     )
     if anatomy_class in {"hands", "paws"}:
         hand_line = (
-            "Use only existing hands/paws. A free appendage may lift, tilt outward, make a small side-present beat, then settle, "
+            "Use only existing appendages whose shape clearly supports the motion. A free appendage may lift, tilt outward, make a small side-present beat, then settle, "
             "always side-anchored beside the body. If a prop is held, keep the prop-holding appendage attached and identifiable. "
-            "Never touch or point into the face, mouth, chin, cheek, hood, or face opening; no hand-to-chin, hand-to-mouth, "
+            "Never touch or point into the expression area, mouth, chin, cheek, or face opening; no hand-to-chin, hand-to-mouth, "
             "under-chin presenting, or crossed-body gesture."
         )
     elif anatomy_class in {"fins-no-hands", "ambiguous-limbs"}:
         hand_line = (
-            "Use only existing side appendages as subtle side-attached bobs, tilts, tucks, or tiny outward turns. "
-            "Do not turn fins, sleeves, mitts, or ambiguous side shapes into hands, fingers, pointing, presenting across the body, "
+            "Use only existing simple side appendages as subtle side-attached bobs, tilts, tucks, or tiny outward turns. "
+            "Do not turn simple or ambiguous side shapes into hands, fingers, pointing, presenting across the body, "
             "gripping, or face-touch poses; not hand-to-chin, not hand-to-mouth, no under-face acting."
         )
     else:
@@ -1184,14 +1184,14 @@ def build_thinking_prompt(
     if frame_count == 6:
         frame_story = """Six-frame acting story:
 1. Reset: open source-matched eyes, tiny calm closed smile, body and any appendages resting, no visible thought cue.
-2. Thought starts: eyes keep the same fill/highlight grammar with a tiny upward or side attention shift; mouth stays small and closed; body or side appendages make a subtle start beat; one tiny non-chroma-key puff appears close to the upper head/hat/hood/face edge.
-3. Pondering: tiny closed pondering mouth or one-pixel thoughtful line; slight head/body tilt without scale change; two small close puffs sit low beside the upper head/hat/hood/face edge while any appendages stay side-attached.
-4. Forming: attentive open eyes, tiny thoughtful mouth, body or appendage timing holds the thinking beat; two puffs plus a very small third puff form a compact cluster near the same upper head/hat/hood/face edge.
-5. Idea lands: clearest frame. Use a compact three-puff thought bubble beside the upper head/hat/hood/face edge with one slightly larger main puff and two smaller close support puffs. Use a pleased active processing blink or tiny closed-mouth recognition smile. Body or appendage reaches its highest safe small beat without changing scale.
+2. Thought starts: eyes keep the same fill/highlight grammar with a tiny upward or side attention shift; mouth stays small and closed; body or side appendages make a subtle start beat; one tiny non-chroma-key puff appears close to the inferred thought-cue source.
+3. Pondering: tiny closed pondering mouth or one-pixel thoughtful line; slight head/body tilt without scale change; two small close puffs sit low beside the same inferred thought-cue source while any appendages stay side-attached.
+4. Forming: attentive open eyes, tiny thoughtful mouth, body or appendage timing holds the thinking beat; two puffs plus a very small third puff form a compact cluster near the same source.
+5. Idea lands: clearest frame. Use a compact three-puff thought bubble beside the inferred thought-cue source with one slightly larger main puff and two smaller close support puffs. Use a pleased active processing blink or tiny closed-mouth recognition smile. Body or appendage reaches its highest safe small beat without changing scale.
 6. Settle: eyes open again with a soft pleased face; body/appendage returns toward rest; thought cue shrinks to one tiny close remnant or resolves cleanly for a smooth loop to frame 1."""
     else:
         frame_story = f"""{frame_count}-frame acting story:
-Start with a neutral-curious reset, then a tiny attention shift, then a closed-mouth pondering beat, then a compact thought cue forming beside the upper head/hat/hood/face edge. Around the middle of the row, show the idea-lands peak as a three-puff thought bubble with one slightly larger main puff and two smaller support puffs. After the peak, use a quick active processing blink or tiny closed-mouth recognition smile, then shrink or resolve the cue and settle back into the first pose. Every frame should change face, posture, body/appendage timing, or cue timing enough to matter."""
+Start with a neutral-curious reset, then a tiny attention shift, then a closed-mouth pondering beat, then a compact thought cue forming beside the inferred thought-cue source. Around the middle of the row, show the idea-lands peak as a three-puff thought bubble with one slightly larger main puff and two smaller support puffs. After the peak, use a quick active processing blink or tiny closed-mouth recognition smile, then shrink or resolve the cue and settle back into the first pose. Every frame should change face, posture, body/appendage timing, or cue timing enough to matter."""
     return f"""# {name} thinking row prompt - compact
 
 Create one horizontal sprite row strip with exactly {frame_count} separated frames on a perfectly flat solid {key_hex} chroma-key background.
@@ -1224,7 +1224,7 @@ Thought cue rules:
 - Thinking cue solidity lock: use deliberate puff shapes, not loose specks.
 - Use one compact source-appropriate non-chroma-key thought puff family only: no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, glow, or symbol.
 - The peak must have exactly three visible puffs: one slightly larger main puff plus two smaller support puffs.
-- Keep the puffs close, low, and compact beside the upper head/hat/hood/face edge. Do not make a tall vertical stack. Do not let the cue force the mascot smaller.
+- Infer the thought-cue source from the canonical base and keep the puffs close, low, and compact beside that source. Do not make a tall vertical stack. Do not let the cue force the mascot smaller.
 
 Expression rules:
 - Use tiny closed/thoughtful mouths only: closed smile, one-pixel line, or tiny offset dot.
