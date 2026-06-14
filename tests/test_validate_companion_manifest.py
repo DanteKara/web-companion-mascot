@@ -1374,6 +1374,48 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("recommends 8+" in warning for warning in warnings))
 
+    def test_chatbot_profile_does_not_require_optional_working_state(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest = {
+                "id": "fixture",
+                "displayName": "Fixture",
+                "style": {
+                    "stateClarity": "semantic-enhancers",
+                    "renderingStyle": "codex-pixel-art",
+                },
+                "atlas": {
+                    "path": "missing.png",
+                    "width": 2048,
+                    "height": 1600,
+                    "columns": 8,
+                    "rows": 5,
+                    "cellWidth": 256,
+                    "cellHeight": 320,
+                },
+                "states": {
+                    "idle": {"row": 0, "frames": 8, "durations": [120] * 8, "loop": True},
+                    "thinking": {"row": 1, "frames": 8, "durations": [120] * 8, "loop": True},
+                    "answering": {"row": 2, "frames": 8, "durations": [120] * 8, "loop": True},
+                    "success": {"row": 3, "frames": 8, "durations": [120] * 8, "loop": True},
+                    "error": {"row": 4, "frames": 8, "durations": [120] * 8, "loop": True},
+                },
+            }
+            manifest_path = tmp_path / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_state_clarity=True,
+            )
+
+            self.assertFalse(any("missing core state: working" in warning for warning in warnings))
+
+    def test_exact_present_affordance_does_not_canonicalize_to_point(self) -> None:
+        self.assertEqual(validator.canonical_affordance_group("present"), "present")
+        self.assertEqual(validator.canonical_affordance_group("point"), "point")
+
     def test_require_anatomy_review_warns_when_missing(self) -> None:
         enhancer = {
             "kind": "hand-to-chin thought gesture",

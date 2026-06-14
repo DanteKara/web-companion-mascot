@@ -115,8 +115,7 @@ SOURCE_EYE_LOCK = (
 THINKING_EYE_LOCK = (
     "Open eyes preserve the source-matched fill, outline, and highlight/catchlight logic. Open eyes must remain "
     "the same source-colored eye masses in the same eye boxes. No white crescent side-glance eyes, hollow eyes, "
-    "mismatched eyes, extra catchlights, or symbol eyes; no new white sclera. If gaze breaks eye style, keep eyes "
-    "forward/nearly forward and use mouth/blink/body/cue timing; do not carve white eye gaps or crescent cutouts."
+    "mismatched eyes, extra catchlights, or symbol eyes; no new white sclera."
 )
 
 STATE_SPECIFIC_GUARDS = {
@@ -1244,6 +1243,8 @@ def build_thinking_prompt(
     anatomy_class: str,
     frame_count: int,
     source_vibe: str,
+    cell_width: int,
+    cell_height: int,
     identity_props: list[str] | None = None,
     eye_grammar: str | None = None,
     chroma_key: dict[str, Any] | None = None,
@@ -1278,33 +1279,40 @@ def build_thinking_prompt(
         frame_story = """Six-frame acting story:
 1 reset: open eyes, tiny calm closed smile, no thought cue.
 2 thought starts: source-matched open eyes, no white side-glance or new sclera; one tiny compact cue appears near the inferred thought-cue source.
-3 pondering: tiny closed pondering smile or gently upturned one-pixel smile; the cue grows slightly while staying close and secondary along the source-to-peak trail.
-4 forming: compact source-bound cluster or pulse keeps that trail; no cue element drops or reverses.
-5 idea lands: compact cue peak beside the inferred source at trail end; primary cue element is only slightly larger, never oversized; pleased blink or tiny closed-mouth recognition smile.
+3 pondering: tiny closed pondering smile or gently upturned one-pixel smile; the cue grows slightly while staying close and secondary.
+4 forming: compact source-bound cluster or pulse; no cue element drops or reverses.
+5 idea lands: compact cue peak beside the inferred source; primary cue element is only slightly larger, never oversized; pleased blink or tiny closed-mouth recognition smile.
 6 settle: eyes open; cue shrinks to one tiny close remnant or resolves cleanly; loop cleanly back to the first frame."""
     else:
         frame_story = f"""{frame_count}-frame acting story:
-Neutral-curious reset -> attention shift -> closed-smile pondering -> compact cue forming -> idea lands -> pleased settle. Peak with a compact source-bound cue: primary cue element is only slightly larger, never oversized. Use a quick active processing blink or tiny closed-mouth recognition smile. Loop back cleanly to frame 1."""
+Neutral-curious reset -> attention shift -> closed-smile pondering -> compact cue forming -> idea lands -> pleased settle. Peak with compact source-bound cue; primary cue element is only slightly larger, never oversized. Use a quick active processing blink or tiny closed-mouth recognition smile. Loop back cleanly."""
     vibe_line = (
         f"\nVibe fit: {source_vibe}"
         if source_vibe and source_vibe != "Infer from the reference before choosing state cues."
         else ""
     )
+    thinking_background_lock = (
+        "Perfectly uniform exact flat flood-fill background: Use a plain digital solid-color canvas; "
+        "recordable by a strict cleanup gate; exact key RGB or true transparency. "
+        "No gradients, shadows, texture, darker/lighter key-color variations."
+    )
     return f"""# {name} thinking row prompt - compact
 
-Create one horizontal sprite row strip with exactly {frame_count} separated frames on a flat {key_hex} chroma-key background.
+Create one horizontal sprite row strip: exactly {frame_count} separated frames on a perfectly flat {key_hex} chroma background.
+Leave wide empty {key_hex} margin; no sprite, identity prop, appendage, outline, cue, or effect may touch the outer row image border.
 
-Inputs: base locks identity/eyes/scale/style; accepted rows size/padding; guide slots only.
+Inputs: refs; base size/eyes/props/style; accepted rows define apparent body size/padding; guide.
 
 Identity/style lock:
-Preserve the same mascot body, palette, outline weight, appendage count, markings, and held props. {identity_prop_line} Match base size/padding. Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area.
+Preserve the same mascot body, palette, outline weight, appendage count, markings, and held props. {identity_prop_line} Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area.
+Scale/layout: {cell_width}x{cell_height} cells. Match canonical base and accepted rows for body size/center, top/bottom edge, and core width.
 Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight logic from base/reference."}
-Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, limited palette, flat cel shading. {BACKGROUND_SOURCE_LOCK} No smooth illustration or glossy rendering.
+Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, limited palette, flat cel shading. {thinking_background_lock} No smooth illustration, glossy rendering, UI panels, text, symbols, action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or motion marks.
 
 {state_plan["semanticRead"]}; not surprised, answering, worried, sleepy, or confused. Face/body/appendage timing should sell thinking before the cue is noticed.
 {STATE_SPECIFIC_GUARDS["thinking"]}
 
-Story arc: neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle. Expressions are adjacent state-caused beats, not random sad, serious, sleepy, angry, blank, or unrelated faces. Every frame changes face, posture, body/appendage timing, or cue enough to matter; no stale same-face holds.
+Story arc: neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle. Expressions are adjacent state-caused beats, not random sad, serious, sleepy, angry, blank, or unrelated faces. Every frame changes face, posture, body/appendage timing, or cue; no stale same-face holds.
 
 Frame-by-frame acting arc:
 {frame_story}
@@ -1312,13 +1320,13 @@ Frame-by-frame acting arc:
 Thought cue rules:
 - Thinking cue solidity lock: use deliberate compact cue shapes, not loose specks.
 - Use one compact source-appropriate non-chroma-key cue vocabulary only; no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, or glow.
-- The peak should be a compact cue beat, not a mandated symbol or puff count; primary cue element is only slightly larger, never oversized; do not enlarge the cue to prove the idea landed. Preserve the chosen cue vocabulary.
-- Separated cue elements keep a stable source-to-peak trail; the smallest element stays closest to the inferred source. Do not let intermediate cue elements drift downward, reverse, jump sideways, or reorder; largest/clearest lands at peak.
-- Infer thought-cue source from the canonical base; keep the cue close, low, compact, and secondary. Do not make a tall vertical stack. Do not let the cue force the mascot smaller.
+- The peak should be a compact cue beat, not a mandated symbol or puff count; primary cue element is only slightly larger, never oversized; do not enlarge the cue to prove the idea landed.
+- Separated cue elements keep a stable source-to-peak trail; smallest element stays closest to the inferred source. Do not let intermediate cue elements drift downward, reverse, jump sideways, or reorder.
+- Cue envelope lock: keep the cue close, low, compact, and secondary inside the accepted top edge. Do not make a tall vertical stack or high peak. Do not let the cue force the mascot smaller.
 
 Expression and eye rules:
 - Use closed/thoughtful mouths only: closed smile, tiny pleased smile, or gently upturned one-pixel smile.
-- No round open o-mouth, exclamation mouth, speaking syllable mouth, shocked mouth, teeth, brows, or worry marks.
+- No round open o-mouth, exclamation mouth, speaking syllable mouth.
 - {THINKING_EYE_LOCK} Closed eyes are simple short curved lines in the same eye positions and spacing.
 
 Hand/appendage rules:
@@ -1326,7 +1334,7 @@ Hand/appendage rules:
 
 {vibe_line}
 
-Reject if any frame has wrong eye grammar, surprised/answering mouth, stale same-face row, sad/serious/downturned expression, extra/missing held prop or limb, random symbol, giant/high thought cue, cue vocabulary switch, scale shrink, non-flat {key_name} {key_hex} background, smooth/glossy or non-native pixel-art rendering, or background texture. Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts.
+Reject if any frame has wrong eye grammar, surprised/answering mouth, stale same-face row, sad/serious/downturned expression, extra/missing held prop or limb, random symbol, giant/high thought cue, cue vocabulary switch, scale shrink, non-flat {key_name} {key_hex} background, or smooth/glossy or non-native pixel-art rendering. Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts.
 """
 
 
@@ -1408,6 +1416,8 @@ def build_prompt(
             anatomy_class=anatomy_class,
             frame_count=frame_count,
             source_vibe=source_vibe,
+            cell_width=cell_width,
+            cell_height=cell_height,
             identity_props=identity_props,
             eye_grammar=eye_grammar,
             chroma_key=chroma_key,
@@ -1425,6 +1435,7 @@ def build_prompt(
     return f"""# {name} {state} row prompt - compact
 
 Create one horizontal sprite row strip with exactly {frame_count} separated frames on a perfectly flat solid {key_hex} chroma-key background.
+Leave a wide empty {key_hex} margin around the entire row image. No sprite, identity prop, accessory, appendage, body part, outline, cue, or effect may touch the outer row image border; the first and last frames must be fully visible with safe empty chroma padding on the outside edges.
 
 Use attached images this way:
 - Original references define identity and source vibe.
@@ -1441,7 +1452,7 @@ Identity lock:
 - Closed-eye frames must keep the same eye positions and spacing as simple short lines/curves, not symbols or a new eye style.
 
 Style lock:
-Native Codex digital-pet pixel-art sprite, hard square pixels, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite effects. {BACKGROUND_SOURCE_LOCK} Chosen chroma key: {key_name} {key_hex}. No smooth illustration, glossy sticker rendering, 3D, painterly gradients, vector icons, soft antialiasing, shadows, scenery, UI panels, text, symbols, or guide marks.
+Native Codex digital-pet pixel-art sprite, hard square pixels, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite effects. {BACKGROUND_SOURCE_LOCK} Chosen chroma key: {key_name} {key_hex}. No smooth illustration, glossy sticker rendering, 3D, painterly gradients, vector icons, soft antialiasing, shadows, scenery, UI panels, text, symbols, or guide marks. No action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or cartoon motion marks unless the state prompt explicitly asks for a tiny attached cue.
 
 State goal:
 - State: {state}

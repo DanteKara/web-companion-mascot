@@ -193,6 +193,30 @@ def clean_transparent_rgb(image: Image.Image) -> Image.Image:
     return rgba
 
 
+def quantile(sorted_values: list[int], ratio: float) -> int:
+    if not sorted_values:
+        return 0
+    index = min(len(sorted_values) - 1, max(0, round((len(sorted_values) - 1) * ratio)))
+    return sorted_values[index]
+
+
+def core_bbox_from_pixels(
+    pixels: list[tuple[int, int]],
+    low: float = 0.10,
+    high: float = 0.90,
+) -> tuple[int, int, int, int]:
+    if not pixels:
+        return (0, 0, 1, 1)
+    xs = sorted(x for x, _y in pixels)
+    ys = sorted(y for _x, y in pixels)
+    return (
+        quantile(xs, low),
+        quantile(ys, low),
+        quantile(xs, high) + 1,
+        quantile(ys, high) + 1,
+    )
+
+
 def replace_spill_colors(
     image: Image.Image,
     key: tuple[int, int, int],
@@ -373,6 +397,7 @@ def connected_components_with_pixels(alpha: Image.Image, min_area: int) -> list[
                     {
                         "area": area,
                         "bbox": bbox,
+                        "coreBbox": core_bbox_from_pixels(pixels),
                         "center": ((x0 + x1 + 1) / 2, (y0 + y1 + 1) / 2),
                         "pixels": pixels,
                     }
@@ -428,6 +453,8 @@ def component_frame_slots(
         x1 = 0
         y1 = 0
         component_areas: list[int] = []
+        body_bbox = tuple(int(value) for value in bodies[slot_index]["bbox"])
+        body_fit_bbox = tuple(int(value) for value in bodies[slot_index].get("coreBbox", body_bbox))
         for component in slot_components:
             component_areas.append(int(component["area"]))
             bx0, by0, bx1, by1 = component["bbox"]
@@ -443,6 +470,8 @@ def component_frame_slots(
                 "index": slot_index,
                 "bodyCenterX": centers[slot_index],
                 "bbox": (x0, y0, x1, y1) if slot_components else None,
+                "bodyBbox": body_bbox,
+                "bodyFitBbox": body_fit_bbox,
                 "components": len(slot_components),
                 "componentAreas": sorted(component_areas, reverse=True),
             }
@@ -536,6 +565,142 @@ def fit_scale_for_sprites(sprites: list[Image.Image], cell_width: int, cell_heig
     return min(max_width / sprite_width, max_height / sprite_height, 1.0)
 
 
+def fit_scale_for_body_anchored_sprites(
+    sprite_infos: list[dict[str, Any]],
+    cell_width: int,
+    cell_height: int,
+    padding: int,
+    target_body_fit_size: tuple[float, float] | None = None,
+) -> float:
+    max_width = max(1, cell_width - padding * 2)
+    max_height = max(1, cell_height - padding * 2)
+    fit_boxes = [info.get("fit_bbox", info["body_bbox"]) for info in sprite_infos]
+    body_width = max((bbox[2] - bbox[0] for bbox in fit_boxes), default=1)
+    body_height = max((bbox[3] - bbox[1] for bbox in fit_boxes), default=1)
+    if target_body_fit_size is not None:
+        target_width, target_height = target_body_fit_size
+        target_scale = min(target_width / body_width, target_height / body_height)
+        cell_fit_scale = min(max_width / body_width, max_height / body_height)
+        return min(target_scale, cell_fit_scale)
+    return min(max_width / body_width, max_height / body_height, 1.0)
+
+
+def alpha_composite_clipped(base: Image.Image, sprite: Image.Image, x: int, y: int) -> None:
+    left = max(0, x)
+    top = max(0, y)
+    right = min(base.width, x + sprite.width)
+    bottom = min(base.height, y + sprite.height)
+    if right <= left or bottom <= top:
+        return
+    crop = sprite.crop((left - x, top - y, right - x, bottom - y))
+    base.alpha_composite(crop, (left, top))
+
+
+def body_anchor_state_y_offset(
+    sprite_infos: list[dict[str, Any]],
+    scale: float,
+    cell_height: int,
+    padding: int,
+    edge_margin: int = 1,
+    max_offset: int | None = None,
+) -> int:
+    needed_down = 0
+    available_down: int | None = None
+    for info in sprite_infos:
+        sprite = info["sprite"]
+        body_bbox = info["body_bbox"]
+        height = max(1, int(round(sprite.height * scale)))
+        body_bottom_y = body_bbox[3] * scale
+        y = int(round(cell_height - padding - body_bottom_y))
+        needed_down = max(needed_down, edge_margin - y)
+        frame_available = cell_height - edge_margin - (y + height)
+        available_down = frame_available if available_down is None else min(available_down, frame_available)
+    if available_down is None or needed_down <= 0:
+        return 0
+    offset = max(0, min(needed_down, max(0, available_down)))
+    if max_offset is not None:
+        offset = min(offset, max(0, max_offset))
+    return offset
+
+
+def body_anchor_edges_clear(
+    sprite_infos: list[dict[str, Any]],
+    scale: float,
+    cell_height: int,
+    padding: int,
+    edge_margin: int = 1,
+    max_y_offset: int | None = None,
+) -> bool:
+    y_offset = body_anchor_state_y_offset(sprite_infos, scale, cell_height, padding, edge_margin, max_y_offset)
+    for info in sprite_infos:
+        sprite = info["sprite"]
+        body_bbox = info["body_bbox"]
+        height = max(1, int(round(sprite.height * scale)))
+        body_bottom_y = body_bbox[3] * scale
+        y = int(round(cell_height - padding - body_bottom_y)) + y_offset
+        if y < edge_margin or y + height > cell_height - edge_margin:
+            return False
+    return True
+
+
+def body_anchor_scale_for_edge_clearance(
+    sprite_infos: list[dict[str, Any]],
+    scale: float,
+    cell_height: int,
+    padding: int,
+    edge_margin: int = 1,
+    max_y_offset: int | None = 2,
+) -> float:
+    if body_anchor_edges_clear(sprite_infos, scale, cell_height, padding, edge_margin, max_y_offset):
+        return scale
+
+    low = 0.01
+    high = scale
+    for _attempt in range(24):
+        middle = (low + high) / 2
+        if body_anchor_edges_clear(sprite_infos, middle, cell_height, padding, edge_margin, max_y_offset):
+            low = middle
+        else:
+            high = middle
+    return low
+
+
+def fit_body_anchored_to_cell(
+    sprite: Image.Image,
+    body_bbox: tuple[int, int, int, int],
+    cell_width: int,
+    cell_height: int,
+    padding: int,
+    key: tuple[int, int, int],
+    spill_threshold: int,
+    scale: float,
+    center_bbox: tuple[int, int, int, int] | None = None,
+    y_offset: int = 0,
+) -> Image.Image:
+    width = max(1, int(round(sprite.width * scale)))
+    height = max(1, int(round(sprite.height * scale)))
+    if (width, height) != sprite.size:
+        sprite = resize_rgba_premultiplied(sprite, (width, height))
+    sprite = replace_spill_colors(sprite, key, spill_threshold)
+
+    center_source_bbox = center_bbox or body_bbox
+    center_x0, _center_y0, center_x1, _center_y1 = [value * scale for value in center_source_bbox]
+    _body_x0, _body_y0, _body_x1, body_y1 = [value * scale for value in body_bbox]
+    body_center_x = (center_x0 + center_x1) / 2
+    body_bottom_y = body_y1
+
+    x = int(round(cell_width / 2 - body_center_x))
+    min_x = cell_width - padding - width
+    max_x = padding
+    if min_x <= max_x:
+        x = min(max(x, min_x), max_x)
+    y = int(round(cell_height - padding - body_bottom_y)) + y_offset
+
+    cell = Image.new("RGBA", (cell_width, cell_height), (0, 0, 0, 0))
+    alpha_composite_clipped(cell, sprite, x, y)
+    return cell
+
+
 def checkerboard(width: int, height: int, block: int = 16) -> Image.Image:
     image = Image.new("RGBA", (width, height), (245, 246, 248, 255))
     draw = ImageDraw.Draw(image)
@@ -557,6 +722,106 @@ def state_items(manifest: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     if not isinstance(states, dict) or not states:
         raise ValueError("manifest must contain a non-empty states object")
     return sorted(states.items(), key=lambda item: int(item[1].get("row", 0)))
+
+
+def median_float(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
+def body_fit_size_from_metadata(metadata: list[dict[str, Any]]) -> tuple[float, float] | None:
+    widths: list[float] = []
+    heights: list[float] = []
+    for entry in metadata:
+        bbox = entry.get("bodyFitBbox") or entry.get("bodyBbox")
+        if not bbox:
+            continue
+        widths.append(float(bbox[2] - bbox[0]))
+        heights.append(float(bbox[3] - bbox[1]))
+    if not widths or not heights:
+        return None
+    return median_float(widths), median_float(heights)
+
+
+def load_clean_row_strip(row_path: Path, args: argparse.Namespace) -> Image.Image:
+    strip = key_to_alpha(Image.open(row_path), args.key_color_rgb, args.key_tolerance, args.spill_threshold)
+    return remove_edge_spill(strip, args.key_color_rgb, args.spill_threshold, args.edge_spill_passes)
+
+
+def measure_component_body_fit_size(
+    row_path: Path,
+    frame_count: int,
+    args: argparse.Namespace,
+) -> tuple[float, float] | None:
+    strip = load_clean_row_strip(row_path, args)
+    _slots, metadata = component_frame_slots(
+        strip,
+        frame_count,
+        args.body_component_area,
+        args.component_min_area,
+    )
+    return body_fit_size_from_metadata(metadata)
+
+
+def resolve_body_fit_target(
+    states: list[tuple[str, dict[str, Any]]],
+    args: argparse.Namespace,
+    report: dict[str, Any],
+) -> tuple[float, float] | None:
+    if args.extraction_mode != "component":
+        return None
+
+    requested_state = str(args.body_fit_target_state or "").strip()
+    if requested_state.lower() in {"", "none", "off", "false"}:
+        report["bodyFitTarget"] = {"enabled": False}
+        return None
+
+    state_sizes: dict[str, tuple[float, float]] = {}
+    for name, state in states:
+        row_path = args.row_dir / f"{name}.png"
+        if not row_path.exists():
+            continue
+        try:
+            size = measure_component_body_fit_size(row_path, int(state["frames"]), args)
+        except ValueError as exc:
+            report["warnings"].append(f"{name}: could not measure component body fit target: {exc}")
+            continue
+        if size is not None:
+            state_sizes[name] = size
+
+    if not state_sizes:
+        report["bodyFitTarget"] = {"enabled": False, "reason": "no component body fit sizes measured"}
+        return None
+
+    if requested_state in state_sizes:
+        selected_state = requested_state
+        target_size = state_sizes[requested_state]
+    else:
+        selected_state = "pack-median"
+        target_size = (
+            median_float([size[0] for size in state_sizes.values()]),
+            median_float([size[1] for size in state_sizes.values()]),
+        )
+        report["warnings"].append(
+            f"body fit target state {requested_state!r} was not measured; used pack median body target"
+        )
+
+    report["bodyFitTarget"] = {
+        "enabled": True,
+        "targetState": requested_state,
+        "selectedState": selected_state,
+        "targetBodyFitSize": [round(target_size[0], 3), round(target_size[1], 3)],
+        "measuredStateBodyFitSizes": {
+            name: [round(size[0], 3), round(size[1], 3)]
+            for name, size in sorted(state_sizes.items())
+        },
+    }
+    return target_size
 
 
 def normalize_manifest(manifest: dict[str, Any], columns: int, rows: int, cell_width: int, cell_height: int, atlas_path: str) -> dict[str, Any]:
@@ -589,8 +854,7 @@ def extract_state_frames(
     args: argparse.Namespace,
     report: dict[str, Any],
 ) -> list[Image.Image]:
-    strip = key_to_alpha(Image.open(row_path), args.key_color_rgb, args.key_tolerance, args.spill_threshold)
-    strip = remove_edge_spill(strip, args.key_color_rgb, args.spill_threshold, args.edge_spill_passes)
+    strip = load_clean_row_strip(row_path, args)
     component_slots: list[Image.Image] | None = None
     component_metadata: list[dict[str, Any]] | None = None
     if args.extraction_mode == "component":
@@ -637,23 +901,101 @@ def extract_state_frames(
     out_dir.mkdir(parents=True, exist_ok=True)
     slots = component_slots if component_slots is not None else [strip.crop((x0, 0, x1, strip.height)) for x0, x1 in bounds]
     sprites: list[Image.Image] = []
-    for slot in slots:
+    body_anchored_sprites: list[dict[str, Any]] = []
+    for index, slot in enumerate(slots):
         slot = remove_small_components(slot, args.min_component_area)
         slot = remove_edge_spill(slot, args.key_color_rgb, args.spill_threshold, args.edge_spill_passes)
         slot = clean_transparent_rgb(slot)
-        sprites.append(crop_to_content(slot))
-    state_fit_scale = fit_scale_for_sprites(sprites, args.cell_width, args.cell_height, args.padding)
-    state_report["fitScale"] = round(state_fit_scale, 6)
-    for index, sprite in enumerate(sprites):
-        cell = fit_to_cell(
-            sprite,
+        content_bbox = slot.getchannel("A").getbbox()
+        sprite = crop_to_content(slot)
+        sprites.append(sprite)
+        if component_metadata is not None and content_bbox is not None:
+            body_bbox = tuple(int(value) for value in component_metadata[index]["bodyBbox"])
+            body_fit_bbox = tuple(int(value) for value in component_metadata[index].get("bodyFitBbox", body_bbox))
+            body_anchored_sprites.append(
+                {
+                    "sprite": sprite,
+                    "body_bbox": (
+                        max(0, body_bbox[0] - content_bbox[0]),
+                        max(0, body_bbox[1] - content_bbox[1]),
+                        min(sprite.width, body_bbox[2] - content_bbox[0]),
+                        min(sprite.height, body_bbox[3] - content_bbox[1]),
+                    ),
+                    "fit_bbox": (
+                        max(0, body_fit_bbox[0] - content_bbox[0]),
+                        max(0, body_fit_bbox[1] - content_bbox[1]),
+                        min(sprite.width, body_fit_bbox[2] - content_bbox[0]),
+                        min(sprite.height, body_fit_bbox[3] - content_bbox[1]),
+                    ),
+                }
+            )
+    if component_metadata is not None and len(body_anchored_sprites) == len(sprites):
+        state_fit_scale = fit_scale_for_body_anchored_sprites(
+            body_anchored_sprites,
             args.cell_width,
             args.cell_height,
             args.padding,
-            args.key_color_rgb,
-            args.spill_threshold,
-            scale=state_fit_scale,
+            target_body_fit_size=getattr(args, "body_fit_target_size", None),
         )
+        if args.allow_edge_clearance_scale:
+            target_fit_scale = state_fit_scale
+            state_fit_scale = body_anchor_scale_for_edge_clearance(
+                body_anchored_sprites,
+                state_fit_scale,
+                args.cell_height,
+                args.padding,
+                max_y_offset=args.max_body_anchor_y_offset,
+            )
+            if state_fit_scale < target_fit_scale:
+                state_report["edgeClearanceScaleAdjustment"] = {
+                    "from": round(target_fit_scale, 6),
+                    "to": round(state_fit_scale, 6),
+                }
+        if getattr(args, "body_fit_target_size", None) is not None:
+            state_report["fitScaleMode"] = "body-anchor-pack-target"
+            state_report["bodyFitTargetSize"] = [
+                round(float(value), 3)
+                for value in args.body_fit_target_size
+            ]
+        else:
+            state_report["fitScaleMode"] = "body-anchor"
+        state_y_offset = body_anchor_state_y_offset(
+            body_anchored_sprites,
+            state_fit_scale,
+            args.cell_height,
+            args.padding,
+            max_offset=args.max_body_anchor_y_offset,
+        )
+        state_report["bodyAnchorYOffset"] = state_y_offset
+    else:
+        state_fit_scale = fit_scale_for_sprites(sprites, args.cell_width, args.cell_height, args.padding)
+        state_report["fitScaleMode"] = "full-footprint"
+        state_y_offset = 0
+    state_report["fitScale"] = round(state_fit_scale, 6)
+    for index, sprite in enumerate(sprites):
+        if component_metadata is not None and len(body_anchored_sprites) == len(sprites):
+            cell = fit_body_anchored_to_cell(
+                sprite,
+                tuple(int(value) for value in body_anchored_sprites[index]["body_bbox"]),
+                args.cell_width,
+                args.cell_height,
+                args.padding,
+                args.key_color_rgb,
+                args.spill_threshold,
+                scale=state_fit_scale,
+                center_bbox=tuple(int(value) for value in body_anchored_sprites[index]["fit_bbox"]),
+                y_offset=state_y_offset,
+            )
+        else:
+            cell = fit_to_cell(
+                sprite,
+                args.cell_width,
+                args.cell_height,
+                args.padding,
+                args.key_color_rgb,
+                args.spill_threshold,
+                scale=state_fit_scale,
+            )
         outline_halo_pixels = count_outline_halo_pixels(cell, args.key_color_rgb, args.spill_threshold)
         state_report["frames"].append(
             {
@@ -788,6 +1130,7 @@ def assemble(args: argparse.Namespace) -> dict[str, Any]:
             "totalOutlineHaloPixels": 0,
         },
     }
+    args.body_fit_target_size = resolve_body_fit_target(states, args, report)
     atlas_frames: dict[str, list[Image.Image]] = {}
 
     for name, state in states:
@@ -866,6 +1209,22 @@ def main() -> int:
     parser.add_argument("--no-equal-fallback", action="store_true", help="Fail instead of equal-slicing if foreground run detection fails")
     parser.add_argument("--body-component-area", type=int, default=8000, help="Minimum alpha component area used as a body anchor in component extraction mode")
     parser.add_argument("--component-min-area", type=int, default=80, help="Minimum alpha component area retained for component extraction grouping")
+    parser.add_argument(
+        "--body-fit-target-state",
+        default="idle",
+        help="Component mode body/core scale target state; use 'none' to disable pack-level body scale locking",
+    )
+    parser.add_argument(
+        "--max-body-anchor-y-offset",
+        type=int,
+        default=2,
+        help="Maximum uniform downward row offset used for body-anchored edge clearance; keeps cues from moving the body baseline too much",
+    )
+    parser.add_argument(
+        "--allow-edge-clearance-scale",
+        action="store_true",
+        help="Allow a last-resort uniform row scale reduction when a cue cannot fit after body-target scale and capped y offset",
+    )
     args = parser.parse_args()
 
     args.manifest = args.manifest.expanduser().resolve()

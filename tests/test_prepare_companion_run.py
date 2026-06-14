@@ -146,6 +146,13 @@ class PrepareCompanionRunTests(unittest.TestCase):
         self.assertIn("Frame plan:", prompt)
         self.assertIn("Scale and layout rules:", prompt)
         self.assertIn("Reject if:", prompt)
+        self.assertIn("wide empty", prompt)
+        self.assertIn("outer row image border", prompt)
+        self.assertIn("No action rays", prompt)
+        self.assertIn("sound rays", prompt)
+        self.assertIn("emphasis strokes", prompt)
+        self.assertIn("wave lines", prompt)
+        self.assertIn("alert marks", prompt)
 
     def assert_no_verbose_policy_dump(self, prompt: str) -> None:
         for old_section in (
@@ -559,6 +566,15 @@ class PrepareCompanionRunTests(unittest.TestCase):
                     self.assertIn("Keep simple side appendages outside the body", thinking_prompt)
                     self.assertIn("face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
                     self.assertIn("Open eyes must remain the same source-colored eye masses", thinking_prompt)
+                    self.assertIn("wide empty", thinking_prompt)
+                    self.assertIn("outer row image border", thinking_prompt)
+                    self.assertIn("accepted rows define apparent body size/padding", thinking_prompt)
+                    self.assertIn("Match canonical base and accepted rows for body size", thinking_prompt)
+                    self.assertIn("action rays", thinking_prompt)
+                    self.assertIn("sound rays", thinking_prompt)
+                    self.assertIn("emphasis strokes", thinking_prompt)
+                    self.assertIn("wave lines", thinking_prompt)
+                    self.assertIn("alert marks", thinking_prompt)
                     self.assertIn("non-flat magenta #FF00FF background", thinking_prompt)
 
     def test_generated_prompts_do_not_inject_unsupplied_mascot_specific_examples(self) -> None:
@@ -999,6 +1015,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("keep the cue close, low, compact, and secondary", thinking_prompt)
+            self.assertIn("inside the accepted top edge", thinking_prompt)
+            self.assertIn("or high peak", thinking_prompt)
             self.assertIn("Do not make a tall vertical stack", thinking_prompt)
             self.assertIn("Do not let the cue force the mascot smaller", thinking_prompt)
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))

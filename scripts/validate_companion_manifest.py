@@ -34,7 +34,7 @@ CHATBOT_RECOMMENDED_FRAMES = {
     "sleeping": 8,
 }
 
-CHATBOT_CORE_STATES = {"idle", "thinking", "working", "answering", "success", "error"}
+CHATBOT_CORE_STATES = {"idle", "thinking", "answering", "success", "error"}
 HIGH_VISIBILITY_EYE_REVIEW_STATES = {"thinking", "working", "answering"}
 HIGH_VISIBILITY_STATE_PERFORMANCE_REVIEW_STATES = {"thinking", "working", "answering"}
 HIGH_VISIBILITY_ANATOMY_REVIEW_STATES = {"thinking", "working", "answering"}
@@ -1414,10 +1414,12 @@ def missing_anatomy_review_specificity(value: str) -> list[str]:
 
 def canonical_affordance_group(value: str) -> str | None:
     normalized = value.lower().replace("_", "-").replace(" ", "-")
+    if normalized in AFFORDANCE_GROUP_ALIASES:
+        return normalized
     for group, aliases in AFFORDANCE_GROUP_ALIASES.items():
-        if normalized == group or normalized in aliases:
+        if normalized in aliases:
             return group
-    return normalized if normalized in AFFORDANCE_GROUP_ALIASES else None
+    return None
 
 
 def infer_required_affordance_groups(value: dict[str, Any]) -> set[str]:
