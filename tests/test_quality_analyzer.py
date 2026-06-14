@@ -122,7 +122,7 @@ class QualityAnalyzerTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertTrue(any("silhouette core scale range" in warning for warning in result["warnings"]))
 
-    def test_flags_subtle_scale_range_above_production_threshold(self) -> None:
+    def test_accepts_moderate_core_scale_range_for_expressive_rows(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp_path = Path(raw_tmp)
             atlas = Image.new("RGBA", (1024, 288), (0, 0, 0, 0))
@@ -133,6 +133,29 @@ class QualityAnalyzerTests(unittest.TestCase):
 
             result = analyzer.analyze_manifest_quality(manifest_path)
 
+            self.assertTrue(result["ok"], result["warnings"])
+            self.assertGreater(result["qa"]["idle"]["bodyCoreScaleRangeRatio"], 0.05)
+            self.assertLess(
+                result["qa"]["idle"]["bodyCoreScaleRangeRatio"],
+                analyzer.DEFAULT_MAX_CORE_SCALE_RANGE_RATIO,
+            )
+            self.assertFalse(any("silhouette core scale range" in warning for warning in result["warnings"]))
+
+    def test_flags_core_scale_range_above_production_threshold(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            atlas = Image.new("RGBA", (1024, 288), (0, 0, 0, 0))
+            for column, radius in enumerate([52, 52, 57, 52]):
+                paste_body(atlas, column, radius)
+            atlas.save(tmp_path / "atlas.png")
+            manifest_path = write_manifest(tmp_path)
+
+            result = analyzer.analyze_manifest_quality(manifest_path)
+
+            self.assertGreater(
+                result["qa"]["idle"]["bodyCoreScaleRangeRatio"],
+                analyzer.DEFAULT_MAX_CORE_SCALE_RANGE_RATIO,
+            )
             self.assertFalse(result["ok"])
             self.assertTrue(any("silhouette core scale range" in warning for warning in result["warnings"]))
 

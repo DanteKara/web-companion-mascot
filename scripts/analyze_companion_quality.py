@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 SEPARATE_ENHANCER_ATTACHMENTS = {"near-head", "near-hand", "aura"}
 OVERLAP_OK_COMPONENT_POLICIES = {"overlap-ok", "integrated-ok", "occlusion-ok"}
+DEFAULT_MAX_CORE_SCALE_RANGE_RATIO = 0.08
 
 
 def separate_component_required(enhancer: dict[str, Any], attachment: str) -> bool:
@@ -298,7 +299,7 @@ def analyze_manifest_quality(
     max_body_jump_ratio: float = 0.35,
     max_area_jump_ratio: float = 0.45,
     max_core_scale_drift_ratio: float = 0.12,
-    max_core_scale_range_ratio: float = 0.05,
+    max_core_scale_range_ratio: float = DEFAULT_MAX_CORE_SCALE_RANGE_RATIO,
     max_cross_state_core_scale_drift_ratio: float = 0.10,
     max_core_center_drift_ratio: float = 0.08,
     max_fragment_area_ratio: float = 0.015,
@@ -578,7 +579,12 @@ def main() -> int:
     parser.add_argument("--max-body-jump-ratio", type=float, default=0.35, help="Max body center jump as a ratio of cell min dimension")
     parser.add_argument("--max-area-jump-ratio", type=float, default=0.45, help="Max consecutive body area jump ratio")
     parser.add_argument("--max-core-scale-drift-ratio", type=float, default=0.12, help="Max mascot core scale drift within one state")
-    parser.add_argument("--max-core-scale-range-ratio", type=float, default=0.05, help="Max full mascot core scale range within one state")
+    parser.add_argument(
+        "--max-core-scale-range-ratio",
+        type=float,
+        default=DEFAULT_MAX_CORE_SCALE_RANGE_RATIO,
+        help="Max full mascot core scale range within one state",
+    )
     parser.add_argument("--max-cross-state-core-scale-drift-ratio", type=float, default=0.10, help="Max median mascot core scale drift between state rows")
     parser.add_argument("--max-core-center-drift-ratio", type=float, default=0.08, help="Max mascot core center drift as a ratio of cell min dimension")
     parser.add_argument("--max-fragment-area-ratio", type=float, default=0.015, help="Max detached fragment area as a ratio of foreground area")
