@@ -138,7 +138,11 @@ def main() -> int:
     parser.add_argument("--manifest", required=True, type=Path, help="Path to companion manifest.json")
     parser.add_argument("--status", choices=["pass", "fail"], default="fail")
     parser.add_argument("--production-use", action="store_true", help="Mark this anatomy review as accepted for production")
-    parser.add_argument("--expected-anatomy", default="", help="Expected appendage/body count and anatomy roles")
+    parser.add_argument(
+        "--expected-anatomy",
+        default="",
+        help="Expected body core, appendage count, placement/anchors, allowed motion/interactors, and forbidden extra anatomy",
+    )
     parser.add_argument("--expected-identity-props", default="", help="Expected identity prop/accessory continuity")
     parser.add_argument("--review-all-frames", action="store_true", help="Declare every used state frame reviewed")
     parser.add_argument("--check", action="append", default=[], help="Set a required boolean check, e.g. --check noExtraAppendages=true")

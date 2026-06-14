@@ -72,6 +72,9 @@ def job_view(job: dict[str, Any], run_dir: Path, completed: set[str]) -> dict[st
         "allow_prompt_only_generation": job.get("allow_prompt_only_generation", False),
         "identity_reference_paths": job.get("identity_reference_paths", []),
         "source_provenance": job.get("source_provenance"),
+        "generation_owner": job.get("generation_owner", "parent"),
+        "subagent_eligible": job.get("subagent_eligible", False),
+        "subagent_handoff": job.get("subagent_handoff"),
         "recording_owner": job.get("recording_owner", "parent"),
     }
 

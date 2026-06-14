@@ -1,8 +1,10 @@
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,7 +117,60 @@ def write_smooth_gradient_base(path: Path, key: tuple[int, int, int, int] = (255
     image.save(path)
 
 
+def write_fake_checkerboard_base(path: Path) -> None:
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGBA", (128, 128), (255, 255, 255, 255))
+    pixels = image.load()
+    for y in range(128):
+        for x in range(128):
+            shade = 255 if ((x // 8) + (y // 8)) % 2 == 0 else 236
+            pixels[x, y] = (shade, shade, shade, 255)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((42, 28, 86, 84), fill=(20, 36, 44, 255))
+    draw.rectangle((46, 32, 82, 80), fill=(38, 184, 180, 255))
+    draw.rectangle((52, 46, 57, 54), fill=(10, 24, 30, 255))
+    draw.rectangle((70, 46, 75, 54), fill=(10, 24, 30, 255))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path)
+
+
 class PrepareCompanionRunTests(unittest.TestCase):
+    def assert_compact_row_prompt(self, prompt: str, *, state: str) -> None:
+        self.assertIn(f"{state} row prompt - compact", prompt)
+        self.assertIn("Create one horizontal sprite row strip", prompt)
+        self.assertIn("Identity lock:", prompt)
+        self.assertIn("Style lock:", prompt)
+        self.assertIn("State performance story arc", prompt)
+        self.assertIn("coherent mini-story", prompt)
+        self.assertIn("Frame plan:", prompt)
+        self.assertIn("Scale and layout rules:", prompt)
+        self.assertIn("Reject if:", prompt)
+
+    def assert_no_verbose_policy_dump(self, prompt: str) -> None:
+        for old_section in (
+            "Hard native-pixel rendering lock",
+            "Canonical base row lock",
+            "Reference palette fidelity lock",
+            "HatchPet-style sprite artifact rules",
+            "Semantic ladder:",
+            "Anatomy guidance:",
+            "Professional state acting choreography",
+            "Visible appendage acting policy",
+            "Identity prop contract",
+        ):
+            self.assertNotIn(old_section, prompt)
+
+    def test_prompt_policies_do_not_leak_audition_specific_identity(self) -> None:
+        policy_text = "\n".join(
+            str(value)
+            for name, value in vars(prepare).items()
+            if name.isupper() and isinstance(value, str)
+        ).lower()
+
+        for forbidden in ("tridy", "trident", "teal face", "red robe", "hood robe"):
+            self.assertNotIn(forbidden, policy_text)
+
     def test_default_states_omit_working_and_fold_processing_into_thinking(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             out_dir = Path(raw_tmp) / "run"
@@ -145,8 +200,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("thinking", job_ids)
 
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Thinking also covers processing, retrieval, tool-use waiting, and backend progress", thinking_prompt)
-            self.assertIn("Do not create a separate working state unless the user explicitly requests one", thinking_prompt)
+            self.assertIn("assistant is thinking, processing, retrieving, using tools, or waiting on backend progress", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("Do not create a separate working state unless the user explicitly requests one", cue_plan["states"]["thinking"]["frameArc"])
 
     def test_base_prompt_requires_native_pixel_art_and_no_unrequested_identity_marks(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -179,10 +235,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("no soft airbrush", base_prompt)
             self.assertIn("Text-only concept anatomy lock", base_prompt)
             self.assertIn("only add anatomy and identity props named in the concept", base_prompt)
-            self.assertIn("Do not add unrequested chest lights, badges, emblems, screens, buttons, feet, legs, tails, tools, or extra props", base_prompt)
-            self.assertIn("For hand-only text concepts, use a rounded lower body with no visible legs or feet", base_prompt)
-            self.assertIn("Keep the body front plain unless a chest mark is named", base_prompt)
-            self.assertIn("no chest dot, belly light, button, badge, screen, or emblem", base_prompt)
+            self.assertIn("Do not add unrequested body markings, lights, badges, emblems, display details", base_prompt)
+            self.assertIn("Keep the body compact with exactly the named anatomy and identity features", base_prompt)
+            self.assertIn("When the concept only names upper appendages, do not infer visible legs or feet", base_prompt)
+            self.assertIn("Keep plain body areas plain unless a mark is named", base_prompt)
 
     def test_base_prompt_requires_row_compatible_base_and_locked_eye_grammar(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -246,7 +302,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("softness must come from shape language and expression, not blurred rendering", base_prompt)
             self.assertIn("No blurred or feathered transitions, no transparent or semi-transparent shine, no airbrushed lighting, no smooth diagonal antialias fringe", base_prompt)
             self.assertIn("Highlights must be tiny rectangular pixel blocks", base_prompt)
-            self.assertIn("no broad glossy shine patches on the forehead, body, antenna, mittens, or face panel", base_prompt)
+            self.assertIn("no broad glossy shine patches on large surfaces, accessories, appendages, or face areas", base_prompt)
             self.assertIn("Flat chroma-key lock", base_prompt)
             self.assertIn("The background must be one perfectly uniform solid chroma-key color from corner to corner", base_prompt)
             self.assertIn("no vignette, lighting falloff, texture, noise, shadow, ground plane, or background glow", base_prompt)
@@ -342,22 +398,22 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("roughly 8-16 total non-background colors", base_prompt)
             self.assertIn("No per-pixel color ramps", base_prompt)
             self.assertIn("no smooth shade bands", base_prompt)
-            self.assertIn("no gradient-filled body, face panel, clothing, props, antenna, or mittens", base_prompt)
+            self.assertIn("no gradient-filled body areas, face areas, clothing, props, accessories, or appendages", base_prompt)
             self.assertIn("Favor simpler and flatter over prettier", base_prompt)
             self.assertIn("Part simplification lock", base_prompt)
-            self.assertIn("When an antenna is present, simplify it as a tiny plain stem and small cap or nub", base_prompt)
-            self.assertIn("not a jewel, gem, crystal, screen, lantern, badge, or glowing ornament", base_prompt)
-            self.assertIn("When side mittens or sleeve nubs are present, keep them as simple rounded side blobs", base_prompt)
-            self.assertIn("no cuff bands, finger ticks, segmented gloves, dark wrist gadgets, or extra mitten details unless they are visible identity marks in the source", base_prompt)
+            self.assertIn("Do not invent parts from these instructions", base_prompt)
+            self.assertIn("Small accessories should become plain readable silhouettes", base_prompt)
+            self.assertIn("simple side appendages should keep one outline and one flat fill", base_prompt)
+            self.assertIn("long held props should remain one continuous readable object", base_prompt)
             self.assertIn("Reference-native style lock", base_prompt)
             self.assertIn("If an attached reference already looks like a HatchPet or Codex digital-pet sprite", base_prompt)
             self.assertIn("Reference-aware palette guide", base_prompt)
             self.assertIn("Build a tiny per-mascot palette from the attached reference or the text concept", base_prompt)
-            self.assertIn("Never impose a teal/cream/white-eye palette", base_prompt)
+            self.assertIn("Never impose a preselected color palette", base_prompt)
             self.assertIn("Do not blend between palette colors", base_prompt)
             self.assertIn("Reference character direction lock", base_prompt)
             self.assertIn("Keep the strongest character decisions from the provided reference or text concept", base_prompt)
-            self.assertIn("Do not substitute a stock robot", base_prompt)
+            self.assertIn("Do not substitute a stock assistant mascot", base_prompt)
             self.assertIn("do not redesign the mascot while making it more pixel-native", base_prompt)
             self.assertNotIn("Keep the strong v9-style character read", base_prompt)
 
@@ -384,12 +440,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             for state in ("thinking", "answering"):
                 prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
-                self.assertIn("Hard native-pixel rendering lock", prompt)
-                self.assertIn("Use hard-edged square pixel clusters and 2-3 flat tone steps per material", prompt)
-                self.assertIn("No blurred or feathered transitions", prompt)
-                self.assertIn("Highlights must be tiny rectangular pixel blocks", prompt)
-                self.assertIn("Flat chroma-key lock", prompt)
-                self.assertIn("one perfectly uniform solid chroma-key color from corner to corner", prompt)
+                self.assertIn("row prompt - compact", prompt)
+                self.assertIn("Native Codex digital-pet pixel-art sprite", prompt)
+                self.assertIn("hard square pixels", prompt)
+                self.assertIn("Perfectly uniform", prompt)
+                self.assertIn("No smooth illustration", prompt)
+                self.assertIn("non-native pixel-art rendering", prompt)
 
     def test_all_state_prompts_require_coherent_looping_story_arcs(self) -> None:
         states = [
@@ -426,23 +482,110 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             for state in states:
                 prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
-                self.assertIn("State performance story arc", prompt)
-                self.assertIn("coherent mini-story", prompt)
-                self.assertIn("not a random emotion collage", prompt)
-                self.assertIn("Expressions must be adjacent beats", prompt)
-                self.assertIn("caused by the state action", prompt)
-                self.assertIn("Avoid abrupt mood jumps", prompt)
-                self.assertIn("loop cleanly back to the first frame", prompt)
-                self.assertIn("State story beats:", prompt)
+                if state == "thinking":
+                    self.assertIn("thinking row prompt - compact", prompt)
+                    self.assertIn("neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle", prompt)
+                    self.assertIn("Expressions are adjacent state-caused beats", prompt)
+                    self.assertIn("Every frame changes face, posture, body/appendage timing, or cue", prompt)
+                    self.assertIn("loop cleanly back to the first frame", prompt)
+                else:
+                    self.assert_compact_row_prompt(prompt, state=state)
+                    self.assert_no_verbose_policy_dump(prompt)
                 self.assertIn("statePerformanceStoryPolicy", cue_plan["states"][state])
                 self.assertIn("stateStoryBeats", cue_plan["states"][state])
 
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn(
-                "neutral-curious -> noticing -> pondering -> idea lands -> pleased settle",
+                "neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle",
                 thinking_prompt,
             )
-            self.assertIn("not random sad, sleepy, angry, blank, or unrelated faces", thinking_prompt)
+            self.assertIn("not random sad, serious, sleepy, angry, blank, or unrelated faces", thinking_prompt)
+
+    def test_row_prompts_are_compact_and_do_not_dump_full_policy_docs(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Compacty",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "idle,thinking,answering,working",
+                    "--anatomy-class",
+                    "hands",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            for state in ("idle", "thinking", "answering", "working"):
+                prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
+                self.assertLess(len(prompt), 6500)
+                self.assertIn("row prompt - compact", prompt)
+
+            for state in ("idle", "answering", "working"):
+                prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
+                self.assert_no_verbose_policy_dump(prompt)
+
+    def test_simple_appendage_thinking_prompt_stays_compact(self) -> None:
+        for anatomy_class in ("fins-no-hands", "ambiguous-limbs"):
+            with self.subTest(anatomy_class=anatomy_class):
+                with tempfile.TemporaryDirectory() as raw_tmp:
+                    out_dir = Path(raw_tmp) / "run"
+
+                    result = prepare.main(
+                        [
+                            "--companion-name",
+                            "CompactThinker",
+                            "--output-dir",
+                            str(out_dir),
+                            "--states",
+                            "thinking",
+                            "--anatomy-class",
+                            anatomy_class,
+                            "--compact",
+                            "--quiet",
+                        ]
+                    )
+
+                    self.assertEqual(result, 0)
+                    thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
+                    self.assertLess(len(thinking_prompt), 6200)
+                    self.assertLess(len(thinking_prompt.splitlines()), 55)
+                    self.assert_no_verbose_policy_dump(thinking_prompt)
+                    self.assertIn("neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle", thinking_prompt)
+                    self.assertIn("Keep simple side appendages outside the body", thinking_prompt)
+                    self.assertIn("face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
+                    self.assertIn("Open eyes must remain the same source-colored eye masses", thinking_prompt)
+                    self.assertIn("non-flat magenta #FF00FF background", thinking_prompt)
+
+    def test_generated_prompts_do_not_inject_unsupplied_mascot_specific_examples(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Generic",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking,answering,working",
+                    "--anatomy-class",
+                    "ambiguous-limbs",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            joined_prompts = "\n".join(
+                (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8").lower()
+                for state in ("thinking", "answering", "working")
+            )
+            for forbidden in ("tridy", "trident", "teal", "cream", "antenna", "mitten", "staff", "wand", "robe", "hood"):
+                self.assertNotIn(forbidden, joined_prompts)
 
     def test_no_limb_working_prompt_forbids_held_work_props(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -465,25 +608,21 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
-            self.assertIn("Semantic ladder", working_prompt)
+            self.assert_compact_row_prompt(working_prompt, state="working")
+            self.assert_no_verbose_policy_dump(working_prompt)
             self.assertIn("busy-but-friendly", working_prompt)
-            self.assertIn("Expression lock", working_prompt)
-            self.assertIn("do not add eyebrows to a browless mascot", working_prompt)
             self.assertIn("no slanted angry eyes", working_prompt)
             self.assertIn("V-shaped", working_prompt)
-            self.assertIn("no held, near-hand", working_prompt)
-            self.assertIn("purposeful processing", working_prompt)
-            self.assertIn("remain visible after chroma-key cleanup", working_prompt)
-            self.assertIn("tiny detached speck", working_prompt)
-            self.assertIn("Reject a pretty motif-native effect when it does not communicate the state", working_prompt)
-            self.assertIn("Do not place repeated leaf, oval, wing, mitten, paw, droplet", working_prompt)
-            self.assertIn("inside the body core", working_prompt)
 
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["style"]["renderingStyle"], "codex-pixel-art")
             self.assertEqual(manifest["style"]["stateClarity"], "semantic-enhancers")
             self.assertEqual(manifest["states"]["working"]["frames"], 6)
             self.assertIn("visualLanguageFit", manifest["states"]["working"]["enhancer"])
+            self.assertIn("no held, near-hand", cue_plan["states"]["working"]["suggestedVisualAid"])
+            self.assertIn("tiny detached speck", cue_plan["states"]["working"]["suggestedVisualAid"])
+            self.assertIn("inside the body core", cue_plan["states"]["working"]["bodySurfaceCuePolicy"])
 
     def test_hand_mascot_prompt_allows_supported_expressive_actions(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -511,29 +650,17 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Visible hands may point, present, hold, type, or write", thinking_prompt)
-            self.assertIn("Default thinking rows keep hands away from the", thinking_prompt)
+            self.assertIn("thinking row prompt - compact", thinking_prompt)
             self.assertIn("friendly tiny helper robot", thinking_prompt)
-            self.assertIn("Art direction floor", thinking_prompt)
-            self.assertIn("polished mascot performance", thinking_prompt)
-            self.assertIn("charming mascot-native acting beat", thinking_prompt)
-            self.assertIn("Expression variation is mandatory", thinking_prompt)
-            self.assertIn("Do not keep the same face in every frame", thinking_prompt)
-            self.assertIn("default thinking prompts must keep the mouth, chin, cheek", thinking_prompt)
-            self.assertIn("lower face, and face panel unobscured", thinking_prompt)
             self.assertIn("Must-keep identity props/accessories: single chest screen", thinking_prompt)
-            self.assertIn("Identity prop contract", thinking_prompt)
-            self.assertIn("keep its count, side, scale, attachment, and basic silhouette stable", thinking_prompt)
-            self.assertIn("Preserve signature props by default even when another cue is present", thinking_prompt)
-            self.assertIn("State cues must not cover, replace, recolor, merge with, or grow out of identity props", thinking_prompt)
-            self.assertIn("antenna bulbs, ears, horns, hats, badges, emblems, staffs, or wands", thinking_prompt)
-            self.assertIn("Omit a must-keep prop only when the state card says", thinking_prompt)
-            self.assertIn("Do not duplicate signature props", thinking_prompt)
+            self.assertIn("Use only existing appendages", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertEqual(cue_plan["visualLanguage"]["motifs"], ["small panel glow"])
             self.assertEqual(cue_plan["visualLanguage"]["identityProps"], ["single chest screen"])
             self.assertEqual(cue_plan["states"]["working"]["visualAidDecision"], "use only if acting alone would be unclear at 64-96 px")
+            self.assertIn("Visible appendage acting policy", cue_plan["states"]["thinking"]["appendageActingPolicy"])
+            self.assertIn("Identity prop contract", prepare.IDENTITY_PROP_POLICY)
 
     def test_visible_hand_mascot_prompts_require_small_hand_acting_for_waiting_states(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -559,24 +686,19 @@ class PrepareCompanionRunTests(unittest.TestCase):
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
 
-            for prompt in (thinking_prompt, answering_prompt):
-                self.assertIn("Visible appendage acting policy", prompt)
-                self.assertIn("Do not leave hands, paws, sleeves, or held props frozen across the whole row", prompt)
-                self.assertIn("include at least two small safe appendage acting beats", prompt)
-                self.assertIn("prop-holding hand remains attached while the free hand can lift, present, tuck, point, or settle", prompt)
-                self.assertIn("no extra hands, duplicate arms, detached mittens, finger clusters, or new grip anatomy", prompt)
-
-            self.assertIn("thinking rows can use a side-anchored low free-hand lift, side bob", thinking_prompt)
-            self.assertIn("tiny outward side tilt", thinking_prompt)
-            self.assertIn("low outer-body tuck beside the body, or staff-hand grip shift", thinking_prompt)
-            self.assertIn("default thinking prompts must keep the mouth, chin, cheek", thinking_prompt)
-            self.assertIn("avoid under-chin hand poses", thinking_prompt)
-            self.assertIn("staff-hand grip shift", thinking_prompt)
-            self.assertIn("answering rows can use a small presenting beat, conversational hand bounce, palm-up gesture, or free-hand settle", answering_prompt)
+            self.assertIn("thinking row prompt - compact", thinking_prompt)
+            self.assert_compact_row_prompt(answering_prompt, state="answering")
+            self.assert_no_verbose_policy_dump(answering_prompt)
+            self.assertIn("Must-keep identity props/accessories: single staff held in the left hand", thinking_prompt)
+            self.assertIn("Must-keep identity props/accessories: single staff held in the left hand", answering_prompt)
+            self.assertIn("prop-holding appendage attached", thinking_prompt)
+            self.assertIn("Use only appendages and props visible in the canonical base/reference", answering_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("appendageActingPolicy", cue_plan["states"]["thinking"])
             self.assertIn("appendageActingPolicy", cue_plan["states"]["answering"])
+            self.assertIn("Visible appendage acting policy", cue_plan["states"]["thinking"]["appendageActingPolicy"])
+            self.assertIn("State-specific appendage acting", cue_plan["states"]["answering"]["appendageActingPolicy"])
 
     def test_high_visibility_states_include_positive_acting_choreography(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -603,32 +725,66 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             for state in ("thinking", "answering", "success", "error"):
                 prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
-                self.assertIn("Professional state acting choreography", prompt)
-                self.assertIn("Coordinate three synchronized tracks", prompt)
-                self.assertIn("expression track", prompt)
-                self.assertIn("body/appendage track", prompt)
-                self.assertIn("cue/prop track", prompt)
-                self.assertIn("Do not let all motion live in the prop, bubble, sparkle, or cue", prompt)
-                self.assertIn("parked hands", prompt)
+                self.assertIn(f"{state} row prompt - compact", prompt)
+                self.assertIn("Use a plain digital solid-color canvas", prompt)
+                self.assertIn("recordable by a strict cleanup gate", prompt)
+                self.assertIn("No white crescent side-glance eyes", prompt)
+                if state == "thinking":
+                    self.assertIn("Every frame changes face, posture, body/appendage timing, or cue", prompt)
+                    self.assertIn("Thinking should read curious processing", prompt)
+                else:
+                    self.assertIn("Do not let all motion live in a cue while the mascot face and body stay frozen", prompt)
                 self.assertIn("stateActingChoreography", cue_plan["states"][state])
 
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Frame 2: eyes glance up or aside while the hands stay side-anchored", thinking_prompt)
-            self.assertIn("Frame 4: cue grows to slightly larger while one hand makes a side-anchored low side", thinking_prompt)
-            self.assertIn("Frame 7: recognition smile; hands start returning to rest", thinking_prompt)
+            self.assertIn("compact source-bound cue", thinking_prompt)
+            self.assertIn("primary cue element is only slightly larger, never oversized", thinking_prompt)
+            self.assertIn("recognition smile", thinking_prompt)
 
             answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
-            self.assertIn("Frame 3: wider mouth; free hand begins a small presenting gesture if anatomy supports it", answering_prompt)
-            self.assertIn("Frame 5: quick speaking blink or smile-open beat with a tiny conversational hand bounce", answering_prompt)
-            self.assertIn("Frame 7: closed smile while the body or appendage settles", answering_prompt)
-            self.assertIn("also match any already accepted state row in this run", answering_prompt)
-            self.assertIn("Do not zoom the mascot in to fill the cell", answering_prompt)
+            self.assertIn("Mouth shapes must visibly cycle", answering_prompt)
+            self.assertIn("Match the canonical base and accepted rows", answering_prompt)
+            self.assertIn("do not shrink or enlarge the mascot body", answering_prompt)
 
             success_prompt = (out_dir / "prompts" / "success.md").read_text(encoding="utf-8")
-            self.assertIn("Frame 4: proud peak with existing appendages lifted only if the reference supports it", success_prompt)
+            self.assertIn("clearest read", success_prompt)
 
             error_prompt = (out_dir / "prompts" / "error.md").read_text(encoding="utf-8")
-            self.assertIn("Frame 4: small recoil or tuck; appendages pull inward only if that preserves the original count", error_prompt)
+            self.assertIn("clearest read", error_prompt)
+            self.assertIn("Do not include happy/success/answering frames", error_prompt)
+
+    def test_non_thinking_prompts_include_neighboring_state_guards(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "Bounded",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "listening,error,confused,sleeping",
+                    "--anatomy-class",
+                    "hands",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            listening_prompt = (out_dir / "prompts" / "listening.md").read_text(encoding="utf-8")
+            error_prompt = (out_dir / "prompts" / "error.md").read_text(encoding="utf-8")
+            confused_prompt = (out_dir / "prompts" / "confused.md").read_text(encoding="utf-8")
+            sleeping_prompt = (out_dir / "prompts" / "sleeping.md").read_text(encoding="utf-8")
+
+            self.assertIn("Listening should read attentive and ready, not thinking, surprised", listening_prompt)
+            self.assertIn("Avoid open shocked mouths, hand-to-chin poses", listening_prompt)
+            self.assertIn("Error should remain a gentle recoverable failure loop", error_prompt)
+            self.assertIn("no white-eye stress rewrites", error_prompt)
+            self.assertIn("Confused should read curious-uncertain rather than sad/error", confused_prompt)
+            self.assertIn("avoid hand-to-chin/under-face clusters", confused_prompt)
+            self.assertIn("Sleeping should be quiet breathing and closed-eye settle", sleeping_prompt)
+            self.assertIn("avoid hand-to-mouth clusters and sleep symbols", sleeping_prompt)
 
     def test_simple_fin_draft_plan_stays_conservative(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -652,18 +808,19 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
-            self.assertIn("not hand-to-chin", thinking_prompt)
-            self.assertIn("no held props or tiny detached specks in the draft plan", working_prompt)
-            self.assertIn("rim-touching", working_prompt)
+            self.assertIn("A near-face or face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
+            self.assert_compact_row_prompt(working_prompt, state="working")
             self.assertIn("invented angry eyebrows", working_prompt)
             self.assertIn("slanted angry eyes", working_prompt)
-            self.assertIn("extra wings", working_prompt)
-            self.assertIn("Cue colors and shapes must stay distinct", working_prompt)
 
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertNotIn("brace", manifest["states"]["working"]["enhancer"]["description"])
+            self.assertIn("no held props or tiny detached specks in the draft plan", cue_plan["states"]["working"]["suggestedVisualAid"])
+            self.assertIn("rim-touching", cue_plan["states"]["working"]["suggestedVisualAid"])
+            self.assertIn("Cue colors and shapes must stay distinct", cue_plan["states"]["working"]["bodySurfaceCuePolicy"])
 
-    def test_thinking_prompt_requires_visible_bubble_growth_arc(self) -> None:
+    def test_thinking_prompt_requires_generic_compact_cue_growth_arc(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             out_dir = Path(raw_tmp) / "run"
 
@@ -684,28 +841,82 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
+            self.assertIn("exactly 6 separated frames", thinking_prompt)
             self.assertIn("Frame-by-frame acting arc", thinking_prompt)
             self.assertIn("Six-frame acting story", thinking_prompt)
-            self.assertIn("two small close puffs sit low beside the same inferred thought-cue source", thinking_prompt)
-            self.assertIn("two puffs plus a very small third puff form a compact cluster", thinking_prompt)
-            self.assertIn("compact three-puff thought bubble", thinking_prompt)
-            self.assertIn("one slightly larger main puff and two smaller close support puffs", thinking_prompt)
-            self.assertIn("thought cue shrinks to one tiny close remnant or resolves cleanly", thinking_prompt)
-            self.assertIn("neutral-curious -> noticing -> pondering -> idea lands -> pleased settle", thinking_prompt)
-            self.assertIn("The face, body timing, and any side appendage should sell thinking even before the bubble is noticed", thinking_prompt)
+            self.assertIn("one tiny compact cue appears near the inferred thought-cue source", thinking_prompt)
+            self.assertIn("the cue grows slightly while staying close and secondary", thinking_prompt)
+            self.assertIn("compact cue peak beside the inferred source", thinking_prompt)
+            self.assertIn("primary cue element is only slightly larger, never oversized", thinking_prompt)
+            self.assertIn("cue shrinks to one tiny close remnant or resolves cleanly", thinking_prompt)
+            self.assertIn("neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle", thinking_prompt)
+            self.assertIn("Every frame changes face, posture, body/appendage timing, or cue", thinking_prompt)
+            self.assertIn("no stale same-face holds", thinking_prompt)
+            self.assertIn("sad/serious/downturned expression", thinking_prompt)
+            self.assertIn("Face/body/appendage timing should sell thinking before the cue is noticed", thinking_prompt)
             self.assertIn("Do not make a tall vertical stack", thinking_prompt)
             self.assertIn("Do not let the cue force the mascot smaller", thinking_prompt)
             self.assertIn("non-flat magenta #FF00FF background", thinking_prompt)
-            self.assertIn("Use only existing simple side appendages as subtle side-attached bobs", thinking_prompt)
-            self.assertIn("Do not turn simple or ambiguous side shapes into hands", thinking_prompt)
+            self.assertIn("darker/lighter key-color variations", thinking_prompt)
+            self.assertNotIn("darker/lighter green variations", thinking_prompt)
+            self.assertIn("Keep simple side appendages outside the body", thinking_prompt)
+            self.assertIn("face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
+            self.assertIn("If unclear, leave it resting", thinking_prompt)
+            self.assertIn("no white side-glance or new sclera", thinking_prompt)
+            self.assertIn("Open eyes must remain the same source-colored eye masses", thinking_prompt)
+            self.assertIn("new white sclera", thinking_prompt)
+            self.assertIn("Use closed/thoughtful mouths only: closed smile, tiny pleased smile, or gently upturned one-pixel smile", thinking_prompt)
+            self.assertIn("Expression and eye rules", thinking_prompt)
+            self.assertIn("tiny closed pondering smile or gently upturned one-pixel smile", thinking_prompt)
+            self.assertIn("source-matched open eyes", thinking_prompt)
+            self.assertIn("stale same-face row", thinking_prompt)
+            self.assertIn("does not become a new hand, finger, lower-face patch, or detached blob", thinking_prompt)
             self.assertNotIn("open black eyes", thinking_prompt)
+            self.assertNotIn("eyes glance up or aside", thinking_prompt)
+            self.assertNotIn("one hand makes", thinking_prompt)
+            self.assertNotIn("side attention shift", thinking_prompt)
+            self.assertNotIn("hood/head/face", thinking_prompt)
             self.assertNotIn("white puff", thinking_prompt)
+            self.assertNotIn("exactly three visible puffs", thinking_prompt)
+            self.assertNotIn("main puff", thinking_prompt)
             self.assertNotIn("free hand or hand-like appendage", thinking_prompt)
             self.assertNotIn("non-flat green background", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("frameArc", cue_plan["states"]["thinking"])
             self.assertIn("small -> slightly larger -> medium -> smaller -> tiny/settle", cue_plan["states"]["thinking"]["frameArc"])
+
+    def test_thinking_prompt_stays_hatchpet_style_compact_and_nonduplicative(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "CompactThinker",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--anatomy-class",
+                    "fins-no-hands",
+                    "--compact",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
+            self.assertLessEqual(len(thinking_prompt), 5000)
+            self.assertEqual(thinking_prompt.count("Frame-by-frame acting arc"), 1)
+            self.assertEqual(thinking_prompt.count("Thought cue rules"), 1)
+            self.assertEqual(thinking_prompt.count("Expression and eye rules"), 1)
+            self.assertEqual(thinking_prompt.count("State performance story arc"), 0)
+            self.assertEqual(thinking_prompt.count("Reject if any frame has"), 1)
+            self.assertNotIn("random emotion collage", thinking_prompt)
+            self.assertNotIn("Mouth pixels must be", thinking_prompt)
+            self.assertNotIn("No single-dot mouth", thinking_prompt)
+            self.assertIn("Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts", thinking_prompt)
 
     def test_thinking_prompt_rejects_speck_sparkle_cues_as_primary_read(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -728,10 +939,44 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("Thinking cue solidity lock", thinking_prompt)
-            self.assertIn("do not use loose sparkles, isolated white specks, star glints, diamond flecks, or single-pixel dust", thinking_prompt)
-            self.assertIn("The cue must read as one deliberate compact thought puff, bubble cluster, idea orb, or processing aura", thinking_prompt)
-            self.assertIn("The final frame must not leave a stray dot", thinking_prompt)
-            self.assertIn("either resolve cleanly to no cue or keep a tiny settled cue still visibly associated with the same state source", thinking_prompt)
+            self.assertIn("use deliberate compact cue shapes, not loose specks", thinking_prompt)
+            self.assertIn("no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, or glow", thinking_prompt)
+            self.assertIn("random symbol", thinking_prompt)
+            self.assertIn("The peak should be a compact cue beat, not a mandated symbol or puff count", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("do not use loose sparkles", cue_plan["states"]["thinking"]["thinkingCueVocabularyPolicy"])
+            self.assertIn("The final frame must not leave a stray dot", cue_plan["states"]["thinking"]["thinkingCueVocabularyPolicy"])
+
+    def test_thinking_prompt_makes_idea_peak_deliberate_without_mandating_puffs(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "IdeaPeak",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--anatomy-class",
+                    "ambiguous-limbs",
+                    "--compact",
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
+            self.assertIn("idea lands", thinking_prompt)
+            self.assertIn("primary cue element is only slightly larger, never oversized", thinking_prompt)
+            self.assertIn("cue vocabulary", thinking_prompt)
+            self.assertIn("do not enlarge the cue to prove the idea landed", thinking_prompt)
+            self.assertIn("stable source-to-peak trail", thinking_prompt)
+            self.assertIn("smallest element stays closest to the inferred source", thinking_prompt)
+            self.assertIn("Do not let intermediate cue elements drift downward", thinking_prompt)
+            self.assertNotIn("exactly three visible puffs", thinking_prompt)
+            self.assertNotIn("main puff", thinking_prompt)
 
     def test_near_head_thinking_cues_do_not_merge_into_body_core(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -753,14 +998,17 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Near-head cue core-separation lock", thinking_prompt)
-            self.assertIn("do not alpha-connect the thought cue to the mascot core, expression panel, accessory, or outline when it grows", thinking_prompt)
-            self.assertIn("keep a 2-4 px chroma-key gap between the growing cue and the mascot core", thinking_prompt)
-            self.assertIn("Use proximity, eye tracking, timing, or one tiny separated tail dot", thinking_prompt)
-            self.assertIn("without making QA measure the cue as body size", thinking_prompt)
-            self.assertIn("Near-head cue footprint lock", thinking_prompt)
-            self.assertIn("does not become the tallest or widest row element and force atlas assembly to shrink the mascot body", thinking_prompt)
-            self.assertIn("tuck it closer to the inferred thought-cue source instead of changing mascot scale", thinking_prompt)
+            self.assertIn("keep the cue close, low, compact, and secondary", thinking_prompt)
+            self.assertIn("Do not make a tall vertical stack", thinking_prompt)
+            self.assertIn("Do not let the cue force the mascot smaller", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            policy = cue_plan["states"]["thinking"]["thinkingCueContinuityPolicy"]
+            self.assertIn("Near-head cue core-separation lock", policy)
+            self.assertIn("keep a 2-4 px chroma-key gap", policy)
+            self.assertIn("Near-head cue footprint lock", policy)
+            self.assertIn("stable source-to-peak trail", policy)
+            self.assertIn("smallest element stays closest to the inferred source", policy)
+            self.assertIn("Do not let intermediate cue elements drift downward", policy)
 
     def test_no_limb_thinking_prompt_forbids_chin_marks_and_worried_faces(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -782,17 +1030,15 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Thinking must read as curious pondering and processing, not worry, confusion, sadness, anger, sleepiness, or error", thinking_prompt)
-            self.assertIn("Use neutral-curious, tiny closed pondering mouths, one-pixel thoughtful line mouths, blink/hold, and small recognition-smile beats", thinking_prompt)
-            self.assertIn("avoid downturned frowns, curled lower-lip marks, worried squiggles, and confused/error mouth shapes", thinking_prompt)
-            self.assertIn("No-limb thinking face artifact guard", thinking_prompt)
-            self.assertIn("do not add chin-touch, cheek-touch, hand-to-chin, lower-face squiggles, extra mouth ticks, chin marks", thinking_prompt)
-            self.assertIn("moustache-like pixels, or small appendage-colored marks on the lower face or chin", thinking_prompt)
-            self.assertIn("If the mascot has no appendages, thinking must come from eyes, blink timing, mouth shape, body tilt, and the thought cue", thinking_prompt)
+            self.assertIn("not surprised, answering, worried, sleepy, or confused", thinking_prompt)
+            self.assertIn("No appendage acting", thinking_prompt)
+            self.assertIn("Do not invent hands, hand-to-chin poses, or face-touching appendages", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("thinkingStateReadPolicy", cue_plan["states"]["thinking"])
             self.assertIn("faceArtifactPolicy", cue_plan["states"]["thinking"])
+            self.assertIn("No-limb thinking face artifact guard", cue_plan["states"]["thinking"]["faceArtifactPolicy"])
+            self.assertIn("worried squiggles", cue_plan["states"]["thinking"]["thinkingStateReadPolicy"])
 
     def test_thinking_processing_blink_must_not_read_as_sleepy(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -814,12 +1060,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Any closed-eye thinking frame must read as a quick active processing blink, not sleep, idle rest, fatigue, or meditation", thinking_prompt)
-            self.assertIn("Keep the thought cue active during that blink", thinking_prompt)
-            self.assertIn("place open-eye curious or recognition frames immediately before and after it", thinking_prompt)
-            self.assertIn("Do not use long closed-eye holds, droopy eyelids, sleepy breathing, or relaxed sleeping mouths in thinking", thinking_prompt)
-            self.assertIn("Processing blinks should use simple closed curved or short horizontal eyes", thinking_prompt)
-            self.assertIn("not squeezed shut X-eyes, chevron eyes, scrunched effort eyes, or strain grimaces", thinking_prompt)
+            self.assertIn("quick active processing blink", thinking_prompt)
+            self.assertIn("round open o-mouth, exclamation mouth, speaking syllable mouth", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            policy = cue_plan["states"]["thinking"]["thinkingStateReadPolicy"]
+            self.assertIn("quick active processing blink, not sleep", policy)
+            self.assertIn("Processing blinks should use simple closed curved or short horizontal eyes", policy)
 
     def test_hands_thinking_prompt_prefers_safe_hand_acting_over_face_patch(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -841,18 +1087,15 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Hands/paws thinking strategy", thinking_prompt)
-            self.assertIn("keep the face panel and lower face completely clear in every frame", thinking_prompt)
-            self.assertIn("Default generic mitten-hand thinking motion is side-anchored", thinking_prompt)
-            self.assertIn("use a side bob, side tilt, low side lift, tiny outward tilt, or low outer-body tuck only", thinking_prompt)
-            self.assertIn("with a visible gap below the face", thinking_prompt)
-            self.assertIn("Do not touch, cover, underline, or frame the mouth, chin, cheek", thinking_prompt)
-            self.assertIn("hand-to-chin, hand-to-mouth, clasped hands under the mouth", thinking_prompt)
-            self.assertIn("scalloped mitten/bib cluster below the face", thinking_prompt)
+            self.assertIn("Use only existing appendages", thinking_prompt)
+            self.assertIn("make one polished thinking face-touch beat", thinking_prompt)
+            self.assertIn("Face-touch is acceptable only when the appendage stays connected", thinking_prompt)
+            self.assertIn("does not read as a face patch, duplicate appendage, or lower-face blob", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("thinkingCueStrategy", cue_plan["states"]["thinking"])
             self.assertIn("Hands/paws thinking", cue_plan["states"]["thinking"]["thinkingCueStrategy"])
+            self.assertIn("Face-touch quality gate", cue_plan["states"]["thinking"]["thinkingCueStrategy"])
 
     def test_thinking_prompt_blocks_mood_jumps_and_cue_pop_dropout(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -874,22 +1117,16 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Thinking mood continuity lock", thinking_prompt)
-            self.assertIn("no worried frown frames", thinking_prompt)
-            self.assertIn("no sleepy closed-eye smile frames", thinking_prompt)
-            self.assertIn("no open exclamation or speaking-mouth frames", thinking_prompt)
-            self.assertIn("Cue continuity lock", thinking_prompt)
-            self.assertIn("Keep the cue separate from identity props", thinking_prompt)
-            self.assertIn("do not use a prop, accessory, marking, or emblem", thinking_prompt)
-            self.assertIn("must not cover, replace, recolor, or merge with any must-keep identity prop", thinking_prompt)
-            self.assertIn("mascot body footprint stays stable", thinking_prompt)
-            self.assertIn("close 2-4 px chroma-key gap or tiny separated tail dot", thinking_prompt)
-            self.assertIn("must not pop in for one frame, jump upward into a giant peak, or drop out abruptly", thinking_prompt)
-            self.assertIn("final frame should either keep a tiny settled cue or clearly resolve back to frame 1 without a visual snap", thinking_prompt)
+            self.assertIn("not surprised, answering, worried, sleepy, or confused", thinking_prompt)
+            self.assertIn("Story arc: neutral-curious", thinking_prompt)
+            self.assertIn("no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("thinkingMoodContinuityPolicy", cue_plan["states"]["thinking"])
             self.assertIn("thinkingCueContinuityPolicy", cue_plan["states"]["thinking"])
+            self.assertIn("Thinking mood continuity lock", cue_plan["states"]["thinking"]["thinkingMoodContinuityPolicy"])
+            self.assertIn("Cue continuity lock", cue_plan["states"]["thinking"]["thinkingCueContinuityPolicy"])
+            self.assertIn("must not pop in for one frame", cue_plan["states"]["thinking"]["thinkingCueContinuityPolicy"])
 
     def test_thinking_prompt_uses_one_cue_vocabulary_and_bans_icon_substitution(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -911,14 +1148,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Thinking cue vocabulary lock", thinking_prompt)
-            self.assertIn("Use one cue family across the whole row", thinking_prompt)
-            self.assertIn("do not switch between thought bubble, data cloud, lightbulb, exclamation, sparkle, or icon", thinking_prompt)
-            self.assertIn("no detached lightbulb", thinking_prompt)
-            self.assertIn("no one-frame idea icon", thinking_prompt)
+            self.assertIn("Use one compact source-appropriate non-chroma-key cue vocabulary only", thinking_prompt)
+            self.assertIn("no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("thinkingCueVocabularyPolicy", cue_plan["states"]["thinking"])
+            self.assertIn("Thinking cue vocabulary lock", cue_plan["states"]["thinking"]["thinkingCueVocabularyPolicy"])
 
     def test_row_prompt_locks_canonical_base_features_against_redesign(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -942,19 +1177,14 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Canonical base row lock", thinking_prompt)
-            self.assertIn("copy the canonical base's main silhouette and design language", thinking_prompt)
-            self.assertIn("same antenna count and basic antenna shape", thinking_prompt)
-            self.assertIn("same face screen or face panel shape", thinking_prompt)
-            self.assertIn("same eye style", thinking_prompt)
-            self.assertIn("same chest mark or emblem when present", thinking_prompt)
-            self.assertIn("If the canonical base has a plain body with no chest mark", thinking_prompt)
-            self.assertIn("no new chest panel, status light, belly screen, button, badge", thinking_prompt)
-            self.assertIn("dot cluster, readout, emblem, or robot UI detail", thinking_prompt)
-            self.assertIn("If the canonical base has a rounded lower body with no feet", thinking_prompt)
-            self.assertIn("no foot nubs, shoes, base tabs, toe pixels, shadow feet, or lower protrusions", thinking_prompt)
-            self.assertIn("Do not upgrade the face into a different eye style", thinking_prompt)
-            self.assertIn("do not bend, add, remove, or duplicate the antenna", thinking_prompt)
+            self.assertIn("thinking row prompt - compact", thinking_prompt)
+            self.assertIn("Preserve the same mascot body, palette, outline weight, appendage count", thinking_prompt)
+            self.assertIn("Must-keep identity props/accessories: single top antenna", thinking_prompt)
+            self.assertIn("Do not skew, stretch, rotate, squash, or warp", thinking_prompt)
+            self.assertIn("extra/missing held prop", thinking_prompt)
+            self.assertIn("Canonical base row lock", prepare.CANONICAL_BASE_ROW_LOCK)
+            self.assertNotIn("same antenna count", prepare.CANONICAL_BASE_ROW_LOCK)
+            self.assertNotIn("robot UI detail", prepare.CANONICAL_BASE_ROW_LOCK)
 
     def test_row_prompt_locks_simple_face_panels_against_skew_and_warp(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -978,10 +1208,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Simple face/body stability lock", thinking_prompt)
-            self.assertIn("do not skew, stretch, rotate, squash, or turn a face panel into a trapezoid", thinking_prompt)
-            self.assertIn("keep face-panel corners, outline thickness, and cream fill shape consistent", thinking_prompt)
-            self.assertIn("show motion through 1-2 px bob, tiny side shift, mouth/blink change, appendage beat, or cue timing", thinking_prompt)
+            self.assertIn("Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area", thinking_prompt)
+            self.assertIn("Show motion through tiny bob, side shift, mouth/blink change", prepare.CANONICAL_BASE_ROW_LOCK)
+            self.assertNotIn("cream fill", prepare.CANONICAL_BASE_ROW_LOCK)
 
     def test_row_prompt_forbids_floor_shadows_as_motion_cues(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1003,9 +1232,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("No floor-motion artifacts", thinking_prompt)
-            self.assertIn("do not show bobbing, jumping, thinking, or emphasis with floor shadows, contact shadows, ground lines, baseline marks, landing marks, or dark under-body strokes", thinking_prompt)
-            self.assertIn("the sprite must be only the mascot and approved state cue on chroma key", thinking_prompt)
+            self.assertIn("No smooth illustration", thinking_prompt)
+            self.assertIn("shadows", thinking_prompt)
+            self.assertIn("Perfectly uniform", thinking_prompt)
+            self.assertIn("exact flat flood-fill", thinking_prompt)
+            self.assertIn("non-native pixel-art rendering", thinking_prompt)
 
     def test_row_prompt_locks_eye_grammar_against_hollow_or_inverted_eyes(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1030,16 +1261,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
             answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
 
             for prompt in (thinking_prompt, answering_prompt):
-                self.assertIn("Eye identity continuity lock", prompt)
-                self.assertIn("preserve the canonical base eye grammar", prompt)
-                self.assertIn("same eye count, shape, size, spacing, outline color, pupil or fill color", prompt)
-                self.assertIn("same catchlight/highlight count and placement logic", prompt)
-                self.assertIn("Do not invert dark pupils into hollow white eyes", prompt)
-                self.assertIn("do not turn solid dark eyes into white oval eyes with dark rims", prompt)
-                self.assertIn("do not add extra catchlights", prompt)
-                self.assertIn("no glossy anime eyes, vertical slit pupils, square UI eyes", prompt)
-                self.assertIn("no one-frame eye-style swaps", prompt)
-                self.assertIn("both eyes must stay matched and anchored to the same face-panel positions", prompt)
+                self.assertIn("Eye grammar to preserve", prompt)
+                self.assertIn("Closed", prompt)
+                self.assertIn("wrong eye grammar", prompt)
+            self.assertIn("No white crescent side-glance eyes, hollow eyes, mismatched eyes, extra catchlights, or symbol eyes", thinking_prompt)
+            self.assertIn("No hollow or inverted eyes, mismatched eyes, extra catchlights, symbol eyes", answering_prompt)
 
     def test_inferred_eye_grammar_hint_is_recorded_and_inherited(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1093,12 +1319,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("For solid dark base eyes", thinking_prompt)
-            self.assertIn("open eyes must remain mostly dark with the original tiny highlight", thinking_prompt)
-            self.assertIn("do not expose white sclera crescents", thinking_prompt)
-            self.assertIn("do not make a white crescent or white cutout the dominant eye shape", thinking_prompt)
-            self.assertIn("Gaze can be shown by moving the dark eye oval or tiny highlight only a pixel or two", thinking_prompt)
-            self.assertIn("do not show side glances by carving white crescent gaps into dark eyes", thinking_prompt)
+            self.assertIn("Open eyes preserve the source-matched fill, outline, and highlight/catchlight logic", thinking_prompt)
+            self.assertIn("No white crescent side-glance eyes", thinking_prompt)
+            self.assertIn("hollow eyes, mismatched eyes, extra catchlights, or symbol eyes", thinking_prompt)
+            self.assertIn("For solid dark base eyes", prepare.EYE_IDENTITY_CONTINUITY_POLICY)
 
     def test_row_prompt_uses_stable_eye_acting_when_gaze_would_break_eye_style(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1125,13 +1349,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
             answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
 
             for prompt in (thinking_prompt, answering_prompt):
-                self.assertIn("Eye acting stability rule", prompt)
-                self.assertIn("If a requested up-glance, side-glance, blink, or speaking beat would require changing the eye style, keep the eyes forward or nearly forward", prompt)
-                self.assertIn("carry the acting through head tilt, body bob, mouth shape, blink timing, appendage pose, or the approved cue instead", prompt)
-                self.assertIn("Keep eye centers inside the original eye boxes", prompt)
-                self.assertIn("never slide eyes onto cheeks, panel edges, the mouth line, or outside the face panel", prompt)
-                self.assertIn("No eye-to-symbol swaps", prompt)
-                self.assertIn("do not replace eyes with loading dots, LEDs, status bars, diagonal slashes, crosses, punctuation, or reaction icons", prompt)
+                self.assertIn("Eye grammar to preserve", prompt)
+                self.assertIn("Closed", prompt)
+            self.assertIn("No white crescent side-glance eyes", thinking_prompt)
+            self.assertIn("No hollow or inverted eyes", answering_prompt)
+            self.assertIn("Eye acting stability rule", prepare.EYE_IDENTITY_CONTINUITY_POLICY)
+            self.assertIn("No eye-to-symbol swaps", prepare.EYE_IDENTITY_CONTINUITY_POLICY)
 
     def test_closed_eye_blinks_preserve_eye_positions_without_symbol_drift(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1154,11 +1377,13 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             for state in ("idle", "thinking", "answering"):
                 prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
-                self.assertIn("Closed-eye blinks", prompt)
-                self.assertIn("replace each open eye with a simple short closed curve or horizontal pixel line", prompt)
+                self.assertIn("Closed", prompt)
                 self.assertIn("same eye positions and spacing", prompt)
-                self.assertIn("not X-eyes, chevrons, eyebrows, reaction glyphs", prompt)
-                self.assertIn("not mouth-like lower-face squiggles", prompt)
+                if state == "thinking":
+                    self.assertIn("simple short curved lines", prompt)
+                    self.assertIn("symbol eyes", prompt)
+                else:
+                    self.assertIn("not symbols or a new eye style", prompt)
 
     def test_thinking_prompt_defines_face_panel_exclusion_zone_for_hand_mascots(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1180,14 +1405,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Face-panel exclusion zone", thinking_prompt)
-            self.assertIn("no hand, paw, sleeve, mitten, finger, or prop may enter the face panel", thinking_prompt)
-            self.assertIn("or sit centered directly below the mouth/chin", thinking_prompt)
-            self.assertIn("Keep thinking hand beats outside the face-panel horizontal span when possible", thinking_prompt)
-            self.assertIn("beside the body, shoulder-side, or low outer-body zones", thinking_prompt)
-            self.assertIn("Do not use hand-to-body beats under the face panel", thinking_prompt)
-            self.assertIn("no lower-face/chin-adjacent hand poses", thinking_prompt)
-            self.assertIn("no under-chin presenting pose", thinking_prompt)
+            self.assertIn("make one polished thinking face-touch beat", thinking_prompt)
+            self.assertIn("leaves eyes and mouth readable", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("Face-touch quality gate", cue_plan["states"]["thinking"]["thinkingCueStrategy"])
+            self.assertIn("under-chin presenting poses", cue_plan["states"]["thinking"]["thinkingCueStrategy"])
 
     def test_default_thinking_hand_motion_is_side_anchored_for_generic_mittens(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1209,13 +1431,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Default generic mitten-hand thinking motion is side-anchored", thinking_prompt)
-            self.assertIn("side bob, side tilt, low side lift, tiny outward tilt, or low outer-body tuck only", thinking_prompt)
-            self.assertIn("Do not move one hand inward toward the face", thinking_prompt)
-            self.assertIn("do not point toward the head", thinking_prompt)
-            self.assertIn("do not cross the body front", thinking_prompt)
-            self.assertIn("keep hands attached to the side mid-body", thinking_prompt)
-            self.assertIn("not the bottom edge where they read as feet, legs, or lower tabs", thinking_prompt)
+            self.assertIn("make one polished thinking face-touch beat", thinking_prompt)
+            self.assertIn("If unclear, use a side-anchored lift/tilt/tuck", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            strategy = cue_plan["states"]["thinking"]["thinkingCueStrategy"]
+            self.assertIn("Default generic mitten-hand thinking motion remains conservative", strategy)
+            self.assertIn("one clean face-touch audition", strategy)
 
     def test_simple_mittens_do_not_inherit_articulated_hand_actions_in_thinking(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1239,10 +1460,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Simple mitten safeguard", thinking_prompt)
-            self.assertIn("simple mittens, sleeve nubs, rounded side hands, or fingerless blobs", thinking_prompt)
-            self.assertIn("side-bob, side-tilt, tiny outward tilt, low side lift, or side tuck only", thinking_prompt)
-            self.assertIn("do not use pointing, presenting across the body, typing, writing, gripping, or face-touch acting", thinking_prompt)
+            self.assertIn("Use only existing appendages", thinking_prompt)
+            self.assertIn("make one polished thinking face-touch beat", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            strategy = cue_plan["states"]["thinking"]["thinkingCueStrategy"]
+            self.assertIn("Face-touch quality gate", strategy)
+            self.assertIn("If it reads as a new cheek, nose, lower-face patch", strategy)
 
     def test_thinking_prompt_keeps_recognition_from_becoming_answering_mouth(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1264,10 +1487,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Recognition in thinking should be a closed or tiny pixel smile", thinking_prompt)
-            self.assertIn("not a wide open speaking mouth", thinking_prompt)
-            self.assertIn("not an exclamation mouth", thinking_prompt)
-            self.assertIn("not a syllable mouth from answering", thinking_prompt)
+            self.assertIn("tiny closed-mouth recognition smile", thinking_prompt)
+            self.assertIn("round open o-mouth, exclamation mouth, speaking syllable mouth", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("Recognition in thinking should be a closed or tiny pixel smile", cue_plan["states"]["thinking"]["thinkingStateReadPolicy"])
 
     def test_default_frame_counts_use_hatch_style_eight_frame_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1339,44 +1562,16 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
-            self.assertIn("HatchPet-style sprite artifact rules", working_prompt)
-            self.assertIn("Prefer pose, expression, and silhouette changes over decorative effects", working_prompt)
-            self.assertIn("Effects are allowed only when they are state-relevant, opaque, hard-edged, pixel-style", working_prompt)
-            self.assertIn("source-bound to the mascot silhouette, mouth edge, hand, tool, worn prop, or state source", working_prompt)
-            self.assertIn("Freestanding props are a last resort", working_prompt)
-            self.assertIn("Prefer body-surface, rim-touching, attached, or overlapping processing cues", working_prompt)
-            self.assertIn("freestanding or resting work prop", working_prompt)
-            self.assertIn("small slate, tablet, blank card stack, token tray, chunky work tile", working_prompt)
-            self.assertIn("beside or in front of the mascot", working_prompt)
-            self.assertIn("the mascot works by looking, leaning, bobbing, and reacting", working_prompt)
-            self.assertIn("not by holding, typing, writing, or inventing hands", working_prompt)
-            self.assertIn("clear background gap", working_prompt)
-            self.assertIn("no part of the prop or activity marks may touch", working_prompt)
-            self.assertIn("inside or on the prop surface", working_prompt)
-            self.assertIn("not in the empty gap", working_prompt)
-            self.assertIn("merge the prop with the mascot body", working_prompt)
-            self.assertIn("Frame-by-frame acting arc", working_prompt)
-            self.assertIn("target wakes up", working_prompt)
-            self.assertIn("sorting/checking/gathering", working_prompt)
-            self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
-            self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
-            self.assertIn("Working must show the mascot working through a concrete action", working_prompt)
-            self.assertIn("visible before/during/after transformation", working_prompt)
-            self.assertIn("not a decorative detached prop or status icon", working_prompt)
-            self.assertIn("Choose the work target from the mascot's visual language", working_prompt)
-            self.assertIn("Place the work target in a believable interaction zone", working_prompt)
-            self.assertIn("Avoid notebook, paper, page, or parchment-like surfaces", working_prompt)
-            self.assertIn("fine stripes, wood-grain lines, plank lines, or parallel grooves", working_prompt)
-            self.assertIn("Do not make the work surface read as a tiny document full of writing", working_prompt)
-            self.assertIn(
-                "Do not use breath puffs, speech beads, panting clouds, sleepy exhale cues, or tired closed-eye holds to show working",
-                working_prompt,
-            )
-            self.assertIn("A closed-eye frame in working may only be a quick blink", working_prompt)
-            self.assertIn("working cues must stay at the work target or tool tip, not at the mouth", working_prompt)
+            self.assert_compact_row_prompt(working_prompt, state="working")
+            self.assert_no_verbose_policy_dump(working_prompt)
+            self.assertIn("Show a concrete before/during/after work action", working_prompt)
+            self.assertIn("No text, pseudo-writing, generic UI panel", working_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("freestandingPropPolicy", cue_plan["states"]["working"])
+            self.assertIn("Freestanding props are a last resort", cue_plan["states"]["working"]["freestandingPropPolicy"])
+            self.assertIn("chunky non-text progress blocks", cue_plan["states"]["working"]["workPropMarkPolicy"])
+            self.assertIn("Working must show the mascot working through a concrete action", cue_plan["states"]["working"]["workTargetPolicy"])
 
     def test_hands_working_prompt_keeps_prop_marks_non_text(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1398,30 +1593,14 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
-            self.assertIn("Use this prompt as an authoritative sprite-production spec", working_prompt)
-            self.assertIn("HatchPet-style sprite artifact rules", working_prompt)
-            self.assertIn("first through face, gaze, body lean, timing, and existing hands or identity props", working_prompt)
-            self.assertIn("For any slate, tablet, blank card stack, token tray, panel, or work surface", working_prompt)
-            self.assertIn("chunky non-text progress blocks, dots, check marks, sliders, or sorting tokens", working_prompt)
-            self.assertIn("solid and unruled", working_prompt)
-            self.assertIn("no readable text, pseudo-writing, handwriting, numbers, letters, code lines, UI paragraphs, ruled notebook lines, or list rows", working_prompt)
-            self.assertIn("Working must show the mascot working through a concrete action, not a decorative detached prop", working_prompt)
-            self.assertIn("staff-tip glyph", working_prompt)
-            self.assertIn("inactive or blank -> being operated/sorted/checked -> progress/result", working_prompt)
-            self.assertIn("Tech/robot mascots can use panels, tablets, sliders, or status blocks", working_prompt)
-            self.assertIn("Fantasy or magic mascots should use spell circles, rune tiles, charm tokens", working_prompt)
-            self.assertIn("the mascot's gaze, hand, body, or identity prop must visibly cause the change", working_prompt)
-            self.assertIn("near the active hand, paw, mouth, active tool end, staff head, wand tip", working_prompt)
-            self.assertIn("For long props, the active end is the wand tip, staff head, tool bit, pointer tip, brush tip, blade tip, or nozzle", working_prompt)
-            self.assertIn("prefer close-contact targets that touch, overlap, hover just above", working_prompt)
-            self.assertIn("Avoid floor-level token rows and far-floating targets", working_prompt)
-            self.assertIn("The viewer should understand what the mascot is acting on in every frame", working_prompt)
-            self.assertIn("Use a theme-native result mark", working_prompt)
-            self.assertIn("generic check marks only when the mascot's visual language supports product/tool UI", working_prompt)
-            self.assertIn("Do not shape the work cue like a duplicate of the mascot's identity prop", working_prompt)
-            self.assertIn("no second staff, wand, tool, weapon, badge, emblem, or prop-shaped glyph", working_prompt)
-            self.assertIn("Do not echo identity emblems, logos, badges, weapon silhouettes, or signature markings inside the work target", working_prompt)
-            self.assertIn("Use plain abstract dots, squares, diamonds, bars, or motes instead", working_prompt)
+            self.assert_compact_row_prompt(working_prompt, state="working")
+            self.assertIn("No text, pseudo-writing, generic UI panel", working_prompt)
+            self.assertIn("duplicate identity prop", working_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("chunky non-text progress blocks", cue_plan["states"]["working"]["workPropMarkPolicy"])
+            self.assertIn("inactive or blank -> being operated/sorted/checked -> progress/result", cue_plan["states"]["working"]["workTargetPolicy"])
+            self.assertIn("Choose the work target from the mascot's visual language", cue_plan["states"]["working"]["workTargetFitPolicy"])
+            self.assertIn("Do not shape the work cue like a duplicate of the mascot's identity prop", cue_plan["states"]["working"]["workIdentityPropEffectPolicy"])
 
     def test_working_prompt_forbids_cloned_identity_prop_effects(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1446,20 +1625,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
             self.assertIn("Must-keep identity props/accessories: single trident staff held on the left side", working_prompt)
-            self.assertIn("Use the existing held prop as the source of the action", working_prompt)
-            self.assertIn("do not summon, draw, or echo a second copy of that prop", working_prompt)
-            self.assertIn("active pose replaces the resting pose", working_prompt)
-            self.assertIn("do not show the resting prop and a second active copy in the same frame", working_prompt)
-            self.assertIn("active end is the wand tip, staff head, tool bit, pointer tip, brush tip, blade tip, or nozzle", working_prompt)
-            self.assertIn("not the floor, base, butt end, handle end, or lower shaft", working_prompt)
-            self.assertIn("Keep long-prop working motion small and active-end-focused", working_prompt)
-            self.assertIn("prefer an attached active-end bloom, aura, pulse, or contact mark over a separate rune/tile/object", working_prompt)
-            self.assertIn("Do not use a detached diamond, object, emblem, badge, floor target, or prop-shaped echo", working_prompt)
-            self.assertIn("The bloom must wrap around, touch, or overlap the active end", working_prompt)
-            self.assertIn("Avoid large full-body leans, big cross-body swings, diagonal staff sweeps", working_prompt)
-            self.assertIn("same top-of-head height, bottom edge, body core width, and prop count", working_prompt)
-            self.assertIn("target should be a distinct small rune, tile, mote, orb, tray, panel, or token", working_prompt)
-            self.assertIn("no copied trident, logo, badge, emblem, or identity symbol inside the target", working_prompt)
+            self.assert_compact_row_prompt(working_prompt, state="working")
+            self.assertIn("duplicate identity prop", working_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("Use the existing held prop as the source of the action", cue_plan["states"]["working"]["workIdentityPropEffectPolicy"])
+            self.assertIn("Keep long-prop working motion small and active-end-focused", cue_plan["states"]["working"]["workLongHeldPropPolicy"])
+            self.assertIn("no copied mascot-specific prop, logo, badge, emblem, or identity symbol inside the target", cue_plan["states"]["working"]["workIdentityPropEffectPolicy"])
 
     def test_working_prompt_locks_reference_palette_friendly_face_bloom_and_acting(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1483,22 +1654,15 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
-            self.assertIn("Reference palette fidelity lock", working_prompt)
-            self.assertIn("Preserve the actual reference colors for eye whites/highlights, pupils, eye outlines, face base color, cheek marks, outfit, props, and signature markings", working_prompt)
-            self.assertIn("Do not force white eyes or white highlights when the reference uses another color", working_prompt)
-            self.assertIn("only keep whites white when the source uses white", working_prompt)
-            self.assertIn("Do not let a glow, aura, bloom, prop color, or gold effect tint or recolor the mascot identity palette", working_prompt)
-            self.assertIn("Every working frame must stay busy-friendly or cute-focused", working_prompt)
-            self.assertIn("reject even a single frame with angry, hostile, slanted, narrowed, or V-shaped eyes", working_prompt)
-            self.assertIn("Active-end bloom animation must change frame by frame", working_prompt)
-            self.assertIn("dim seed -> small bloom -> brighter wrap -> peak cluster -> shrinking settle", working_prompt)
-            self.assertIn("Do not paste the same static glow in every frame", working_prompt)
-            self.assertIn("Small sparkle pixels are allowed only when they belong to the active-end bloom cluster", working_prompt)
-            self.assertIn("touching, overlapping, or within a few pixels of the active prop end", working_prompt)
-            self.assertIn("Every frame must include a visible mascot acting change", working_prompt)
-            self.assertIn("not only bloom or cue animation", working_prompt)
-            self.assertIn("body bob, head tilt, surface/detail settle, appendage grip shift, subtle prop follow-through, eye direction, blink, mouth shape, or cheek/body tilt", working_prompt)
-            self.assertIn("emotion arc should read as notice -> focus -> effort -> progress -> pleased settle", working_prompt)
+            self.assert_compact_row_prompt(working_prompt, state="working")
+            self.assertIn("Preserve the same mascot body, silhouette, palette", working_prompt)
+            self.assertIn("busy-but-friendly", working_prompt)
+            self.assertIn("Show a concrete before/during/after work action", working_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("Reference palette fidelity lock", prepare.REFERENCE_PALETTE_FIDELITY_POLICY)
+            self.assertIn("Every working frame must stay busy-friendly or cute-focused", cue_plan["states"]["working"]["workStateReadPolicy"])
+            self.assertIn("Active-end bloom animation must change frame by frame", cue_plan["states"]["working"]["workLongHeldPropPolicy"])
+            self.assertIn("Every frame must include a visible mascot acting change", cue_plan["states"]["working"]["workMascotActingPolicy"])
 
     def test_answering_prompt_prioritizes_talking_performance_over_required_voice_cue(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1520,27 +1684,13 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
-            self.assertIn("Talking performance is primary", answering_prompt)
-            self.assertIn("speech pips, sound ticks, tiny rings, breath marks, or voice pixels are optional", answering_prompt)
-            self.assertIn("closed smile -> small open -> wider open -> syllable hold -> smile", answering_prompt)
-            self.assertIn("tiny conversational bob", answering_prompt)
-            self.assertIn("If a voice cue is used", answering_prompt)
-            self.assertIn("near the mouth/lip edge", answering_prompt)
-            self.assertIn("not as a detached cue away from the mouth", answering_prompt)
-            self.assertIn("Voice cues are optional and should be omitted when they cannot stay clearly attached to the mouth", answering_prompt)
-            self.assertIn("touch or overlap the mouth/lip edge or begin within 1-2 pixels of it", answering_prompt)
-            self.assertIn("short 2-3 frame outward trail", answering_prompt)
-            self.assertIn("not a single isolated speck in only one frame", answering_prompt)
-            self.assertIn("not one-frame voice ticks or one-frame sound marks", answering_prompt)
-            self.assertIn("If a cue cannot appear in at least two adjacent frames with a mouth-origin progression, omit it", answering_prompt)
-            self.assertIn("not a cheek mark, face marking, or detached fleck", answering_prompt)
-            self.assertIn("Use breath, frost, smoke, or cloud puffs only when they belong to the source mascot", answering_prompt)
-            self.assertIn("Expression variation is mandatory", answering_prompt)
-            self.assertIn("Mouth shapes must change clearly even when no voice cue is used", answering_prompt)
-            self.assertIn("voice cue should support the speaking impression instead of carrying the whole state", answering_prompt)
-            self.assertIn("Answering must look like engaged talking/streaming, not tired panting or exhaling", answering_prompt)
-            self.assertIn("avoid sleepy closed-eye holds unless it is a quick speaking blink", answering_prompt)
-            self.assertIn("Do not over-police tiny cue geometry when the mascot already reads as talking", answering_prompt)
+            self.assert_compact_row_prompt(answering_prompt, state="answering")
+            self.assertIn("Mouth shapes must visibly cycle", answering_prompt)
+            self.assertIn("Mouth-led talking is primary", answering_prompt)
+            self.assertIn("Optional voice pixels or pips", answering_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("Talking performance is primary", cue_plan["states"]["answering"]["voiceCuePolicy"])
+            self.assertIn("Answering must look like engaged talking/streaming", cue_plan["states"]["answering"]["answeringStateReadPolicy"])
 
     def test_no_limb_answering_prompt_prefers_mouth_only_over_detached_voice_cues(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1562,12 +1712,14 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
+            self.assert_compact_row_prompt(answering_prompt, state="answering")
+            self.assertIn("Mouth-led talking is primary", answering_prompt)
+            self.assertIn("omit them if they look like cheek marks", answering_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn(
                 "For no-limb, fins-no-hands, and ambiguous-limb mascots, prefer mouth-only answering",
-                answering_prompt,
+                cue_plan["states"]["answering"]["voiceCuePolicy"],
             )
-            self.assertIn("mouth shapes, eye engagement, blink timing, and body rhythm", answering_prompt)
-            self.assertIn("omit voice pixels instead of creating a cheek mark or detached fleck", answering_prompt)
 
     def test_hands_thinking_prompt_tracks_hand_roles_without_near_face_drift(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1591,21 +1743,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Hand/appendage role continuity", thinking_prompt)
-            self.assertIn(
-                "account for every original hand, arm, paw, sleeve, fin, wing, or tentacle in every frame",
-                thinking_prompt,
-            )
-            self.assertIn(
-                "If the mascot holds an identity prop, keep the prop-holding appendage attached and identifiable",
-                thinking_prompt,
-            )
-            self.assertIn("Default thinking hand acting leaves the face clear", thinking_prompt)
-            self.assertIn("low outer-body beats beside the body instead of near-mouth, under-chin, or centered-below-face poses", thinking_prompt)
-            self.assertIn(
-                "no third hand, extra arm, duplicate sleeve, detached mitten, or new paw/finger cluster",
-                thinking_prompt,
-            )
+            self.assertIn("Must-keep identity props/accessories: single trident staff held on the left side", thinking_prompt)
+            self.assertIn("Keep any prop-holding appendage attached", thinking_prompt)
+            self.assertIn("Face-touch is acceptable only when the appendage stays connected", thinking_prompt)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("Hand/appendage role continuity", prepare.HAND_ROLE_CONTINUITY_POLICY)
+            self.assertIn("appendageActingPolicy", cue_plan["states"]["thinking"])
 
     def test_preparer_writes_hatch_style_imagegen_jobs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1635,15 +1778,34 @@ class PrepareCompanionRunTests(unittest.TestCase):
             jobs = json.loads((out_dir / "imagegen-jobs.json").read_text(encoding="utf-8"))
             self.assertEqual(jobs["primary_generation_skill"], "$imagegen")
             self.assertEqual([job["id"] for job in jobs["jobs"]], ["base", "thinking", "working"])
+            self.assertEqual(
+                jobs["row_generation_policy"]["after_base_recorded"],
+                "subagents-preferred-when-user-authorized",
+            )
+            self.assertTrue(jobs["row_generation_policy"]["requires_explicit_user_authorization"])
+            self.assertIn("record-result", jobs["row_generation_policy"]["parent_owned_actions"])
+            self.assertEqual(jobs["row_generation_policy"]["subagent_return_contract"], ["selected_source", "qa_note"])
 
             base_job = jobs["jobs"][0]
             thinking_job = jobs["jobs"][1]
             self.assertTrue(base_job["requires_grounded_generation"])
             self.assertFalse(base_job["allow_prompt_only_generation"])
+            self.assertFalse(base_job["subagent_eligible"])
+            self.assertEqual(base_job["generation_owner"], "parent")
             self.assertIn("original mascot reference and style source", base_job["input_images"][0]["role"])
             self.assertIn("do not copy noisy or non-flat preview background", base_job["input_images"][0]["role"])
             self.assertEqual(thinking_job["depends_on"], ["base"])
             self.assertFalse(thinking_job["allow_prompt_only_generation"])
+            self.assertTrue(thinking_job["subagent_eligible"])
+            self.assertEqual(thinking_job["generation_owner"], "subagent-when-authorized")
+            self.assertEqual(thinking_job["recording_owner"], "parent")
+            self.assertEqual(thinking_job["subagent_handoff"]["return_only"], ["selected_source", "qa_note"])
+            self.assertIn("edit imagegen-jobs.json", thinking_job["subagent_handoff"]["forbidden_actions"])
+            self.assertIn("exact requested frame count", thinking_job["subagent_handoff"]["visual_checks"])
+            self.assertIn("recordable cleanup-ready background", thinking_job["subagent_handoff"]["visual_checks"][2])
+            self.assertIn("white-sclera or crescent", thinking_job["subagent_handoff"]["visual_checks"][4])
+            self.assertIn("coherent state story", thinking_job["subagent_handoff"]["visual_checks"][5])
+            self.assertIn("visible chroma-key falloff", thinking_job["subagent_handoff"]["qa_note_must_call_out"][0])
             self.assertIn("original mascot reference and style source", thinking_job["input_images"][0]["role"])
             self.assertIn("references/canonical-base.png", thinking_job["identity_reference_paths"])
             self.assertTrue((out_dir / "references" / "reference-01.png").is_file())
@@ -1654,6 +1816,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             first_status = job_status.status(out_dir)
             self.assertEqual(first_status["counts"]["ready"], 1)
             self.assertEqual(first_status["ready_jobs"][0]["id"], "base")
+            self.assertEqual(first_status["ready_jobs"][0]["generation_owner"], "parent")
+            self.assertFalse(first_status["ready_jobs"][0]["subagent_eligible"])
             self.assertEqual(first_status["counts"]["blocked"], 2)
 
     def test_recording_base_creates_canonical_reference_and_unblocks_rows(self) -> None:
@@ -1709,6 +1873,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
             ready_after_base = job_status.status(out_dir)
             self.assertEqual(ready_after_base["counts"]["ready"], 1)
             self.assertEqual(ready_after_base["ready_jobs"][0]["id"], "working")
+            self.assertEqual(ready_after_base["ready_jobs"][0]["generation_owner"], "subagent-when-authorized")
+            self.assertTrue(ready_after_base["ready_jobs"][0]["subagent_eligible"])
+            self.assertEqual(ready_after_base["ready_jobs"][0]["subagent_handoff"]["return_only"], ["selected_source", "qa_note"])
 
             row_result = record.record_result(
                 run_dir=out_dir,
@@ -1952,6 +2119,338 @@ class PrepareCompanionRunTests(unittest.TestCase):
             )
             warning_codes = {warning["code"] for warning in result["base_style_analysis"]["warnings"]}
             self.assertIn("smooth_or_overdetailed_foreground_palette", warning_codes)
+
+    def test_recording_strict_row_style_blocks_nonuniform_chroma_key_background(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            out_dir = tmp_path / "run"
+            source_dir = tmp_path / "source"
+            base_source = source_dir / "ig_base.png"
+            row_source = source_dir / "ig_working.png"
+            write_flat_pixel_base(base_source)
+            write_nonuniform_key_base(row_source)
+
+            prepare.main(
+                [
+                    "--companion-name",
+                    "RowGlow",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "working",
+                    "--quiet",
+                ]
+            )
+
+            record.record_result(
+                run_dir=out_dir,
+                job_id="base",
+                source=base_source,
+                source_provenance="auto",
+                force=False,
+                allow_synthetic_test_source=True,
+                strict_base_style=True,
+            )
+
+            with self.assertRaisesRegex(SystemExit, "row source style analysis failed"):
+                record.record_result(
+                    run_dir=out_dir,
+                    job_id="working",
+                    source=row_source,
+                    source_provenance="auto",
+                    force=False,
+                    allow_synthetic_test_source=True,
+                    strict_row_style=True,
+                )
+
+            self.assertFalse((out_dir / "generated" / "working.png").exists())
+
+            result = record.record_result(
+                run_dir=out_dir,
+                job_id="working",
+                source=row_source,
+                source_provenance="auto",
+                force=False,
+                allow_synthetic_test_source=True,
+                strict_row_style=False,
+            )
+            warning_codes = {warning["code"] for warning in result["row_source_style_analysis"]["warnings"]}
+            self.assertIn("non_uniform_chroma_key_background", warning_codes)
+            self.assertEqual(
+                result["row_source_style_strict_blocking_warning_codes"],
+                ["non_uniform_chroma_key_background"],
+            )
+
+            jobs = json.loads((out_dir / "imagegen-jobs.json").read_text(encoding="utf-8"))
+            working_job = next(job for job in jobs["jobs"] if job["id"] == "working")
+            self.assertIn("row_source_style_analysis", working_job)
+            self.assertEqual(
+                working_job["row_source_style_strict_blocking_warning_codes"],
+                ["non_uniform_chroma_key_background"],
+            )
+
+    def test_recording_strict_row_style_blocks_fake_checkerboard_transparency(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            out_dir = tmp_path / "run"
+            source_dir = tmp_path / "source"
+            base_source = source_dir / "ig_base.png"
+            row_source = source_dir / "ig_working.png"
+            write_flat_pixel_base(base_source)
+            write_fake_checkerboard_base(row_source)
+
+            prepare.main(
+                [
+                    "--companion-name",
+                    "FakeAlpha",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "working",
+                    "--quiet",
+                ]
+            )
+
+            record.record_result(
+                run_dir=out_dir,
+                job_id="base",
+                source=base_source,
+                source_provenance="auto",
+                force=False,
+                allow_synthetic_test_source=True,
+                strict_base_style=True,
+            )
+
+            with self.assertRaisesRegex(SystemExit, "fake_checkerboard_transparency_background"):
+                record.record_result(
+                    run_dir=out_dir,
+                    job_id="working",
+                    source=row_source,
+                    source_provenance="auto",
+                    force=False,
+                    allow_synthetic_test_source=True,
+                    strict_row_style=True,
+                )
+
+            result = record.record_result(
+                run_dir=out_dir,
+                job_id="working",
+                source=row_source,
+                source_provenance="auto",
+                force=False,
+                allow_synthetic_test_source=True,
+                strict_row_style=False,
+            )
+            warning_codes = {warning["code"] for warning in result["row_source_style_analysis"]["warnings"]}
+            self.assertIn("fake_checkerboard_transparency_background", warning_codes)
+            self.assertIn(
+                "fake_checkerboard_transparency_background",
+                result["row_source_style_strict_blocking_warning_codes"],
+            )
+
+    def test_recording_accepts_built_in_chroma_cleanup_with_original_source(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            codex_home = tmp_path / "codex-home"
+            out_dir = tmp_path / "run"
+            source_dir = tmp_path / "source"
+            generated_dir = codex_home / "generated_images" / "session"
+            original_source = generated_dir / "ig_original-thinking.png"
+            cleaned_source = tmp_path / "cleaned" / "thinking-alpha.png"
+            base_source = source_dir / "ig_base.png"
+            write_flat_pixel_base(base_source)
+            write_nonuniform_key_base(original_source)
+            write_flat_pixel_base(cleaned_source, key=(0, 0, 0, 0))
+
+            prepare.main(
+                [
+                    "--companion-name",
+                    "CleanupPath",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--quiet",
+                ]
+            )
+
+            record.record_result(
+                run_dir=out_dir,
+                job_id="base",
+                source=base_source,
+                source_provenance="auto",
+                force=False,
+                allow_synthetic_test_source=True,
+                strict_base_style=True,
+            )
+
+            with patch.dict(os.environ, {"CODEX_HOME": str(codex_home)}):
+                result = record.record_result(
+                    run_dir=out_dir,
+                    job_id="thinking",
+                    source=cleaned_source,
+                    source_provenance="built-in-imagegen-chroma-cleanup",
+                    force=False,
+                    allow_synthetic_test_source=False,
+                    strict_row_style=True,
+                    chroma_cleanup_source=original_source,
+                )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["source_provenance"], "built-in-imagegen-chroma-cleanup")
+            self.assertEqual(result["row_source_style_strict_blocking_warning_codes"], [])
+            self.assertEqual(result["chroma_cleanup"]["originalSourcePath"], str(original_source.resolve()))
+            self.assertEqual(result["chroma_cleanup"]["originalSourceProvenance"], "built-in-imagegen")
+            jobs = json.loads((out_dir / "imagegen-jobs.json").read_text(encoding="utf-8"))
+            thinking_job = next(job for job in jobs["jobs"] if job["id"] == "thinking")
+            self.assertEqual(thinking_job["source_provenance"], "built-in-imagegen-chroma-cleanup")
+            self.assertEqual(thinking_job["chroma_cleanup"], result["chroma_cleanup"])
+
+    def test_recording_rejects_chroma_cleanup_without_builtin_original_source(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            out_dir = tmp_path / "run"
+            source_dir = tmp_path / "source"
+            base_source = source_dir / "ig_base.png"
+            cleaned_source = tmp_path / "cleaned" / "thinking-alpha.png"
+            write_flat_pixel_base(base_source)
+            write_flat_pixel_base(cleaned_source, key=(0, 0, 0, 0))
+
+            prepare.main(
+                [
+                    "--companion-name",
+                    "CleanupNeedsSource",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--quiet",
+                ]
+            )
+
+            record.record_result(
+                run_dir=out_dir,
+                job_id="base",
+                source=base_source,
+                source_provenance="auto",
+                force=False,
+                allow_synthetic_test_source=True,
+                strict_base_style=True,
+            )
+
+            with self.assertRaisesRegex(SystemExit, "--chroma-cleanup-source"):
+                record.record_result(
+                    run_dir=out_dir,
+                    job_id="thinking",
+                    source=cleaned_source,
+                    source_provenance="built-in-imagegen-chroma-cleanup",
+                    force=False,
+                    allow_synthetic_test_source=False,
+                    strict_row_style=True,
+                )
+
+    def test_recording_accepts_explicit_imagegen_cli_fallback_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            out_dir = tmp_path / "run"
+            source_dir = tmp_path / "imagegen-cli-output"
+            base_source = source_dir / "base.png"
+            row_source = source_dir / "thinking.png"
+            write_flat_pixel_base(base_source)
+            write_flat_pixel_base(row_source)
+
+            prepare.main(
+                [
+                    "--companion-name",
+                    "CliFallback",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--quiet",
+                ]
+            )
+            cli_prompt = out_dir / "prompts" / "rows" / "thinking-cli-fallback.md"
+            cli_prompt.write_text("CLI fallback prompt", encoding="utf-8")
+
+            record.record_result(
+                run_dir=out_dir,
+                job_id="base",
+                source=base_source,
+                source_provenance="imagegen-cli-fallback",
+                force=False,
+                allow_synthetic_test_source=False,
+                strict_base_style=True,
+                cli_fallback_approved=True,
+                cli_fallback_model="gpt-image-1.5",
+                cli_fallback_background="transparent",
+                cli_fallback_output_format="png",
+                cli_fallback_prompt_file=cli_prompt,
+            )
+
+            result = record.record_result(
+                run_dir=out_dir,
+                job_id="thinking",
+                source=row_source,
+                source_provenance="imagegen-cli-fallback",
+                force=False,
+                allow_synthetic_test_source=False,
+                strict_row_style=True,
+                cli_fallback_approved=True,
+                cli_fallback_model="gpt-image-1.5",
+                cli_fallback_background="transparent",
+                cli_fallback_output_format="png",
+                cli_fallback_prompt_file=cli_prompt,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(result["row_source_style_analysis"]["ok"])
+            self.assertEqual(
+                result["cli_fallback"],
+                {
+                    "approved": True,
+                    "model": "gpt-image-1.5",
+                    "background": "transparent",
+                    "outputFormat": "png",
+                    "promptFile": "prompts\\rows\\thinking-cli-fallback.md",
+                },
+            )
+            jobs = json.loads((out_dir / "imagegen-jobs.json").read_text(encoding="utf-8"))
+            thinking_job = next(job for job in jobs["jobs"] if job["id"] == "thinking")
+            self.assertEqual(thinking_job["source_provenance"], "imagegen-cli-fallback")
+            self.assertEqual(thinking_job["cli_fallback"], result["cli_fallback"])
+            self.assertEqual(thinking_job["row_source_style_strict_blocking_warning_codes"], [])
+
+    def test_recording_cli_fallback_provenance_requires_approval_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            out_dir = tmp_path / "run"
+            source_dir = tmp_path / "imagegen-cli-output"
+            base_source = source_dir / "base.png"
+            write_flat_pixel_base(base_source)
+
+            prepare.main(
+                [
+                    "--companion-name",
+                    "CliFallbackNeedsMetadata",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--quiet",
+                ]
+            )
+
+            with self.assertRaisesRegex(SystemExit, "--cli-fallback-approved"):
+                record.record_result(
+                    run_dir=out_dir,
+                    job_id="base",
+                    source=base_source,
+                    source_provenance="imagegen-cli-fallback",
+                    force=False,
+                    allow_synthetic_test_source=False,
+                    strict_base_style=True,
+                )
 
 
 if __name__ == "__main__":

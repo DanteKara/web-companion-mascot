@@ -17,6 +17,44 @@ BASE_OUTPUT_PATH = "generated/base.png"
 LAYOUT_GUIDE_DIR = "references/layout-guides"
 LAYOUT_GUIDE_SAFE_MARGIN_X = 24
 LAYOUT_GUIDE_SAFE_MARGIN_Y = 22
+ROW_GENERATION_POLICY = {
+    "after_base_recorded": "subagents-preferred-when-user-authorized",
+    "requires_explicit_user_authorization": True,
+    "parent_owned_actions": [
+        "record-result",
+        "manifest-writes",
+        "atlas-assembly",
+        "qa-generation",
+        "validation",
+        "react-packaging",
+    ],
+    "subagent_return_contract": ["selected_source", "qa_note"],
+}
+ROW_SUBAGENT_HANDOFF = {
+    "return_only": ["selected_source", "qa_note"],
+    "forbidden_actions": [
+        "edit imagegen-jobs.json",
+        "copy files into generated",
+        "run record_companion_imagegen_result.py",
+        "assemble atlas",
+        "run validation",
+        "package React assets",
+    ],
+    "visual_checks": [
+        "exact requested frame count",
+        "same mascot identity as canonical base",
+        "recordable cleanup-ready background: true transparency or exact flat chroma key, not a green-looking vignette",
+        "complete separated unclipped poses",
+        "stable source eye grammar with no white-sclera or crescent side-glance swaps",
+        "coherent state story that does not drift into a neighboring state",
+        "no forbidden detached effects or slot-crossing artifacts",
+    ],
+    "qa_note_must_call_out": [
+        "visible chroma-key falloff, vignette, or non-uniform background",
+        "white-eye/crescent swaps or mismatched highlights",
+        "wrong-state frames, stale acting, extra anatomy, or face-touch drift",
+    ],
+}
 
 DEFAULT_STATES = [
     "idle",
@@ -51,7 +89,7 @@ STATE_ACTING = {
     "idle": "slow breathing, soft blink, tiny posture settle",
     "greeting": "friendly anticipation, small wave or body bounce, warm smile, return to rest",
     "listening": "attentive lean toward the user, eyes tracking, small blink hold",
-    "thinking": "clear-face thinking performance with curious head/body tilt, eyes up or to the side, changing thoughtful mouth, low side/shoulder hand beats when supported, and readable processing/idea beats",
+    "thinking": "clear-face thinking performance with curious head/body tilt, source-matched eyes mostly forward with only tiny in-eye shifts, changing tiny closed smile or gently upturned thoughtful mouth, low side-anchored appendage beats when supported, and readable processing/idea beats",
     "working": "busy-but-friendly concentration, attentive eye tracking toward the work target, lean-in, faster purposeful body/hand/prop motion; never angry, no slanted angry eyes, no V-shaped brow or eye marks",
     "answering": "talking performance through clear speaking mouth shapes, bright eyes, blink timing, and rhythmic face/body beats; voice cues are optional",
     "success": "cheerful bounce, proud hold, bright face, return to loop",
@@ -60,11 +98,74 @@ STATE_ACTING = {
     "sleeping": "closed eyes, slow breathing, sleepy settle",
 }
 
+BACKGROUND_SOURCE_LOCK = (
+    "Perfectly uniform exact flat flood-fill background: Use a plain digital solid-color canvas, "
+    "recordable by a strict cleanup gate: true transparency if supported, else exact key RGB in every pixel. "
+    "No gradients, shadows, texture, darker/lighter key-color variations, glow/matte."
+)
+
+SOURCE_EYE_LOCK = (
+    "Open eyes preserve the source-matched fill, outline, and highlight/catchlight logic. Open eyes must remain "
+    "the same source-colored eye masses in the same eye boxes. No hollow or inverted eyes, mismatched eyes, "
+    "extra catchlights, symbol eyes. No white crescent side-glance eyes, hollow eyes, mismatched eyes, "
+    "extra catchlights, or symbol eyes; no new white sclera or one-frame eye-style swaps. If gaze would break "
+    "eye style, keep eyes forward and use mouth/blink/body/appendage/cue timing."
+)
+
+THINKING_EYE_LOCK = (
+    "Open eyes preserve the source-matched fill, outline, and highlight/catchlight logic. Open eyes must remain "
+    "the same source-colored eye masses in the same eye boxes. No white crescent side-glance eyes, hollow eyes, "
+    "mismatched eyes, extra catchlights, or symbol eyes; no new white sclera. If gaze breaks eye style, keep eyes "
+    "forward/nearly forward and use mouth/blink/body/cue timing; do not carve white eye gaps or crescent cutouts."
+)
+
+STATE_SPECIFIC_GUARDS = {
+    "idle": (
+        "Idle stays calm and present. Do not turn it into greeting, speaking, sleeping, error, or thinking; "
+        "avoid wide open mouths, semantic cues, and dramatic mood changes."
+    ),
+    "greeting": (
+        "Greeting should stay warm and welcoming. Use a small wave, bounce, or smile peak only if the mascot anatomy "
+        "supports it; do not add detached marks, text, confetti, or a second prop."
+    ),
+    "listening": (
+        "Listening should read attentive and ready, not thinking, surprised, sleepy, worried, confused, or answering. "
+        "Avoid open shocked mouths, hand-to-chin poses, question/thought cues, and side-glance eye rewrites."
+    ),
+    "thinking": (
+        "Thinking should read curious processing, not surprise/sad/sleep/confused/answering; cue compact."
+    ),
+    "answering": (
+        "Answering should stay engaged and mouth-led. Do not let the row become greeting, panting, exhaling, idle, "
+        "or thinking; omit voice pixels if they become detached flecks or cheek marks."
+    ),
+    "success": (
+        "Success should read as a proud completion beat. Keep any glint/check tiny, attached or source-bound, and "
+        "secondary; do not use loose sparkle fields, confetti, text, or a generic UI badge."
+    ),
+    "error": (
+        "Error should remain a gentle recoverable failure loop. Do not include happy/success/answering frames in the "
+        "same row, no harsh anger, no red X labels, no generic warning panels, and no white-eye stress rewrites."
+    ),
+    "confused": (
+        "Confused should read curious-uncertain rather than sad/error. Use mild squint, tilt, or uncertain mouth only; "
+        "avoid hand-to-chin/under-face clusters, large punctuation, and white crescent side-glance eyes."
+    ),
+    "sleeping": (
+        "Sleeping should be quiet breathing and closed-eye settle, not thinking or tired speaking. Keep appendages "
+        "resting unless the source has clear articulated hands; avoid hand-to-mouth clusters and sleep symbols."
+    ),
+    "working": (
+        "Working should read purposeful progress, not error, anger, answering, or generic busy icons. Keep the work "
+        "cue source-bound and do not invent tools, hands, screens, or text."
+    ),
+}
+
 STATE_STORY_BEATS = {
     "idle": "calm rest -> soft blink -> tiny breath lift -> relaxed settle",
     "greeting": "notice user -> warm smile -> peak greeting gesture/bounce -> friendly settle",
     "listening": "attentive start -> eyes track input -> focused hold/blink -> ready settle",
-    "thinking": "neutral-curious -> noticing -> pondering -> idea lands -> pleased settle",
+    "thinking": "neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle",
     "working": "notice -> focus -> effort -> progress -> pleased settle",
     "answering": "ready/listening -> first syllable -> clearer speech -> conversational blink/smile -> settled speaking loop",
     "success": "anticipation -> bright success peak -> proud hold -> warm settle",
@@ -103,13 +204,14 @@ STATE_ACTING_CHOREOGRAPHY = {
         "settle. Frame 8: loop back to attentive neutral."
     ),
     "thinking": (
-        "Frame 1: neutral-curious face with stable identity props. Frame 2: eyes glance up or aside while the "
-        "hands stay side-anchored or start a tiny side bob if anatomy supports it. Frame 3: tiny closed pondering "
-        "mouth or one-pixel thoughtful line; tiny first thought cue appears only if needed. Frame 4: cue grows to slightly larger "
-        "while one hand makes a side-anchored low side, side-tilt, or low outer-body beat beside the body. Frame 5: medium cue "
-        "peak with eyes tracking it, still secondary to the mascot and with the face unobscured. Frame 6: cue "
-        "shrinks with a quick active processing blink or thoughtful hold while hands remain separated from the "
-        "mouth and chin. Frame 7: recognition smile; hands start returning to rest. Frame 8: settled curious "
+        "Frame 1: neutral-curious face with stable identity props. Frame 2: source-matched eyes stay mostly forward while "
+        "appendages stay side-anchored or start a tiny side bob if anatomy supports it. Frame 3: tiny closed pondering "
+        "smile or gently upturned one-pixel smile; tiny first thought cue appears only if needed. Frame 4: cue grows to slightly larger "
+        "while the face stays curious and any supported appendage motion remains side-anchored, low, and outside the body centerline. "
+        "Frame 5: medium compact cue peak with one slightly larger primary cue element when the chosen vocabulary supports it, still secondary "
+        "to the mascot and with the face unobscured. Frame 6: cue shrinks with a quick active processing blink or thoughtful "
+        "hold while the mouth stays smile-like and appendages remain separated from the mouth and chin. "
+        "Frame 7: recognition smile; appendages start returning to rest. Frame 8: settled curious "
         "face ready to loop."
     ),
     "working": (
@@ -154,7 +256,7 @@ STATE_ACTING_CHOREOGRAPHY = {
 
 STATE_VISUAL_AIDS = {
     "listening": "small attached sound rings or attentive pose only when needed",
-    "thinking": "face/eye/mouth/body acting first with one compact thought bubble, thought puff, or idea orb when needed; it should grow small -> slightly larger -> medium -> smaller -> tiny/settle from the inferred thought-cue source near the expression area, not from an unrelated identity prop, stay close without inflating the mascot body footprint, and make the thinking read unmistakable at 64-96 px",
+    "thinking": "face/eye/mouth/body acting first with one compact source-bound thought cue when needed, such as a thought bubble, thought puff, idea orb, or mascot-native processing aura; it should grow small -> slightly larger -> medium -> smaller -> tiny/settle from the inferred thought-cue source near the expression area, not from an unrelated identity prop, stay close without inflating the mascot body footprint, and make the thinking read unmistakable at 64-96 px",
     "working": "existing hands, body lean, gaze, and identity prop motion first; for long held props prefer a compact attached active-end bloom, aura, pulse, or contact mark with purposeful cycling, sorting, checking, charging, or gathering motion when needed",
     "answering": "mouth shapes first; speech pips, sound ticks, tiny rings, breath marks, or voice pixels are optional and should stay secondary when used; omit them if they cannot stay clearly attached to the mouth",
     "success": "small check/glint, proud pose, or raised existing prop",
@@ -165,7 +267,7 @@ STATE_VISUAL_AIDS = {
 STATE_REJECTS = {
     "working": "anger, hostile eyes, slanted angry eyes, V-shaped eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, duplicate identity props, prop-shaped glyph copies, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues, single isolated voice speck, one-frame voice ticks, one-frame sound marks, detached fleck, cheek-mark-like voice cue",
-    "thinking": "detached icon floating above the mascot, oversized second head/body-sized thought orb, giant bubble peak, thought cue fused into the body core causing body growth, static dots, loose sparkles, isolated white specks, star glints, stray final-frame dot, expression-panel skew or body warp, appendage contact with the lower face, hand-to-chin or hand-to-mouth pose, appendages clasped under the mouth, appendage-like cluster below the face, lower-face marks, worried frowns, confused/error mouth shapes, cue too subtle to read as thinking",
+    "thinking": "detached icon floating above the mascot, oversized second head/body-sized thought orb, giant bubble peak, thought cue fused into the body core causing body growth, static dots, loose sparkles, isolated white specks, star glints, stray final-frame dot, expression-panel skew or body warp, unsupported or poorly connected face-touch that reads as extra anatomy, a lower-face patch, detached mitten, duplicated hand, or covered expression, appendage-like cluster below the face, lower-face marks, worried frowns, sad/serious/downturned expressions, stale same-face row, confused/error mouth shapes, cue too subtle to read as thinking",
     "listening": "microphone props for non-voice apps, detached sound clutter",
     "success": "large confetti, loose sparkles, text labels",
     "error": "red X labels, detached symbols, scenery",
@@ -175,9 +277,9 @@ STATE_REJECTS = {
 STATE_FRAME_ARCS = {
     "thinking": (
         "Frame-by-frame acting arc for expressive thinking performance: 1 neutral-curious face and stable identity "
-        "props, 2 eyes glance up/side while appendages stay side-anchored or begin a tiny side bob when anatomy supports it, "
-        "3 tiny closed pondering mouth or one-pixel thoughtful line and a small bubble/tiny first puff kept close to the inferred thought-cue source, 4 slightly larger bubble with more curious eyes and a side-anchored low side or low outer-body appendage beat, "
-        "5 compact thought-bubble peak beside the inferred source with one slightly larger main puff and smaller support puffs while the face remains unobscured without changing the body footprint, 6 bubble starts smaller with a quick active processing blink or pondering hold, "
+        "props, 2 source-matched eyes stay mostly forward while appendages stay side-anchored or begin a tiny side bob when anatomy supports it, "
+        "3 tiny closed pondering smile or gently upturned one-pixel smile and one tiny compact cue kept close to the inferred thought-cue source, 4 slightly larger compact cue with more curious eyes and a tiny closed thoughtful smile, "
+        "5 compact cue peak beside the inferred source with one slightly larger primary cue element only when the accepted cue vocabulary supports it while the face remains unobscured without changing the body footprint, 6 cue starts smaller with a quick active processing blink or pondering hold, "
         "7 small smile/idea recognition as the cue shrinks, 8 settle back into the loop. Use one compact thought bubble, thought puff, "
         "or idea orb when acting alone is unclear; make the thinking read unmistakable at 64-96 px without turning "
         "the cue into the main character. Thinking also covers processing, retrieval, tool-use waiting, and backend "
@@ -185,9 +287,9 @@ STATE_FRAME_ARCS = {
         "Keep the thought cue secondary to the mascot: medium is the maximum thought cue size, it is never larger "
         "than about one-quarter of the mascot body width, and do not let the thought cue become a second "
         "head/body-sized orb. Do not use a giant bubble peak; shrink back down before the loop settles. "
-        "For shorter or longer rows, preserve the same expression-changing neutral -> curious -> pondering -> "
+        "For shorter or longer rows, preserve the same expression-changing neutral-curious -> noticing -> curious pondering -> "
         "idea lands -> settle arc and the same small -> slightly larger -> medium -> smaller -> tiny/settle cue growth; this is not the "
-        "same face or same bubble pasted in every frame. Keep the thinking expression story adjacent and character-appropriate, "
+        "same face or same cue pasted in every frame. Keep the thinking expression story adjacent and character-appropriate, "
         "not random sad, sleepy, angry, blank, or unrelated faces."
     ),
     "working": (
@@ -266,8 +368,8 @@ HARD_NATIVE_PIXEL_RENDERING_LOCK = (
     "If the mascot's personality is soft or friendly, softness must come from shape language and expression, not "
     "blurred rendering. No blurred or feathered transitions, no transparent or semi-transparent shine, no airbrushed "
     "lighting, no smooth diagonal antialias fringe, no bevel, no glassy overlay, and no painterly texture. Highlights "
-    "must be tiny rectangular pixel blocks; no broad glossy shine patches on the forehead, body, antenna, mittens, "
-    "or face panel."
+    "must be tiny rectangular pixel blocks; no broad glossy shine patches on large surfaces, accessories, appendages, "
+    "or face areas."
 )
 
 SOURCE_PIXEL_GRID_LOCK = (
@@ -281,15 +383,15 @@ SOURCE_PIXEL_GRID_LOCK = (
 INDEXED_COLOR_SPRITE_CELL_LOCK = (
     "Indexed-color sprite cell lock: Use the fewest colors that preserve identity, roughly 8-16 total non-background "
     "colors for the base sprite. Think indexed-color sprite, not digital painting. No per-pixel color ramps, no "
-    "smooth shade bands, no gradient-filled body, face panel, clothing, props, antenna, or mittens, and no dozens "
+    "smooth shade bands, no gradient-filled body areas, face areas, clothing, props, accessories, or appendages, and no dozens "
     "of near-identical source-color, outline, shadow, or highlight colors. Favor simpler and flatter over prettier: one flat base color, one "
     "hard stepped shadow, and one tiny blocked highlight per material is enough."
 )
 
 REFERENCE_AWARE_PALETTE_GUIDE = (
     "Reference-aware palette guide: Build a tiny per-mascot palette from the attached reference or the text concept, "
-    "not from a stock helper-bot palette. Preserve the source hue relationships for skin/body, face panels, eye whites "
-    "or highlights, pupils, cheek marks, clothing, trim, emblems, and held props. Never impose a teal/cream/white-eye "
+    "not from a stock assistant-mascot palette. Preserve the source hue relationships for body, face areas, eye fills "
+    "or highlights, pupils, cheek marks, clothing, trim, emblems, and held props. Never impose a preselected color "
     "palette on a mascot whose reference uses different identity colors. Use flat fills only: one base, one hard "
     "shadow, and one small blocked highlight per material is usually enough. Do not blend between palette colors, "
     "do not create intermediate shades, and do not anti-alias edges with many in-between colors."
@@ -325,7 +427,7 @@ BASE_ACCEPTANCE_GATE = (
     "Canonical base acceptance gate: the base must look like a final atlas-frame source of truth, not concept art, "
     "a preview illustration, a pose-sheet sample, an app icon, or a softened style target. It must be simple enough "
     "to reproduce across eight row frames without redesign: stable silhouette, stable top-of-head height, stable "
-    "bottom edge, stable face-panel shape, stable appendage count, stable prop count, and no tiny high-detail marks "
+    "bottom edge, stable face-bearing area, stable appendage count, stable prop count, and no tiny high-detail marks "
     "that will flicker in rows. Reject and regenerate the base before any row prompt if it is smoother, glossier, "
     "more detailed, or less pixel-native than the intended row art. Rows must preserve the accepted base, not fix it "
     "by changing eye style, body shape, colors, outline weight, props, or anatomy."
@@ -342,31 +444,26 @@ BASE_EYE_GRAMMAR_LOCK = (
 
 TEXT_CONCEPT_ANATOMY_LOCK = (
     "Text-only concept anatomy lock: when there is no original reference image, only add anatomy and identity props "
-    "named in the concept or command. Do not add unrequested chest lights, badges, emblems, screens, buttons, feet, "
-    "legs, tails, tools, or extra props. If the concept says two simple mitten hands and a small antenna, keep the "
-    "body compact with exactly those hands and one top antenna; avoid adding extra limb systems or new identity marks. "
-    "For hand-only text concepts, use a rounded lower body with no visible legs or feet. Keep the body front plain "
-    "unless a chest mark is named: no chest dot, belly light, button, badge, screen, or emblem."
+    "named in the concept or command. Do not add unrequested body markings, lights, badges, emblems, display details, "
+    "buttons, feet, legs, tails, tools, or extra props. Keep the body compact with exactly the named anatomy and "
+    "identity features; avoid adding unrelated limb systems or new identity marks. When the concept only names upper "
+    "appendages, do not infer visible legs or feet. Keep plain body areas plain unless a mark is named."
 )
 
 PART_SIMPLIFICATION_LOCK = (
-    "Part simplification lock: Preserve source or named parts by simplifying them into stable sprite shapes. Apply "
-    "these examples only when the part exists in the reference or concept; do not invent them. When an antenna is "
-    "present, simplify it as a tiny plain stem and small cap or nub, not a jewel, gem, crystal, screen, lantern, "
-    "badge, or glowing ornament. When side mittens or sleeve nubs are present, keep them as simple rounded side blobs "
-    "with one outline and one flat fill; no cuff bands, finger ticks, segmented gloves, dark wrist gadgets, or extra "
-    "mitten details unless they are visible identity marks in the source. When a long held prop is present, keep one "
-    "continuous readable prop with stable side, scale, and hand attachment; simplify ornate tips, blades, brushes, "
-    "wands, staffs, or tridents into a few chunky pixel clusters instead of many tiny flickering details. Keep clothing "
-    "trim, emblems, badges, and markings as a few readable block clusters. Keep identity props readable enough for "
-    "animation, but plain enough that later row frames will not mutate them."
+    "Part simplification lock: Preserve source or named parts by simplifying them into stable sprite shapes. Do not "
+    "invent parts from these instructions. Small accessories should become plain readable silhouettes, simple side "
+    "appendages should keep one outline and one flat fill, long held props should remain one continuous readable "
+    "object with stable side, scale, and attachment, and ornate detail should collapse into a few chunky pixel "
+    "clusters instead of many tiny flickering details. Keep clothing trim, emblems, badges, and markings readable "
+    "enough for identity but plain enough that later row frames will not mutate them."
 )
 
 CHARACTER_DIRECTION_LOCK = (
     "Reference character direction lock: Keep the strongest character decisions from the provided reference or text "
     "concept while flattening the rendering: body/head silhouette, outfit shape, prop count and side, appendage count, "
-    "face/eye/cheek/mouth grammar, palette relationships, and overall personality. Do not substitute a stock robot, "
-    "the earlier helper-bot look, or any unrelated mascot template. Only simplify color/material treatment and tiny "
+    "face/eye/cheek/mouth grammar, palette relationships, and overall personality. Do not substitute a stock assistant "
+    "mascot, a previous run's look, or any unrelated mascot template. Only simplify color/material treatment and tiny "
     "unstable detail; do not redesign the mascot while making it more pixel-native."
 )
 
@@ -418,7 +515,7 @@ WORK_IDENTITY_PROP_EFFECT_POLICY = (
     "original hand-to-prop attachment visible, even when the prop rotates or tilts. "
     "Do not shape the work cue like a duplicate of the mascot's identity prop: no second staff, wand, tool, weapon, "
     "badge, emblem, or prop-shaped glyph. Do not echo identity emblems, logos, badges, weapon silhouettes, or "
-    "signature markings inside the work target; no copied trident, logo, badge, emblem, or identity symbol inside "
+    "signature markings inside the work target; no copied mascot-specific prop, logo, badge, emblem, or identity symbol inside "
     "the target. Use plain abstract dots, squares, diamonds, bars, or motes instead. The target should be a distinct "
     "small rune, tile, mote, orb, tray, panel, or token that the existing prop/hand/gaze affects."
 )
@@ -508,7 +605,7 @@ ARTISTIC_QUALITY_POLICY = (
 STATE_PERFORMANCE_STORY_POLICY = (
     "State performance story arc: every state row must read as one coherent mini-story, not a random emotion collage. "
     "Expressions must be adjacent beats caused by the state action, with small believable transitions rather than "
-    "shuffled faces. Avoid abrupt mood jumps, unrelated sad/sleepy/angry/blank faces, and facial expressions that "
+    "shuffled faces. Avoid abrupt mood jumps, unrelated sad/serious/sleepy/angry/blank faces, and facial expressions that "
     "do not fit the state. Each expression change should be caused by the state action and supported by eye direction, "
     "mouth shape, blink timing, body tilt, appendage motion, prop motion, or cue motion. The final frame must loop "
     "cleanly back to the first frame without a sudden emotional reset."
@@ -516,11 +613,11 @@ STATE_PERFORMANCE_STORY_POLICY = (
 
 THINKING_STATE_READ_POLICY = (
     "Thinking must read as curious pondering and processing, not worry, confusion, sadness, anger, sleepiness, or error. "
-    "Use neutral-curious, tiny closed pondering mouths, one-pixel thoughtful line mouths, blink/hold, and small recognition-smile beats. "
+    "Use neutral-curious, tiny closed pondering smiles, gently upturned one-pixel thoughtful smile mouths, blink/hold, and small recognition-smile beats. "
     "Recognition in thinking should be a closed or tiny pixel smile, not a wide open speaking mouth, not an "
     "exclamation mouth, and not a syllable mouth from answering. "
-    "Keep any downturned mouth extremely subtle only when it still reads as pondering; avoid downturned frowns, "
-    "curled lower-lip marks, worried squiggles, and confused/error mouth shapes. Any closed-eye thinking frame must "
+    "Keep the mouth level or slightly upturned; avoid downturned mouths, downturned frowns, "
+    "curled lower-lip marks, worried squiggles, serious blank faces, and confused/error mouth shapes. Any closed-eye thinking frame must "
     "read as a quick active processing blink, not sleep, idle rest, fatigue, or meditation. Keep the thought cue "
     "active during that blink, and place open-eye curious or recognition frames immediately before and after it. "
     "Processing blinks should use simple closed curved or short horizontal eyes, not squeezed shut X-eyes, chevron "
@@ -531,7 +628,7 @@ THINKING_STATE_READ_POLICY = (
 THINKING_MOOD_CONTINUITY_POLICY = (
     "Thinking mood continuity lock: keep every thinking frame inside one adjacent curious-processing story. "
     "Use neutral-curious, focused pondering, quick active blink, recognition, and pleased settle only. "
-    "There should be no worried frown frames, no confused/error mouth frames, no sleepy closed-eye smile frames, "
+    "There should be no worried frown frames, no serious/downturned mouth frames, no confused/error mouth frames, no sleepy closed-eye smile frames, "
     "no blank unrelated face, and no open exclamation or speaking-mouth frames that make the row read as "
     "answering, surprise, confusion, fatigue, or error."
 )
@@ -539,7 +636,11 @@ THINKING_MOOD_CONTINUITY_POLICY = (
 THINKING_CUE_CONTINUITY_POLICY = (
     "Cue continuity lock: if a thought/processing cue is used, it must begin visually associated with the "
     "inferred thought-cue source near the expression area, then travel through adjacent frames as a readable small -> slightly larger -> medium -> "
-    "smaller -> tiny/settle path while the mascot body footprint stays stable. Keep the cue separate from the body core "
+    "smaller -> tiny/settle path while the mascot body footprint stays stable. When the chosen cue uses separated elements, "
+    "they must form a stable source-to-peak trail: the smallest element stays closest to the inferred source, "
+    "intermediate elements continue the same upward/outward path, and the largest/clearest element appears only "
+    "at the idea-lands peak. Do not let intermediate cue elements drift downward, reverse direction, jump sideways, "
+    "or reorder the trail. Keep the cue separate from the body core "
     "whenever touching would make the head/body measure larger: a close 2-4 px chroma-key gap or tiny separated tail dot "
     "is better than a bubble fused into the outline. Keep the cue separate from identity props: do not use a prop, accessory, "
     "marking, or emblem as the thought-bubble origin unless that element is explicitly the "
@@ -569,47 +670,36 @@ THINKING_CUE_VOCABULARY_POLICY = (
 
 THINKING_HANDS_STRATEGY = (
     "Hands/paws thinking strategy: perform thinking through face, eye direction, body tilt, and small safe hand "
-    "acting before using a large thought bubble. For default generic hand mascots, keep the face panel and "
-    "lower face completely clear in every frame. Face-panel exclusion zone: no hand, paw, sleeve, mitten, finger, "
-    "or prop may enter the face panel, touch the cheek/mouth/chin/lower face, or sit centered directly below the "
-    "mouth/chin. Keep thinking hand beats outside the face-panel horizontal span when possible, in beside the body, "
-    "shoulder-side, or low outer-body zones. Default generic mitten-hand thinking motion is side-anchored: use a "
-    "side bob, side tilt, low side lift, tiny outward tilt, or low outer-body tuck only. Do not move one hand inward "
-    "toward the face, do not point toward the head, and do not cross the body front; keep hands attached to the "
-    "side mid-body, not the bottom edge where they read as feet, legs, or lower tabs. Simple mitten safeguard: when "
-    "hands look like simple mittens, sleeve nubs, rounded side hands, or fingerless blobs, treat them as side "
-    "appendages with side-bob, side-tilt, tiny outward tilt, low side lift, or side tuck only; do not use pointing, "
-    "presenting across the body, typing, writing, gripping, or face-touch acting unless the reference has articulated "
-    "fingers, paws, arms, or a proven pose affordance. For more articulated hands, "
-    "only use broader gestures after the reference or a prior audition proves they stay side-anchored and face-safe. "
-    "Use low side-lifts, shoulder-side lifts, tiny outward tilts, small side-present beats, or hands settling beside the body with a visible gap below the face. Do not "
-    "use hand-to-body beats under the face panel. Do not touch, cover, underline, or frame the mouth, chin, cheek, "
-    "lower face, or face panel. Do not use hand-to-chin, hand-to-mouth, clasped hands under the mouth, prayer hands, "
-    "finger points aimed into the face, or a scalloped mitten/bib cluster below the face; no lower-face/chin-adjacent "
-    "hand poses and no under-chin presenting pose in default thinking rows."
+    "acting before using a large thought bubble. Face-touch quality gate: a thinking hand, paw, sleeve, mitten, "
+    "or appendage may touch or hover near the chin/cheek only when it is clearly the original appendage, remains "
+    "visibly connected to its body anchor, preserves the other appendage and any held prop, leaves the eyes and "
+    "mouth readable, and improves the thinking pose. If it reads as a new cheek, nose, lower-face patch, detached "
+    "mitten, duplicated hand, extra paw, or covered expression, reject it and use a side-anchored beat instead. "
+    "Default generic mitten-hand thinking motion remains conservative: side bob, side tilt, low side lift, tiny "
+    "outward tilt, low outer-body tuck, shoulder-side lift, or one clean face-touch audition when the silhouette "
+    "still reads. Do not use clasped hands under the mouth, prayer hands, finger points aimed into the face, "
+    "scalloped mitten/bib clusters below the face, or under-chin presenting poses."
 )
 
 THINKING_SIMPLE_APPENDAGE_STRATEGY = (
     "Simple/ambiguous appendage thinking strategy: keep appendages side-attached or only subtly lifted unless "
     "the reference audit proves stronger affordances. Use eyes, head/body tilt, mouth shape, quick blink timing, "
-    "and one compact near-head processing cue first; do not invent chin-touch, cheek-touch, fingered hands, "
-    "or lower-face patches."
+    "and one compact near-head processing cue first. A near-face or face-touch beat is acceptable only when it "
+    "looks like the original appendage with a clean connection and no new hand/finger anatomy; otherwise keep the "
+    "appendage side-attached. Reject invented chin-touch, cheek-touch, fingered hands, detached mitts, or "
+    "lower-face patches."
 )
 
 CANONICAL_BASE_ROW_LOCK = (
     "Canonical base row lock: copy the canonical base's main silhouette and design language across every row frame. "
-    "Keep the same antenna count and basic antenna shape, same face screen or face panel shape, same eye style, "
-    "same mouth style, same chest mark or emblem when present, same hand/foot count when present, same outline "
-    "weight, and same palette relationships. Do not upgrade the face into a different eye style, do not bend, "
-    "add, remove, or duplicate the antenna, do not turn simple eyes into glossy eyes, and do not make a quiet "
-    "identity mark become a large new glowing prop. If the canonical base has a plain body with no chest mark, "
-    "keep the body plain across the row: no new chest panel, status light, belly screen, button, badge, dot "
-    "cluster, readout, emblem, or robot UI detail. If the canonical base has a rounded lower body with no feet "
-    "or legs, keep it footless and legless across the row: no foot nubs, shoes, base tabs, toe pixels, shadow "
-    "feet, or lower protrusions. Simple face/body stability lock: do not skew, stretch, rotate, squash, or turn "
-    "a face panel into a trapezoid to create acting. For screen-faced, mask-faced, or simple front-panel mascots, "
-    "keep face-panel corners, outline thickness, and cream fill shape consistent; show motion through 1-2 px bob, "
-    "tiny side shift, mouth/blink change, appendage beat, or cue timing instead of warping the mascot core."
+    "Keep the same accessory count and shape, face-bearing area shape, eye style, mouth style, body markings when "
+    "present, appendage count when present, outline weight, and palette relationships. Do not upgrade the face into "
+    "a different eye style, add/remove/duplicate accessories, or make a quiet identity mark become a large new effect. "
+    "Preserve absence as well as presence: plain body areas stay plain, a base with no visible lower appendages stays "
+    "that way, and no new display details, badges, buttons, readouts, feet, legs, lower tabs, or other identity marks "
+    "appear across rows. Simple face/body stability lock: do not skew, stretch, rotate, squash, or warp the mascot "
+    "core or face-bearing area to create acting. Show motion through tiny bob, side shift, mouth/blink change, "
+    "appendage beat, prop beat, or cue timing instead."
 )
 
 NO_LIMB_FACE_ARTIFACT_POLICY = (
@@ -631,9 +721,10 @@ HAND_ROLE_CONTINUITY_POLICY = (
     "Hand/appendage role continuity: account for every original hand, arm, paw, sleeve, fin, wing, or tentacle in every "
     "frame before accepting a pointing, presenting, staff/tool, or work-prop gesture. If the "
     "mascot holds an identity prop, keep the prop-holding appendage attached and identifiable while the other appendage "
-    "acts. Default thinking hand acting leaves the face clear; use low side, shoulder-side, palm-up, outward-present, "
-    "or low outer-body beats beside the body instead of near-mouth, under-chin, or centered-below-face poses. Reject any frame that violates this rule: "
-    "no third hand, extra arm, duplicate sleeve, detached mitten, or new paw/finger cluster allowed."
+    "acts. Thinking hand acting may be side-based or face-touch when the pose looks polished and native; either way "
+    "the acting appendage must stay connected to its original anchor and must not become a face patch, detached mitten, "
+    "or new paw/finger cluster. Reject any frame with a third hand, extra arm, duplicate sleeve, detached mitten, "
+    "new paw/finger cluster, or face-touch that hides the expression."
 )
 
 VISIBLE_APPENDAGE_ACTING_POLICY = (
@@ -648,9 +739,10 @@ VISIBLE_APPENDAGE_ACTING_POLICY = (
 APPENDAGE_STATE_ACTING_HINTS = {
     "thinking": (
         "State-specific appendage acting: thinking rows can use a side-anchored low free-hand lift, side bob, "
-        "tiny outward side tilt, low outer-body tuck beside the body, or staff-hand grip shift while "
-        "the face and thought cue carry the main read; default thinking prompts must keep the mouth, chin, cheek, "
-        "lower face, and face panel unobscured and avoid under-chin hand poses."
+        "tiny outward side tilt, low outer-body tuck beside the body, staff-hand grip shift, or one polished "
+        "near-face/face-touch thinking beat when the original appendage remains connected and the expression stays "
+        "readable. Reject only the bad versions: extra hands, detached mitts, lower-face patches, hidden eyes/mouth, "
+        "or under-chin clusters."
     ),
     "answering": (
         "State-specific appendage acting: answering rows can use a small presenting beat, conversational hand bounce, "
@@ -664,11 +756,11 @@ IDENTITY_PROP_POLICY = (
     "If a prop appears in a state row, keep its count, side, scale, attachment, and basic silhouette stable across "
     "the row; animate it with small pose/angle/follow-through changes instead of redesigning it. Preserve signature "
     "props by default even when another cue is present; place the cue in available space, near the mouth, near the "
-    "head, or near the prop tip instead of dropping the prop. State cues must not cover, replace, recolor, merge "
-    "with, or grow out of identity props such as antenna bulbs, ears, horns, hats, badges, emblems, staffs, or "
-    "wands unless the state explicitly uses that prop as the active source. Omit a must-keep prop only when the state card says "
+    "head, or near the active prop end instead of dropping the prop. State cues must not cover, replace, recolor, "
+    "merge with, or grow out of identity accessories, body marks, outfit details, or held props unless the state "
+    "explicitly uses that element as the active source. Omit a must-keep prop only when the state card says "
     "that exact prop is optional for that whole row, never because a thought bubble, voice puff, or work cue was added. "
-    "Do not duplicate signature props, turn decorative trim into extra limbs, or mutate a staff/tool/emblem into a "
+    "Do not duplicate signature props, turn decorative trim into extra limbs, or mutate an identity prop into a "
     "different object unless that row is explicitly auditioning a new design."
 )
 
@@ -710,8 +802,8 @@ ANATOMY_GUIDANCE = {
         "Visible hands may point, present, hold, type, or write when the reference supports it. "
         "Simple mittens, sleeve nubs, rounded side hands, and fingerless blobs are conservative side appendages, "
         "not articulated hands: use side bob/tilt/tuck unless a stronger affordance has been proven. Keep exactly "
-        "the original hands/arms; no duplicates. Default thinking rows keep hands away from the mouth, chin, "
-        "cheeks, and face panel unless an explicit face-touch affordance is selected."
+        "the original hands/arms; no duplicates. Thinking face-touch is allowed when it is a polished auditioned "
+        "pose: the original hand remains connected, the expression stays readable, and no extra hand or face patch appears."
     ),
     "paws": (
         "Paws may gesture, brace chunky props, or present broadly. Avoid finger-dependent typing/writing unless "
@@ -729,7 +821,8 @@ ANATOMY_GUIDANCE = {
     ),
     "ambiguous-limbs": (
         "Treat appendages conservatively until the reference audit proves their affordances. Prefer face/body "
-        "acting and small anchored aids over risky grip or face-touch poses."
+        "acting and small anchored aids over risky grip poses. Face-touch is allowed only when the visual result "
+        "clearly reads as the original appendage and not as new anatomy."
     ),
 }
 
@@ -882,7 +975,7 @@ def build_visual_language(args: argparse.Namespace) -> dict[str, Any]:
         "sourceVibe": args.source_vibe or "Infer from the reference before choosing state cues.",
         "motifs": motifs,
         "identityProps": identity_props,
-        "eyeGrammar": args.eye_grammar or "Infer exact eye count, shape, spacing, fill, outline, and highlight/catchlight logic from the reference.",
+        "eyeGrammar": args.eye_grammar or "Infer exact eye count, shape, spacing, fill, outline, and highlight logic from the reference.",
         "forbiddenGenericCues": forbidden,
     }
 
@@ -1093,7 +1186,7 @@ def build_base_prompt(
     identity_props = ", ".join(visual_language.get("identityProps", [])) or "infer must-keep props and signature accessories from the reference"
     eye_grammar = visual_language.get(
         "eyeGrammar",
-        "Infer exact eye count, shape, spacing, fill, outline, and highlight/catchlight logic from the reference.",
+        "Infer exact eye count, shape, spacing, fill, outline, and highlight logic from the reference.",
     )
     forbidden = ", ".join(visual_language.get("forbiddenGenericCues", []))
     key_hex = chroma_key["hex"]
@@ -1161,20 +1254,20 @@ def build_thinking_prompt(
     identity_prop_line = (
         f"Must-keep identity props/accessories: {props}"
         if props
-        else "Must-keep identity props/accessories: infer from the reference; keep signature props, emblems, outfit silhouettes, and held props consistent when present."
+        else "Must-keep identity props/accessories: infer from base/reference."
     )
     if anatomy_class in {"hands", "paws"}:
         hand_line = (
-            "Use only existing appendages whose shape clearly supports the motion. A free appendage may lift, tilt outward, make a small side-present beat, then settle, "
-            "always side-anchored beside the body. If a prop is held, keep the prop-holding appendage attached and identifiable. "
-            "Never touch or point into the expression area, mouth, chin, cheek, or face opening; no hand-to-chin, hand-to-mouth, "
-            "under-chin presenting, or crossed-body gesture."
+            "Use only existing appendages. A free appendage may lift, tilt, settle, or make one polished thinking "
+            "face-touch beat. Keep any prop-holding appendage attached. Face-touch is acceptable only when the "
+            "appendage stays connected to its original anchor, leaves eyes and mouth readable, and does not read as "
+            "a face patch, duplicate appendage, or lower-face blob. If unclear, use a side-anchored lift/tilt/tuck."
         )
     elif anatomy_class in {"fins-no-hands", "ambiguous-limbs"}:
         hand_line = (
-            "Use only existing simple side appendages as subtle side-attached bobs, tilts, tucks, or tiny outward turns. "
-            "Do not turn simple or ambiguous side shapes into hands, fingers, pointing, presenting across the body, "
-            "gripping, or face-touch poses; not hand-to-chin, not hand-to-mouth, no under-face acting."
+            "Keep simple side appendages outside the body with tiny bobs/tilts/tucks. A near-face or "
+            "face-touch beat is acceptable only if it clearly remains the original connected appendage and does not "
+            "become a new hand, finger, lower-face patch, or detached blob. If unclear, leave it resting."
         )
     else:
         hand_line = (
@@ -1183,61 +1276,115 @@ def build_thinking_prompt(
         )
     if frame_count == 6:
         frame_story = """Six-frame acting story:
-1. Reset: open source-matched eyes, tiny calm closed smile, body and any appendages resting, no visible thought cue.
-2. Thought starts: eyes keep the same fill/highlight grammar with a tiny upward or side attention shift; mouth stays small and closed; body or side appendages make a subtle start beat; one tiny non-chroma-key puff appears close to the inferred thought-cue source.
-3. Pondering: tiny closed pondering mouth or one-pixel thoughtful line; slight head/body tilt without scale change; two small close puffs sit low beside the same inferred thought-cue source while any appendages stay side-attached.
-4. Forming: attentive open eyes, tiny thoughtful mouth, body or appendage timing holds the thinking beat; two puffs plus a very small third puff form a compact cluster near the same source.
-5. Idea lands: clearest frame. Use a compact three-puff thought bubble beside the inferred thought-cue source with one slightly larger main puff and two smaller close support puffs. Use a pleased active processing blink or tiny closed-mouth recognition smile. Body or appendage reaches its highest safe small beat without changing scale.
-6. Settle: eyes open again with a soft pleased face; body/appendage returns toward rest; thought cue shrinks to one tiny close remnant or resolves cleanly for a smooth loop to frame 1."""
+1 reset: open eyes, tiny calm closed smile, no thought cue.
+2 thought starts: source-matched open eyes, no white side-glance or new sclera; one tiny compact cue appears near the inferred thought-cue source.
+3 pondering: tiny closed pondering smile or gently upturned one-pixel smile; the cue grows slightly while staying close and secondary along the source-to-peak trail.
+4 forming: compact source-bound cluster or pulse keeps that trail; no cue element drops or reverses.
+5 idea lands: compact cue peak beside the inferred source at trail end; primary cue element is only slightly larger, never oversized; pleased blink or tiny closed-mouth recognition smile.
+6 settle: eyes open; cue shrinks to one tiny close remnant or resolves cleanly; loop cleanly back to the first frame."""
     else:
         frame_story = f"""{frame_count}-frame acting story:
-Start with a neutral-curious reset, then a tiny attention shift, then a closed-mouth pondering beat, then a compact thought cue forming beside the inferred thought-cue source. Around the middle of the row, show the idea-lands peak as a three-puff thought bubble with one slightly larger main puff and two smaller support puffs. After the peak, use a quick active processing blink or tiny closed-mouth recognition smile, then shrink or resolve the cue and settle back into the first pose. Every frame should change face, posture, body/appendage timing, or cue timing enough to matter."""
+Neutral-curious reset -> attention shift -> closed-smile pondering -> compact cue forming -> idea lands -> pleased settle. Peak with a compact source-bound cue: primary cue element is only slightly larger, never oversized. Use a quick active processing blink or tiny closed-mouth recognition smile. Loop back cleanly to frame 1."""
+    vibe_line = (
+        f"\nVibe fit: {source_vibe}"
+        if source_vibe and source_vibe != "Infer from the reference before choosing state cues."
+        else ""
+    )
     return f"""# {name} thinking row prompt - compact
 
-Create one horizontal sprite row strip with exactly {frame_count} separated frames on a perfectly flat solid {key_hex} chroma-key background.
+Create one horizontal sprite row strip with exactly {frame_count} separated frames on a flat {key_hex} chroma-key background.
 
-Use the attached images this way:
-- The canonical base defines identity, outfit, held props, eye grammar, body scale, and pixel-art style.
-- Accepted row images, when present, define apparent body size and padding.
-- The layout guide, if attached, is only for frame slots and padding. Do not draw guide lines.
+Inputs: base locks identity/eyes/scale/style; accepted rows size/padding; guide slots only.
 
-Identity lock:
-- Preserve the same mascot body, palette, outline weight, appendage count, outfit, markings, and held props.
-- {identity_prop_line}
-- Keep the same apparent body size and padding as the canonical base and any accepted rows.
-- Open eyes preserve the source-matched fill, outline, and highlight/catchlight logic. Closed eyes are simple short curved lines in the same eye positions.
-- Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight/catchlight logic from the canonical base and original reference."}
+Identity/style lock:
+Preserve the same mascot body, palette, outline weight, appendage count, markings, and held props. {identity_prop_line} Match base size/padding. Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area.
+Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight logic from base/reference."}
+Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, limited palette, flat cel shading. {BACKGROUND_SOURCE_LOCK} No smooth illustration or glossy rendering.
 
-Style lock:
-Native Codex digital-pet pixel-art sprite, hard square pixels, chunky dark outline, limited palette, flat cel shading. Perfectly uniform {key_hex} background. No smooth illustration, glossy sticker rendering, painterly shading, soft antialiasing, shadows, scenery, text, UI panels, symbols, or background texture.
+{state_plan["semanticRead"]}; not surprised, answering, worried, sleepy, or confused. Face/body/appendage timing should sell thinking before the cue is noticed.
+{STATE_SPECIFIC_GUARDS["thinking"]}
 
-State goal:
-{state_plan["semanticRead"]}. Make the mascot read as calmly thinking, not surprised, answering, worried, sleepy, or confused. The face, body timing, and any side appendage should sell thinking even before the bubble is noticed.
-
-State performance story arc: keep one coherent mini-story, not a random emotion collage: neutral-curious -> noticing -> pondering -> idea lands -> pleased settle. Expressions must be adjacent beats caused by the state action, not random sad, sleepy, angry, blank, or unrelated faces. Avoid abrupt mood jumps and loop cleanly back to the first frame.
+Story arc: neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle. Expressions are adjacent state-caused beats, not random sad, serious, sleepy, angry, blank, or unrelated faces. Every frame changes face, posture, body/appendage timing, or cue enough to matter; no stale same-face holds.
 
 Frame-by-frame acting arc:
-State story beats:
 {frame_story}
 
 Thought cue rules:
-- Thinking cue solidity lock: use deliberate puff shapes, not loose specks.
-- Use one compact source-appropriate non-chroma-key thought puff family only: no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, glow, or symbol.
-- The peak must have exactly three visible puffs: one slightly larger main puff plus two smaller support puffs.
-- Infer the thought-cue source from the canonical base and keep the puffs close, low, and compact beside that source. Do not make a tall vertical stack. Do not let the cue force the mascot smaller.
+- Thinking cue solidity lock: use deliberate compact cue shapes, not loose specks.
+- Use one compact source-appropriate non-chroma-key cue vocabulary only; no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, or glow.
+- The peak should be a compact cue beat, not a mandated symbol or puff count; primary cue element is only slightly larger, never oversized; do not enlarge the cue to prove the idea landed. Preserve the chosen cue vocabulary.
+- Separated cue elements keep a stable source-to-peak trail; the smallest element stays closest to the inferred source. Do not let intermediate cue elements drift downward, reverse, jump sideways, or reorder; largest/clearest lands at peak.
+- Infer thought-cue source from the canonical base; keep the cue close, low, compact, and secondary. Do not make a tall vertical stack. Do not let the cue force the mascot smaller.
 
-Expression rules:
-- Use tiny closed/thoughtful mouths only: closed smile, one-pixel line, or tiny offset dot.
-- No round open o-mouths, exclamation mouths, speaking syllable mouths, shocked mouths, teeth, brows, or worry marks.
-- No white crescent side-glance eyes, hollow eyes, mismatched eyes, extra catchlights, or symbol eyes.
+Expression and eye rules:
+- Use closed/thoughtful mouths only: closed smile, tiny pleased smile, or gently upturned one-pixel smile.
+- No round open o-mouth, exclamation mouth, speaking syllable mouth, shocked mouth, teeth, brows, or worry marks.
+- {THINKING_EYE_LOCK} Closed eyes are simple short curved lines in the same eye positions and spacing.
 
 Hand/appendage rules:
 {hand_line}
 
-Vibe fit: {source_vibe}
+{vibe_line}
 
-Reject if any frame has wrong eye grammar, surprised/answering mouth, extra/missing held prop, extra limb, random symbol, giant/high thought bubble, fewer than three puffs at the peak, scale shrink versus accepted rows, non-flat {key_name} {key_hex} background, or non-native pixel-art rendering.
+Reject if any frame has wrong eye grammar, surprised/answering mouth, stale same-face row, sad/serious/downturned expression, extra/missing held prop or limb, random symbol, giant/high thought cue, cue vocabulary switch, scale shrink, non-flat {key_name} {key_hex} background, smooth/glossy or non-native pixel-art rendering, or background texture. Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts.
 """
+
+
+def compact_frame_story(*, state: str, state_plan: dict[str, str], frame_count: int) -> str:
+    beats = state_plan["stateStoryBeats"]
+    if state == "answering":
+        return (
+            f"Use all {frame_count} frames as one loop: {beats}. Mouth shapes must visibly cycle from closed/tiny "
+            "smile to small open to wider open or syllable hold, then back toward a settled speaking pose. Add eye "
+            "engagement, blink timing, and small body/appendage rhythm so the mascot itself reads as talking."
+        )
+    if state == "working":
+        return (
+            f"Use all {frame_count} frames as one loop: {beats}. Show a concrete before/during/after work action: "
+            "notice the task, focus, operate or transform one small target/cue, show progress, then settle. The "
+            "mascot must act in every frame through gaze, mouth, body, appendage, prop, or surface-detail timing."
+        )
+    return (
+        f"Use all {frame_count} frames as one loop: {beats}. Frame 1 establishes the state, early frames start the "
+        "face/body change, middle frames carry the clearest read, late frames recover, and the final frame loops "
+        "cleanly back to frame 1. Every frame should change face, gaze, mouth, body, appendage, prop, or cue timing "
+        "enough to matter at website size."
+    )
+
+
+def compact_cue_rule(*, state: str, state_plan: dict[str, str]) -> str:
+    if state_plan["visualAidDecision"] == "pose-only":
+        return (
+            "Use no detached semantic cue. Communicate the state through the canonical mascot's expression, posture, "
+            "timing, existing appendages, and existing identity props only."
+        )
+    if state == "answering":
+        return (
+            "Mouth-led talking is primary. Optional voice pixels or pips may appear only as a tiny mouth-origin trail "
+            "over adjacent frames; omit them if they look like cheek marks, punctuation, UI, breath/exhale, or a "
+            "separate speech panel."
+        )
+    if state == "working":
+        return (
+            "Use at most one small mascot-native work cue when acting alone is unclear. It must be caused by the "
+            "mascot's gaze, existing appendage, existing prop, or body-surface timing, and it must show progress or "
+            "resolution. No text, pseudo-writing, generic UI panel, loose sparkle field, duplicate identity prop, or "
+            "invented hand/tool."
+        )
+    if state == "listening":
+        return (
+            "If acting alone is unclear, use one tiny attached listening cue that supports attentive pose and gaze. "
+            "Do not add a generic microphone, text, or detached sound clutter."
+        )
+    if state in {"success", "error", "confused"}:
+        return (
+            "If acting alone is unclear, use one small state cue that is attached to or source-bound to the mascot and "
+            "fits the reference's visual language. Keep it secondary to expression and body acting."
+        )
+    return (
+        "Use a semantic cue only if the pose would be unclear at small size. Keep it tiny, source-bound, hard-edged, "
+        "non-text, and secondary to the mascot's performance."
+    )
 
 
 def build_prompt(
@@ -1254,7 +1401,7 @@ def build_prompt(
     eye_grammar: str | None = None,
     chroma_key: dict[str, Any] | None = None,
 ) -> str:
-    if state == "thinking" and frame_count == 6:
+    if state == "thinking":
         return build_thinking_prompt(
             name=name,
             state_plan=state_plan,
@@ -1265,92 +1412,68 @@ def build_prompt(
             eye_grammar=eye_grammar,
             chroma_key=chroma_key,
         )
-    anatomy = ANATOMY_GUIDANCE.get(anatomy_class, ANATOMY_GUIDANCE["ambiguous-limbs"])
     key_hex = chroma_key["hex"] if chroma_key else "the chosen chroma-key color"
     key_name = chroma_key["name"] if chroma_key else "flat"
     props = ", ".join(identity_props or [])
     identity_prop_line = f"Must-keep identity props/accessories: {props}" if props else "Must-keep identity props/accessories: infer from the reference; keep signature props, emblems, and outfit silhouettes consistent when present."
-    return f"""# {name} {state} row prompt
+    frame_story = compact_frame_story(state=state, state_plan=state_plan, frame_count=frame_count)
+    cue_rule = compact_cue_rule(state=state, state_plan=state_plan)
+    state_guard = STATE_SPECIFIC_GUARDS.get(
+        state,
+        "Stay inside the requested state and avoid neighboring-state reads, generic UI symbols, and random mood jumps.",
+    )
+    return f"""# {name} {state} row prompt - compact
 
-Use the attached reference image(s) for original identity, the attached canonical base sprite as the approved design, and the attached layout guide only for frame count, slot spacing, centering, and safe padding. The layout guide is a construction input only: it is intentionally empty and is not a mascot preview. Infer the mascot's vibe from the reference before choosing the pose or visual aid.
+Create one horizontal sprite row strip with exactly {frame_count} separated frames on a perfectly flat solid {key_hex} chroma-key background.
 
-Create one horizontal sprite row strip with exactly {frame_count} separated frames on a perfectly flat pure {key_name} {key_hex} chroma-key background.
+Use attached images this way:
+- Original references define identity and source vibe.
+- The canonical base is the approved design, body size, eye grammar, outline, palette, props, appendages, and style source.
+- Accepted row images, when present, define apparent body size and padding.
+- The layout guide is only for frame slots and safe padding. Do not draw guide lines, boxes, labels, or guide colors.
 
-Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped pixel edges, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite effects. No smooth illustration, glossy rendering, 3D, painterly gradients, vector-flat icons, text, labels, scenery, shadows, or UI panels.
+Identity lock:
+- Preserve the same mascot body, silhouette, palette, outline weight, eye grammar, mouth language, appendage count, markings, accessories, and held props. Do not redesign the character.
+- {identity_prop_line}
+- Preserve absence too: do not add new limbs, props, display details, markings, lower tabs, or body features that are not in the canonical base/reference.
+- Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area to create acting.
+- Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight/catchlight logic from the canonical base and original reference."}
+- Closed-eye frames must keep the same eye positions and spacing as simple short lines/curves, not symbols or a new eye style.
 
-Use this prompt as an authoritative sprite-production spec. Do not expand it into polished illustration, painterly character art, anime key art, 3D render, vector mascot, glossy app icon, realistic character portrait, or marketing artwork.
+Style lock:
+Native Codex digital-pet pixel-art sprite, hard square pixels, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite effects. {BACKGROUND_SOURCE_LOCK} Chosen chroma key: {key_name} {key_hex}. No smooth illustration, glossy sticker rendering, 3D, painterly gradients, vector icons, soft antialiasing, shadows, scenery, UI panels, text, symbols, or guide marks.
 
-{HARD_NATIVE_PIXEL_RENDERING_LOCK}
+State goal:
+- State: {state}
+- Read: {state_plan["semanticRead"]}
+- Acting first: {state_plan["actingFirst"]}
+- Story: {state_plan["stateStoryBeats"]}
+- State boundary: {state_guard}
+- Vibe fit: {source_vibe}
 
-{REFERENCE_NATIVE_STYLE_LOCK}
+State performance story arc:
+Make the row a coherent mini-story, not a checklist or random emotion collage. Expressions must be adjacent beats caused by the state action and loop cleanly back to the first frame. Do not let all motion live in a cue while the mascot face and body stay frozen.
 
-{FLAT_CHROMA_KEY_LOCK}
+Frame plan:
+{frame_story}
 
-{HATCHPET_SPRITE_ARTIFACT_POLICY}
+Cue/prop rule:
+{cue_rule}
 
-Identity lock: preserve the same mascot species/body type, face, palette, markings, outline weight, proportions, appendage count, and silhouette from the reference. Do not redesign the character.
+Expression and anatomy rules:
+- Preserve the reference's expression language. Avoid angry brows, hostile eyes, teeth, sweat, dramatic marks, or state-inappropriate mood jumps unless the source design already supports them.
+- {SOURCE_EYE_LOCK}
+- Use only appendages and props visible in the canonical base/reference. Preserve count, side, attachment, and basic silhouette across the row.
+- If an appendage affordance is unclear, keep movement subtle and side/body-attached; carry the state through eyes, mouth, body timing, and source-bound cue timing.
+- No extra limbs, duplicate props, detached appendage blobs, prop echoes, random icons, punctuation, or text.
 
-{CANONICAL_BASE_ROW_LOCK}
+Scale and layout rules:
+- Keep each pose fully inside an implied {cell_width}x{cell_height} cell with safe padding.
+- Match the canonical base and accepted rows for apparent body size, center, top edge, bottom edge, and body core width.
+- If a gesture, mouth shape, cue, or prop needs room, make that action smaller or tighter; do not shrink or enlarge the mascot body to make space.
+- Do not use {key_hex}, pure {key_name}, or chroma-key-adjacent colors in the mascot, prop, outline, highlights, or effects.
 
-{REFERENCE_PALETTE_FIDELITY_POLICY}
-
-{EYE_IDENTITY_CONTINUITY_POLICY}
-
-Expression lock: preserve the source mascot's expression language. Do not invent angry brows, brow marks, slanted angry eyes, V-shaped eye/brow marks, teeth, sweat, blush, or dramatic emotion symbols unless they are already part of the source design or the state explicitly needs them and they remain character-appropriate. If the source is calm, cute, sleepy, plush, abstract, or browless, keep that same friendly face grammar while active. For optional working, show concentration through eye direction, blink timing, mouth shape, lean, pace, and approved props/effects; do not add eyebrows to a browless mascot.
-
-State: {state}
-Semantic read: {state_plan["semanticRead"]}
-Acting first: {state_plan["actingFirst"]}
-{state_plan["statePerformanceStoryPolicy"]}
-State story beats: {state_plan["stateStoryBeats"]}
-{state_plan["stateActingChoreography"]}
-{state_plan["thinkingStateReadPolicy"]}
-{state_plan["thinkingMoodContinuityPolicy"]}
-{state_plan["thinkingCueStrategy"]}
-{state_plan["thinkingCueContinuityPolicy"]}
-{state_plan["thinkingCueVocabularyPolicy"]}
-{state_plan["faceArtifactPolicy"]}
-Visual aid decision: {state_plan["visualAidDecision"]}
-Suggested visual aid when needed: {state_plan["suggestedVisualAid"]}
-{state_plan["frameArc"]}
-{state_plan["freestandingPropPolicy"]}
-{state_plan["workPropMarkPolicy"]}
-{state_plan["workTargetPolicy"]}
-{state_plan["workIdentityPropEffectPolicy"]}
-{state_plan["workLongHeldPropPolicy"]}
-{state_plan["workTargetFitPolicy"]}
-{state_plan["workTargetInteractionPolicy"]}
-{state_plan["workResultCuePolicy"]}
-{state_plan["workStateReadPolicy"]}
-{state_plan["workMascotActingPolicy"]}
-{state_plan["bodySurfaceCuePolicy"]}
-{state_plan["voiceCuePolicy"]}
-{state_plan["answeringStateReadPolicy"]}
-{ARTISTIC_QUALITY_POLICY}
-{EXPRESSION_VARIATION_POLICY}
-{state_plan["appendageActingPolicy"]}
-{HAND_ROLE_CONTINUITY_POLICY if anatomy_class != "no-limbs" else ""}
-Vibe fit: {source_vibe}
-{identity_prop_line}
-Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight/catchlight logic from the canonical base and original reference."}
-{IDENTITY_PROP_POLICY}
-Anatomy class: {anatomy_class}
-Anatomy guidance: {anatomy}
-Reject if: {state_plan["rejectIf"]}
-
-Semantic ladder:
-1. Make the face, eyes, mouth, posture, timing, and original appendages perform the state.
-2. Use existing identity props or appendages only when the reference supports that action.
-3. Add one tiny attached or anchored visual aid only if the state is still unclear at website size.
-4. Reject a pretty motif-native effect when it does not communicate the state.
-
-Visual aid rule: if a visual aid is used, make it a small visual verb with a state-specific motion path, not a decorative symbol. The cue must remain visible after chroma-key cleanup and readable at 64-96 px; do not rely on isolated tiny specks that cleanup may remove. For optional working, the cue should look like purposeful processing, sorting, checking, gathering, charging, or tool activity while the face stays busy-but-friendly, character-appropriate, and never angry or hostile; when a long held prop is present, default to an attached active-end bloom/pulse/aura/contact mark that touches the active end and changes intensity/shape instead of a separate rune, diamond, object, floor target, emblem, or prop echo. For simple/no-limb mascots, use body-surface, rim-touching, compact attached, or overlapping cues first. Freestanding/resting work props are last-resort fallbacks only when attached/body acting cannot read; if used, place them beside or in front of the mascot, never held or operated by invented hands. For answering, the cue should support mouth/voice motion rather than become a speech panel.
-
-Layout guide rule: follow the attached guide's {frame_count} frame boxes and safe padding, but do not reproduce the guide itself. The guide is not output art. No visible boxes, borders, labels, guide colors, center marks, or guide background may appear in the output.
-
-Cross-state scale lock: match the canonical base's apparent body size and padding, and also match any already accepted state row in this run. Do not zoom the mascot in to fill the cell and do not make later states look like a larger or smaller copy of the same character. Preserve the same comfortable empty space above the head/hat/hood/prop and below the feet/bottom edge that the canonical base and accepted rows use, and keep the body core scale within about 5-10% of the accepted base and neighboring state rows. If a gesture, mouth shape, thought cue, voice cue, or prop needs room, make that action smaller or tighter; do not enlarge or shrink the mascot body to make space. Near-head cues must fit around the accepted mascot scale; they must not become the reason the whole row has to be assembled smaller.
-
-Frame layout: keep each pose fully inside an implied {cell_width}x{cell_height} cell with safe padding. Keep body center, top-of-head height, bottom edge, silhouette scale, and appendage count stable across the row. Every frame must have a meaningful change in face, pose, body motion, prop, or visual aid. Do not use {key_hex}, pure {key_name}, or colors close to that chroma key in the mascot, prop, outline, highlights, or effects.
+Reject if: {state_plan["rejectIf"]}; wrong eye grammar; frozen same-face row; symbol-only acting; extra/missing appendages or props; scale drift versus accepted rows; non-flat {key_name} {key_hex} background; or non-native pixel-art rendering.
 """
 
 
@@ -1393,6 +1516,8 @@ def make_jobs(
             "generation_skill": "$imagegen",
             "requires_grounded_generation": bool(reference_inputs),
             "allow_prompt_only_generation": not reference_inputs,
+            "generation_owner": "parent",
+            "subagent_eligible": False,
             "recording_owner": "parent",
         }
     ]
@@ -1427,6 +1552,9 @@ def make_jobs(
                 "allow_prompt_only_generation": False,
                 "identity_reference_paths": identity_reference_paths,
                 "parallelizable_after": ["base"],
+                "generation_owner": "subagent-when-authorized",
+                "subagent_eligible": True,
+                "subagent_handoff": ROW_SUBAGENT_HANDOFF,
                 "recording_owner": "parent",
             }
         )
@@ -1615,6 +1743,7 @@ def main(argv: list[str] | None = None) -> int:
             "created_at": datetime.now(timezone.utc).isoformat(),
             "run_dir": str(out_dir),
             "primary_generation_skill": "$imagegen",
+            "row_generation_policy": ROW_GENERATION_POLICY,
             "request": "companion_request.json",
             "canonical_identity_reference": None,
             "jobs": make_jobs(

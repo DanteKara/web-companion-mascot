@@ -35,7 +35,7 @@ For references with distinctive or fragile eyes, pass an inferred `--eye-grammar
 
 State cues must not consume must-keep props. A thought bubble, voice puff, work glyph, or status cue should not cover, replace, recolor, merge with, or grow out of antenna bulbs, ears, horns, hats, badges, emblems, staffs, wands, or other identity props unless that prop is explicitly the active source. For antenna mascots, thinking cues should originate from the main head/hood side or top edge, not from the antenna tip, and the antenna bulb should remain visible and stable. For screen-faced, mask-faced, or simple front-panel mascots, preserve the face panel as identity; do not skew, stretch, rotate, squash, or trapezoid the face/body core to fake animation. Use tiny bob, side shift, mouth/blink change, appendage beats, and cue timing instead.
 
-Thinking cues should animate modestly: small -> slightly larger -> medium -> smaller -> tiny/settle. Medium is the maximum thought cue size, so the bubble/puff/orb should never become a second head or make the mascot shrink. Thinking cues should move through adjacent frames; they should not pop in for one frame, jump upward into a giant peak, fuse into the body core, or drop out abruptly at the loop. Keep the mascot body footprint stable; when a near-head cue would enlarge the measured head/body outline, use a close 2-4 px chroma-key gap or tiny separated tail dot instead of merging the bubble into the sprite. The cue can be visually associated by proximity, eye tracking, timing, or a separated tail dot without alpha-connecting to the head, antenna, hood, face panel, body core, or outline. Use one cue family across the whole row instead of morphing from thought bubble to data cloud to lightbulb/icon/rays. Thinking expressions should stay curious/pondering/processing, not worried, confused, sad, angry, sleepy, idle/resting, meditating, strained, answering-like, surprised, or error-like. Recognition in thinking should be a closed or tiny pixel smile, not a wide open speaking/exclamation/syllable mouth from answering. Closed-eye thinking frames should be quick active processing blinks with the thought cue still active and open-eye frames before and after; use simple closed curved or short horizontal eyes, not squeezed X-eyes or chevrons. For default hand or paw mascots, prompts keep the face panel and lower face clear: no hand, paw, sleeve, mitten, finger, or prop should enter the face panel, touch the cheek/mouth/chin/lower face, or sit centered directly below the mouth/chin. Default generic mitten-hand thinking motion should be side-anchored: side bob, side tilt, low side lift, tiny outward tilt, or low outer-body tuck only. Treat simple mittens, sleeve nubs, rounded side hands, and fingerless blobs as conservative side appendages: do not use pointing, presenting across the body, typing, writing, gripping, or face-touch acting unless the reference and an audition prove the affordance. Do not move one hand inward toward the face, point toward the head, cross the body front, or drop the hands to the bottom edge where they read as feet, legs, or lower tabs. Reject hand-to-chin, hand-to-mouth, clasped hands under the mouth, prayer hands, finger points into the face, scalloped mitten/bib clusters below the face, lower-face/chin-adjacent hand poses, under-chin presenting poses, and lower-face mitten/hand patches unless a future explicit face-touch affordance has already passed visual audition. For no-limb and simple-appendage mascots, prompts reject chin-touch, cheek-touch, hand-to-chin, lower-face squiggles, extra mouth ticks, chin marks, moustache-like pixels, or small appendage-colored marks on the lower face/chin. Answering cues are optional; for no-limb, fins-no-hands, and ambiguous-limb mascots, prefer mouth-only answering unless a cue is unmistakably mouth-attached. When used, voice cues should touch or begin within 1-2 pixels of the mouth and form a short 2-3 frame outward trail, not a single detached speck, one-frame voice tick, or cheek-like face mark. If the cue cannot appear in at least two adjacent frames with a mouth-origin progression, omit it.
+Thinking cues should animate modestly: small -> slightly larger -> medium -> smaller -> tiny/settle. Medium is the maximum thought cue size, so the accepted cue vocabulary should never become a second head or make the mascot shrink. At the idea peak, the primary cue element is only slightly larger, never oversized, and do not enlarge the cue to prove the idea landed. When the chosen cue uses separated elements, they must form a stable source-to-peak trail: the smallest element stays closest to the inferred source, intermediate elements continue the same upward/outward path, and the largest/clearest element appears only at the idea-lands peak. Do not let intermediate cue elements drift downward, reverse direction, jump sideways, or reorder the trail. Thinking cues should move through adjacent frames; they should not pop in for one frame, jump upward into a giant peak, fuse into the body core, or drop out abruptly at the loop. Keep the mascot body footprint stable; when a near-head cue would enlarge the measured head/body outline, use a close 2-4 px chroma-key gap or tiny separated tail dot instead of merging the cue into the sprite. The cue can be visually associated by proximity, eye tracking, timing, or a separated tail dot without alpha-connecting to the head, antenna, hood, face panel, body core, or outline. Use one cue family across the whole row instead of morphing from thought bubble to data cloud to lightbulb/icon/rays. Thinking expressions should stay curious/pondering/processing, not worried, confused, sad, angry, sleepy, idle/resting, meditating, strained, answering-like, surprised, or error-like. Recognition in thinking should be a closed or tiny pixel smile, not a wide open speaking/exclamation/syllable mouth from answering. Closed-eye thinking frames should be quick active processing blinks with the thought cue still active and open-eye frames before and after; use simple closed curved or short horizontal eyes, not squeezed X-eyes or chevrons. For default hand or paw mascots, prompts keep the face panel and lower face clear: no hand, paw, sleeve, mitten, finger, or prop should enter the face panel, touch the cheek/mouth/chin/lower face, or sit centered directly below the mouth/chin. Default generic mitten-hand thinking motion should be side-anchored: side bob, side tilt, low side lift, tiny outward tilt, or low outer-body tuck only. Treat simple mittens, sleeve nubs, rounded side hands, and fingerless blobs as conservative side appendages: do not use pointing, presenting across the body, typing, writing, gripping, or face-touch acting unless the reference and an audition prove the affordance. Do not move one hand inward toward the face, point toward the head, cross the body front, or drop the hands to the bottom edge where they read as feet, legs, or lower tabs. Reject hand-to-chin, hand-to-mouth, clasped hands under the mouth, prayer hands, finger points into the face, scalloped mitten/bib clusters below the face, lower-face/chin-adjacent hand poses, under-chin presenting poses, and lower-face mitten/hand patches unless a future explicit face-touch affordance has already passed visual audition. For no-limb and simple-appendage mascots, prompts reject chin-touch, cheek-touch, hand-to-chin, lower-face squiggles, extra mouth ticks, chin marks, moustache-like pixels, or small appendage-colored marks on the lower face/chin. Answering cues are optional; for no-limb, fins-no-hands, and ambiguous-limb mascots, prefer mouth-only answering unless a cue is unmistakably mouth-attached. When used, voice cues should touch or begin within 1-2 pixels of the mouth and form a short 2-3 frame outward trail, not a single detached speck, one-frame voice tick, or cheek-like face mark. If the cue cannot appear in at least two adjacent frames with a mouth-origin progression, omit it.
 
 Visible hands, paws, sleeves, arms, and held props should also perform. High-visibility rows should include at least two small safe appendage acting beats, such as a low free-hand lift, tiny outward point, present/tuck/settle, palm-up gesture, low outer-body tuck, staff-hand grip shift, conversational hand bounce, or free-hand settle. Keep prop-holding hands attached and reject extra hands, duplicate arms, detached mittens, finger clusters, new grip anatomy, and default thinking poses that touch, cover, underline, or frame the mouth, chin, cheeks, lower face, or face panel.
 
@@ -142,15 +142,16 @@ run/
 The skill includes deterministic QA scripts and requires visual inspection before accepting a mascot:
 
 - `prepare_companion_run.py` creates the initial manifest draft, per-state row prompts, and `qa/state-cue-plan.json` so vibe inference, acting beats, visual aids, and anatomy limits are planned before image generation.
+- `imagegen-jobs.json` records the HatchPet-style row-generation boundary: the base job is parent-owned, row jobs become `subagent_eligible` after the base is recorded, and subagents may return only a selected source path plus a short QA note while the parent owns recording, manifests, atlas assembly, QA, validation, and packaging.
 - `companion_job_status.py` reports which `$imagegen` jobs are ready or blocked from `imagegen-jobs.json`.
 - `record_companion_imagegen_result.py` records selected `$imagegen` outputs, creates the canonical base reference, stores base style analysis, and keeps source provenance/hashes out of manual editing. It reads the run chroma key from `companion_request.json` or `manifest.style.chromaKey` for base-style checks. For production base recording, pass `--strict-base-style` so non-flat chroma keys, smooth gradients, glossy shading, and over-detailed palette ramps fail before row generation. If the base is already finished transparent HatchPet/Codex sprite art supplied by the user or an artist, record it with `--source-provenance user-provided-integrated-row-art` or `--source-provenance artist-provided-integrated-row-art`; strict style still blocks real background/foreground failures, while palette-complexity warnings remain visible for visual review instead of blocking trusted integrated art by themselves.
 - `assemble_companion_atlas.py` extracts and cleans row strips into an atlas. It reads the chroma key from the run manifest/request by default, like HatchPet, so generated green/magenta backgrounds are temporary row-generation inputs and the final atlas/frames are transparent.
 - `create_state_readability_sheet.py` creates 64, 96, and 128 px previews for state readability.
 - `analyze_companion_quality.py` flags near-duplicate frames, low motion, body jitter, large foreground area jumps, same-row and cross-state body scale drift, and drifting semantic enhancers; it also creates semantic-anchor and motion QA sheets. Near-head cues can set `enhancer.componentPolicy: "overlap-ok"` only when manual visual review accepts intentional hood/head overlap or occlusion.
-- `create_anatomy_review.py` records the manual/agent frame-by-frame anatomy review for appendage count, identity props, and state cues that might be mistaken for anatomy.
+- `create_anatomy_review.py` records the manual/agent frame-by-frame anatomy review for body core, appendage count, placement/anchors, allowed motion/interactors, forbidden extra anatomy, identity props, and state cues that might be mistaken for anatomy.
 - `create_state_performance_review.py` records the manual/agent frame-by-frame state-performance review for intended state read, expression, cue motion, and wrong-state failures such as `thinking` reading as idle dots or `answering` reading as tired exhale.
 - `create_art_direction_review.py` records the manual/agent visual review that the result preserves the reference quality, identity, eye grammar, Codex pixel-art style, creative state readability, theme-native state cues, and native enhancer look.
-- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, rendering-style metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, anatomy review blockers, state-performance review blockers, art-direction blockers, and residual key-colored outline halos. For halo checks it uses the assembly report key first, then the run manifest/request chroma key, matching the assembler.
+- `validate_companion_manifest.py` verifies manifest shape, atlas dimensions, transparency, unused cells, cropped sprites, state clarity metadata, rendering-style metadata, assembly warnings, quality warnings, anatomy guard specificity, appendage affordance mismatches, anatomy review blockers, state-performance review blockers, eye-grammar review blockers, art-direction blockers, and residual key-colored outline halos. For halo checks it uses the assembly report key first, then the run manifest/request chroma key, matching the assembler. For high-visibility audition rows, thinking, working, and answering with visible or ambiguous appendages must not be approved without anatomy review, state-performance review, and eye-grammar review; strong state read cannot hide extra/drifting appendages, stale mascot acting, or eye-style drift.
 - `generate_react_component.py` emits a TypeScript React component that animates by per-frame manifest durations.
 
 The assembler keeps an outline improver enabled by default:
@@ -186,6 +187,22 @@ python scripts/record_companion_imagegen_result.py \
 python scripts/analyze_companion_quality.py \
   --manifest /path/to/run/manifest.json
 
+python scripts/create_anatomy_review.py \
+  --manifest /path/to/run/manifest.json \
+  --status pass \
+  --production-use \
+  --review-all-frames \
+  --expected-anatomy "Stable body core, exact appendage count, appendage placement/anchors, allowed motion/interactors, and forbidden extra anatomy from the reference audit." \
+  --expected-identity-props "Expected must-keep prop/accessory continuity." \
+  --check frameByFrameAnatomyReviewed=true \
+  --check appendageCountStable=true \
+  --check noExtraAppendages=true \
+  --check noDuplicatedAppendages=true \
+  --check identityPropsStable=true \
+  --check stateCuesNotMisreadAsAnatomy=true \
+  --check contactAndOverlapBelievable=true \
+  --notes "Frame-by-frame anatomy review passed."
+
 # For production, add one --expected-state-read entry for every state in the manifest.
 python scripts/create_state_performance_review.py \
   --manifest /path/to/run/manifest.json \
@@ -199,9 +216,27 @@ python scripts/create_state_performance_review.py \
   --check noWrongStateRead=true \
   --check expressionMatchesState=true \
   --check cueMotionMatchesState=true \
+  --check coherentStateStoryArc=true \
+  --check mascotActingVariesAcrossFrames=true \
   --check noTiredPantingUnlessStateRequiresIt=true \
   --check noOffVibeGenericCue=true \
   --notes "Frame-by-frame state-performance review passed."
+
+python scripts/create_eye_grammar_review.py \
+  --manifest /path/to/run/manifest.json \
+  --status pass \
+  --production-use \
+  --review-all-frames \
+  --expected-eye-grammar "Expected source eye count/shape, fill or pupil color, highlight/catchlight logic, spacing/placement, and blink style." \
+  --check frameByFrameEyeGrammarReviewed=true \
+  --check eyeCountStable=true \
+  --check eyeShapeStable=true \
+  --check eyeFillAndHighlightStable=true \
+  --check eyePlacementStable=true \
+  --check noWhiteScleraOrCrescentSwap=true \
+  --check noMismatchedOrSymbolEyes=true \
+  --check blinkStyleMatchesSource=true \
+  --notes "Every used frame was inspected against the canonical eye grammar."
 
 python scripts/validate_companion_manifest.py \
   --manifest /path/to/run/manifest.json \
@@ -209,7 +244,10 @@ python scripts/validate_companion_manifest.py \
   --strict \
   --require-state-clarity \
   --require-rendering-style \
-  --require-quality-report
+  --require-quality-report \
+  --require-anatomy-review \
+  --require-state-performance-review \
+  --require-eye-grammar-review
 ```
 
 Use `--profile audition` for one-row or partial-pack tests. Use the full chatbot profile only after the production pack includes the expected chatbot states:
@@ -220,13 +258,16 @@ python scripts/create_art_direction_review.py \
   --manifest /path/to/run/manifest.json \
   --status pass \
   --production-use \
+  --review-all-frames \
   --generation-method imagegen-integrated-row-art \
   --source-reference /path/to/original-reference.png \
   --check referenceQualityMaintained=true \
   --check identityPreserved=true \
   --check eyeGrammarPreserved=true \
+  --check eyeGrammarStableEveryFrame=true \
   --check stylePreserved=true \
   --check pixelArtStyle=true \
+  --check cleanupReadyFlatChroma=true \
   --check creativeStateReadability=true \
   --check themeNativeStateCues=true \
   --check nativeEnhancers=true \
@@ -235,6 +276,7 @@ python scripts/create_art_direction_review.py \
   --check noExtraAnatomy=true \
   --check believableOcclusion=true \
   --check noPrototypeFlattening=true \
+  --check identityCleanupAndAnatomyOverrideStateRead=true \
   --notes "Visual review passed."
 
 python scripts/validate_companion_manifest.py \
@@ -244,7 +286,9 @@ python scripts/validate_companion_manifest.py \
   --require-state-clarity \
   --require-rendering-style \
   --require-quality-report \
+  --require-anatomy-review \
   --require-state-performance-review \
+  --require-eye-grammar-review \
   --require-art-direction-review \
   --max-outline-halo-pixels 0
 ```

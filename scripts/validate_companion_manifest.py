@@ -35,10 +35,14 @@ CHATBOT_RECOMMENDED_FRAMES = {
 }
 
 CHATBOT_CORE_STATES = {"idle", "thinking", "working", "answering", "success", "error"}
+HIGH_VISIBILITY_EYE_REVIEW_STATES = {"thinking", "working", "answering"}
+HIGH_VISIBILITY_STATE_PERFORMANCE_REVIEW_STATES = {"thinking", "working", "answering"}
+HIGH_VISIBILITY_ANATOMY_REVIEW_STATES = {"thinking", "working", "answering"}
 MIN_USED_CELL_COVERAGE = 0.015
 STATE_CLARITY_PROFILES = {"pose-only", "semantic-enhancers"}
 RENDERING_STYLES = {"codex-pixel-art"}
 ANATOMY_CLASSES = {"hands", "paws", "fins-no-hands", "no-limbs", "ambiguous-limbs"}
+VISIBLE_OR_AMBIGUOUS_APPENDAGE_ANATOMY_CLASSES = {"hands", "paws", "fins-no-hands", "ambiguous-limbs"}
 VISUAL_LANGUAGE_REQUIRED_FIELDS = {"sourceVibe", "motifs", "forbiddenGenericCues"}
 NO_GRIP_ANATOMY_CLASSES = {"no-limbs"}
 ANATOMY_CONTRACT_RECOMMENDED_CLASSES = {"fins-no-hands", "ambiguous-limbs"}
@@ -209,14 +213,199 @@ REQUIRED_ANATOMY_REVIEW_CHECKS = {
     "stateCuesNotMisreadAsAnatomy",
     "contactAndOverlapBelievable",
 }
+ANATOMY_REVIEW_SPECIFICITY_TERMS = {
+    "body_core": {
+        "body",
+        "body core",
+        "core",
+        "face panel",
+        "head",
+        "main shape",
+        "silhouette",
+        "torso",
+    },
+    "appendage_count": {
+        "appendage",
+        "appendages",
+        "arm",
+        "arms",
+        "both",
+        "count",
+        "counted",
+        "fin",
+        "fins",
+        "hand",
+        "hands",
+        "legless",
+        "limb",
+        "limbs",
+        "no limbs",
+        "no-limbs",
+        "one",
+        "pair",
+        "paw",
+        "paws",
+        "sleeve",
+        "sleeves",
+        "tentacle",
+        "tentacles",
+        "two",
+        "wing",
+        "wings",
+    },
+    "placement_or_anchors": {
+        "anchor",
+        "anchored",
+        "attached",
+        "back",
+        "beside",
+        "bottom",
+        "front",
+        "inside",
+        "left",
+        "near",
+        "outside",
+        "placement",
+        "position",
+        "positions",
+        "right",
+        "side",
+        "sides",
+        "top",
+    },
+    "allowed_motion_or_interactors": {
+        "allow",
+        "allowed",
+        "brace",
+        "grip",
+        "interactor",
+        "interactors",
+        "lift",
+        "motion",
+        "move",
+        "movement",
+        "point",
+        "present",
+        "role",
+        "roles",
+        "settle",
+        "shift",
+        "tilt",
+        "tuck",
+        "wave",
+    },
+    "forbidden_extra_anatomy": {
+        "addition",
+        "additions",
+        "duplicate",
+        "duplicated",
+        "extra",
+        "forbid",
+        "forbidden",
+        "invent",
+        "invented",
+        "new",
+        "no",
+        "without",
+    },
+}
 REQUIRED_STATE_PERFORMANCE_REVIEW_CHECKS = {
     "frameByFrameStateReadReviewed",
     "intendedStateReadable",
     "noWrongStateRead",
     "expressionMatchesState",
     "cueMotionMatchesState",
+    "coherentStateStoryArc",
+    "mascotActingVariesAcrossFrames",
     "noTiredPantingUnlessStateRequiresIt",
     "noOffVibeGenericCue",
+}
+REQUIRED_EYE_GRAMMAR_REVIEW_CHECKS = {
+    "frameByFrameEyeGrammarReviewed",
+    "eyeCountStable",
+    "eyeShapeStable",
+    "eyeFillAndHighlightStable",
+    "eyePlacementStable",
+    "noWhiteScleraOrCrescentSwap",
+    "noMismatchedOrSymbolEyes",
+    "blinkStyleMatchesSource",
+}
+EYE_GRAMMAR_SPECIFICITY_TERMS = {
+    "count_shape": {
+        "one",
+        "two",
+        "both",
+        "pair",
+        "single",
+        "count",
+        "shape",
+        "oval",
+        "round",
+        "circle",
+        "circular",
+        "dot",
+        "dots",
+        "line",
+        "lines",
+        "slit",
+        "slits",
+        "screen",
+        "screens",
+        "square",
+        "squares",
+    },
+    "fill_or_pupil": {
+        "black",
+        "dark",
+        "white",
+        "colored",
+        "colour",
+        "color",
+        "fill",
+        "filled",
+        "pupil",
+        "pupils",
+        "iris",
+        "irises",
+        "outline",
+        "outlined",
+    },
+    "highlight": {
+        "catchlight",
+        "catchlights",
+        "highlight",
+        "highlights",
+        "shine",
+        "shines",
+        "glint",
+        "glints",
+    },
+    "spacing_or_placement": {
+        "anchor",
+        "anchored",
+        "aligned",
+        "alignment",
+        "box",
+        "boxes",
+        "placement",
+        "position",
+        "positions",
+        "spacing",
+        "same place",
+        "same positions",
+    },
+    "blink": {
+        "blink",
+        "blinks",
+        "closed",
+        "closure",
+        "curve",
+        "curves",
+        "eyelid",
+        "eyelids",
+        "line",
+        "lines",
+    },
 }
 DISALLOWED_GENERATION_METHOD_TERMS = {
     "compositor",
@@ -374,6 +563,17 @@ def load_art_direction_review(manifest_path: Path) -> dict[str, Any] | None:
     return report if isinstance(report, dict) else None
 
 
+def load_imagegen_jobs(manifest_path: Path) -> dict[str, Any] | None:
+    jobs_path = manifest_path.parent / "imagegen-jobs.json"
+    if not jobs_path.exists():
+        return None
+    try:
+        report = json.loads(jobs_path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    return report if isinstance(report, dict) else None
+
+
 def load_anatomy_review(manifest_path: Path) -> dict[str, Any] | None:
     report_path = manifest_path.parent / "qa" / "anatomy-review.json"
     if not report_path.exists():
@@ -396,9 +596,21 @@ def load_state_performance_review(manifest_path: Path) -> dict[str, Any] | None:
     return report if isinstance(report, dict) else None
 
 
+def load_eye_grammar_review(manifest_path: Path) -> dict[str, Any] | None:
+    report_path = manifest_path.parent / "qa" / "eye-grammar-review.json"
+    if not report_path.exists():
+        return None
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    return report if isinstance(report, dict) else None
+
+
 def validate_art_direction_review(
     manifest_path: Path,
     review: dict[str, Any],
+    states: dict[str, Any],
     errors: list[str],
     warnings: list[str],
     qa: dict[str, Any],
@@ -408,12 +620,15 @@ def validate_art_direction_review(
     source_reference = review.get("sourceReference")
     production_use = review.get("productionUse")
     blockers = review.get("blockers")
+    states_reviewed = review.get("statesReviewed")
+    reviewed_frames = review.get("reviewedFrames")
 
     qa["artDirectionReview"] = {
         "status": status,
         "generationMethod": method,
         "sourceReference": source_reference,
         "productionUse": production_use,
+        "statesReviewed": states_reviewed if isinstance(states_reviewed, list) else [],
         "blockers": blockers if isinstance(blockers, list) else [],
     }
 
@@ -455,8 +670,10 @@ def validate_art_direction_review(
         "referenceQualityMaintained",
         "identityPreserved",
         "eyeGrammarPreserved",
+        "eyeGrammarStableEveryFrame",
         "stylePreserved",
         "pixelArtStyle",
+        "cleanupReadyFlatChroma",
         "creativeStateReadability",
         "themeNativeStateCues",
         "nativeEnhancers",
@@ -465,6 +682,7 @@ def validate_art_direction_review(
         "noExtraAnatomy",
         "believableOcclusion",
         "noPrototypeFlattening",
+        "identityCleanupAndAnatomyOverrideStateRead",
     }
     if not isinstance(checks, dict):
         errors.append("qa/art-direction-review.json checks must be an object")
@@ -478,9 +696,154 @@ def validate_art_direction_review(
         if checks.get(key) is not True:
             errors.append(f"qa/art-direction-review.json checks.{key} must be true")
 
+    required_states = {
+        name
+        for name, state in states.items()
+        if isinstance(name, str) and isinstance(state, dict) and isinstance(state.get("frames"), int)
+    }
+    reviewed_state_names: set[str] = set()
+    if not isinstance(states_reviewed, list) or not states_reviewed:
+        errors.append("qa/art-direction-review.json statesReviewed must be a non-empty array")
+    else:
+        for index, entry in enumerate(states_reviewed):
+            if not isinstance(entry, str) or not entry.strip():
+                errors.append(f"qa/art-direction-review.json statesReviewed[{index}] must be a non-empty string")
+            else:
+                reviewed_state_names.add(entry)
+        missing_states = sorted(required_states - reviewed_state_names)
+        for state_name in missing_states:
+            errors.append(f"qa/art-direction-review.json statesReviewed is missing state {state_name}")
+
+    if not isinstance(reviewed_frames, dict):
+        errors.append("qa/art-direction-review.json reviewedFrames must be an object keyed by state")
+    else:
+        for state_name in sorted(required_states):
+            state = states[state_name]
+            frame_count = int(state["frames"])
+            expected_frames = set(range(1, frame_count + 1))
+            raw_frames = reviewed_frames.get(state_name)
+            if not isinstance(raw_frames, list) or not raw_frames:
+                errors.append(f"qa/art-direction-review.json reviewedFrames.{state_name} must be a non-empty array")
+                continue
+            actual_frames: set[int] = set()
+            for index, entry in enumerate(raw_frames):
+                if not isinstance(entry, int):
+                    errors.append(
+                        f"qa/art-direction-review.json reviewedFrames.{state_name}[{index}] must be an integer frame number"
+                    )
+                    continue
+                actual_frames.add(entry)
+            missing = sorted(expected_frames - actual_frames)
+            if missing:
+                errors.append(
+                    f"qa/art-direction-review.json reviewedFrames.{state_name} must include every used frame 1..{frame_count}; "
+                    f"missing: {', '.join(str(frame) for frame in missing)}"
+                )
+            invalid = sorted(frame for frame in actual_frames if frame < 1 or frame > frame_count)
+            if invalid:
+                errors.append(
+                    f"qa/art-direction-review.json reviewedFrames.{state_name} contains frames outside 1..{frame_count}: "
+                    + ", ".join(str(frame) for frame in invalid)
+                )
+
     notes = review.get("notes")
     if not isinstance(notes, str) or not notes.strip():
         warnings.append("qa/art-direction-review.json notes should describe why the mascot passes visually")
+
+
+def validate_imagegen_job_source_style(
+    manifest_path: Path,
+    errors: list[str],
+    warnings: list[str],
+    qa: dict[str, Any],
+    profile: str = "generic",
+) -> None:
+    jobs_report = load_imagegen_jobs(manifest_path)
+    if jobs_report is None:
+        return
+
+    jobs = jobs_report.get("jobs")
+    if not isinstance(jobs, list):
+        warnings.append("imagegen-jobs.json jobs must be an array when present")
+        return
+
+    base_style_failures: list[dict[str, Any]] = []
+    base_style_missing_evidence: list[dict[str, Any]] = []
+    row_style_failures: list[dict[str, Any]] = []
+    row_style_missing_evidence: list[dict[str, Any]] = []
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
+        if job.get("kind") == "base-companion" and job.get("status") == "complete":
+            job_id = str(job.get("id", "<unknown>"))
+            require_source_style_evidence = profile in {"audition", "chatbot"}
+            missing_evidence: list[str] = []
+            if require_source_style_evidence and not isinstance(job.get("base_style_analysis"), dict):
+                missing_evidence.append("base_style_analysis")
+            raw_codes = job.get("base_style_strict_blocking_warning_codes")
+            if require_source_style_evidence and raw_codes is None:
+                missing_evidence.append("base_style_strict_blocking_warning_codes")
+            if missing_evidence:
+                base_style_missing_evidence.append({"job": job_id, "missing": missing_evidence})
+                errors.append(
+                    f"imagegen job {job_id} is missing {', '.join(missing_evidence)}; "
+                    "re-record the selected canonical base with --strict-base-style"
+                )
+            if raw_codes is None:
+                continue
+            if not isinstance(raw_codes, list):
+                errors.append(
+                    f"imagegen job {job.get('id', '<unknown>')} base_style_strict_blocking_warning_codes must be an array"
+                )
+                continue
+            codes = [str(code) for code in raw_codes if str(code)]
+            if not codes:
+                continue
+            base_style_failures.append({"job": job_id, "codes": codes})
+            errors.append(f"imagegen job {job_id} base source style failed: {', '.join(codes)}")
+            continue
+        if job.get("kind") != "row-strip" or job.get("status") != "complete":
+            continue
+        job_id = str(job.get("id", "<unknown>"))
+        source_provenance = str(job.get("source_provenance", "") or job.get("sourceProvenance", ""))
+        trusted_external_art = source_provenance in {
+            "user-provided-integrated-row-art",
+            "artist-provided-integrated-row-art",
+        }
+        require_source_style_evidence = profile in {"audition", "chatbot"} and not trusted_external_art
+        missing_evidence: list[str] = []
+        if require_source_style_evidence and not isinstance(job.get("row_source_style_analysis"), dict):
+            missing_evidence.append("row_source_style_analysis")
+        raw_codes = job.get("row_source_style_strict_blocking_warning_codes")
+        if require_source_style_evidence and raw_codes is None:
+            missing_evidence.append("row_source_style_strict_blocking_warning_codes")
+        if missing_evidence:
+            row_style_missing_evidence.append({"job": job_id, "missing": missing_evidence})
+            errors.append(
+                f"imagegen job {job_id} is missing {', '.join(missing_evidence)}; "
+                "re-record the selected generated source with --strict-row-style"
+            )
+        if raw_codes is None:
+            continue
+        if not isinstance(raw_codes, list):
+            errors.append(
+                f"imagegen job {job.get('id', '<unknown>')} row_source_style_strict_blocking_warning_codes must be an array"
+            )
+            continue
+        codes = [str(code) for code in raw_codes if str(code)]
+        if not codes:
+            continue
+        row_style_failures.append({"job": job_id, "codes": codes})
+        errors.append(f"imagegen job {job_id} row source style failed: {', '.join(codes)}")
+
+    if base_style_missing_evidence:
+        qa["imagegenBaseSourceStyleMissingEvidence"] = base_style_missing_evidence
+    if base_style_failures:
+        qa["imagegenBaseSourceStyleFailures"] = base_style_failures
+    if row_style_missing_evidence:
+        qa["imagegenRowSourceStyleMissingEvidence"] = row_style_missing_evidence
+    if row_style_failures:
+        qa["imagegenRowSourceStyleFailures"] = row_style_failures
 
 
 def validate_anatomy_review(
@@ -520,6 +883,15 @@ def validate_anatomy_review(
         value = review.get(key)
         if not isinstance(value, str) or not value.strip():
             errors.append(f"qa/anatomy-review.json {key} must be a non-empty string")
+
+    expected_anatomy = review.get("expectedAnatomy")
+    if isinstance(expected_anatomy, str) and expected_anatomy.strip():
+        missing_anatomy_details = missing_anatomy_review_specificity(expected_anatomy)
+        if missing_anatomy_details:
+            errors.append(
+                "qa/anatomy-review.json expectedAnatomy must describe "
+                + join_with_final_and(missing_anatomy_details)
+            )
 
     if not isinstance(checks, dict):
         errors.append("qa/anatomy-review.json checks must be an object")
@@ -691,6 +1063,116 @@ def validate_state_performance_review(
     notes = review.get("notes")
     if not isinstance(notes, str) or not notes.strip():
         warnings.append("qa/state-performance-review.json notes should describe the frame-by-frame state-read decision")
+
+
+def validate_eye_grammar_review(
+    review: dict[str, Any],
+    states: dict[str, Any],
+    errors: list[str],
+    warnings: list[str],
+    qa: dict[str, Any],
+) -> None:
+    status = review.get("status")
+    production_use = review.get("productionUse")
+    blockers = review.get("blockers")
+    checks = review.get("checks")
+    states_reviewed = review.get("statesReviewed")
+    reviewed_frames = review.get("reviewedFrames")
+
+    qa["eyeGrammarReview"] = {
+        "status": status,
+        "productionUse": production_use,
+        "statesReviewed": states_reviewed if isinstance(states_reviewed, list) else [],
+        "blockers": blockers if isinstance(blockers, list) else [],
+    }
+
+    if status != "pass":
+        errors.append("qa/eye-grammar-review.json status must be 'pass' for production validation")
+
+    if production_use is not True:
+        errors.append("qa/eye-grammar-review.json productionUse must be true for production validation")
+
+    if isinstance(blockers, list) and blockers:
+        for blocker in blockers:
+            errors.append(f"eye grammar review blocker: {blocker}")
+    elif blockers is not None and not isinstance(blockers, list):
+        errors.append("qa/eye-grammar-review.json blockers must be an array")
+
+    expected_eye_grammar = review.get("expectedEyeGrammar")
+    if not isinstance(expected_eye_grammar, str) or not expected_eye_grammar.strip():
+        errors.append("qa/eye-grammar-review.json expectedEyeGrammar must be a non-empty string")
+    else:
+        missing_eye_details = missing_eye_grammar_specificity(expected_eye_grammar)
+        if missing_eye_details:
+            errors.append(
+                "qa/eye-grammar-review.json expectedEyeGrammar must describe eye count/shape, fill or pupil color, "
+                "highlight/catchlight logic, spacing/placement, and blink style; missing: "
+                + ", ".join(missing_eye_details)
+            )
+
+    if not isinstance(checks, dict):
+        errors.append("qa/eye-grammar-review.json checks must be an object")
+    else:
+        missing_checks = sorted(REQUIRED_EYE_GRAMMAR_REVIEW_CHECKS - set(checks))
+        for key in missing_checks:
+            errors.append(f"qa/eye-grammar-review.json checks.{key} is required")
+        for key in sorted(REQUIRED_EYE_GRAMMAR_REVIEW_CHECKS & set(checks)):
+            if checks.get(key) is not True:
+                errors.append(f"qa/eye-grammar-review.json checks.{key} must be true")
+
+    required_states = {
+        name
+        for name, state in states.items()
+        if isinstance(name, str) and isinstance(state, dict) and isinstance(state.get("frames"), int)
+    }
+    reviewed_state_names: set[str] = set()
+    if not isinstance(states_reviewed, list) or not states_reviewed:
+        errors.append("qa/eye-grammar-review.json statesReviewed must be a non-empty array")
+    else:
+        for index, entry in enumerate(states_reviewed):
+            if not isinstance(entry, str) or not entry.strip():
+                errors.append(f"qa/eye-grammar-review.json statesReviewed[{index}] must be a non-empty string")
+            else:
+                reviewed_state_names.add(entry)
+        missing_states = sorted(required_states - reviewed_state_names)
+        for state_name in missing_states:
+            errors.append(f"qa/eye-grammar-review.json statesReviewed is missing state {state_name}")
+
+    if not isinstance(reviewed_frames, dict):
+        errors.append("qa/eye-grammar-review.json reviewedFrames must be an object keyed by state")
+    else:
+        for state_name in sorted(required_states):
+            state = states[state_name]
+            frame_count = int(state["frames"])
+            expected_frames = set(range(1, frame_count + 1))
+            raw_frames = reviewed_frames.get(state_name)
+            if not isinstance(raw_frames, list) or not raw_frames:
+                errors.append(f"qa/eye-grammar-review.json reviewedFrames.{state_name} must be a non-empty array")
+                continue
+            actual_frames: set[int] = set()
+            for index, entry in enumerate(raw_frames):
+                if not isinstance(entry, int):
+                    errors.append(
+                        f"qa/eye-grammar-review.json reviewedFrames.{state_name}[{index}] must be an integer frame number"
+                    )
+                    continue
+                actual_frames.add(entry)
+            missing = sorted(expected_frames - actual_frames)
+            if missing:
+                errors.append(
+                    f"qa/eye-grammar-review.json reviewedFrames.{state_name} must include every used frame 1..{frame_count}; "
+                    f"missing: {', '.join(str(frame) for frame in missing)}"
+                )
+            invalid = sorted(frame for frame in actual_frames if frame < 1 or frame > frame_count)
+            if invalid:
+                errors.append(
+                    f"qa/eye-grammar-review.json reviewedFrames.{state_name} contains frames outside 1..{frame_count}: "
+                    + ", ".join(str(frame) for frame in invalid)
+                )
+
+    notes = review.get("notes")
+    if not isinstance(notes, str) or not notes.strip():
+        warnings.append("qa/eye-grammar-review.json notes should describe the frame-by-frame eye-grammar decision")
 
 
 def inspect_atlas(
@@ -877,6 +1359,57 @@ def has_unnegated_term(value: str, terms: set[str]) -> bool:
 
 def normalize_label(value: str) -> str:
     return " ".join(value.lower().replace("_", " ").replace("-", " ").split())
+
+
+def text_has_any_term(text: str, terms: set[str]) -> bool:
+    normalized = normalize_label(text)
+    tokens = set(re.findall(r"[a-z0-9]+", normalized))
+    for term in terms:
+        term_normalized = normalize_label(term)
+        if " " in term_normalized:
+            if term_normalized in normalized:
+                return True
+        elif term_normalized in tokens:
+                return True
+    return False
+
+
+def join_with_final_and(values: list[str]) -> str:
+    if len(values) <= 1:
+        return "".join(values)
+    if len(values) == 2:
+        return " and ".join(values)
+    return ", ".join(values[:-1]) + ", and " + values[-1]
+
+
+def missing_eye_grammar_specificity(value: str) -> list[str]:
+    labels = {
+        "count_shape": "eye count/shape",
+        "fill_or_pupil": "fill or pupil color",
+        "highlight": "highlight/catchlight logic",
+        "spacing_or_placement": "spacing/placement",
+        "blink": "blink style",
+    }
+    return [
+        labels[key]
+        for key, terms in EYE_GRAMMAR_SPECIFICITY_TERMS.items()
+        if not text_has_any_term(value, terms)
+    ]
+
+
+def missing_anatomy_review_specificity(value: str) -> list[str]:
+    labels = {
+        "body_core": "body core",
+        "appendage_count": "appendage count",
+        "placement_or_anchors": "placement/anchors",
+        "allowed_motion_or_interactors": "allowed motion/interactors",
+        "forbidden_extra_anatomy": "forbidden extra anatomy",
+    }
+    return [
+        labels[key]
+        for key, terms in ANATOMY_REVIEW_SPECIFICITY_TERMS.items()
+        if not text_has_any_term(value, terms)
+    ]
 
 
 def canonical_affordance_group(value: str) -> str | None:
@@ -1425,6 +1958,7 @@ def validate_manifest(
     require_art_direction_review: bool = False,
     require_anatomy_review: bool = False,
     require_state_performance_review: bool = False,
+    require_eye_grammar_review: bool = False,
     key_color: str | None = None,
     spill_threshold: int | None = None,
     max_outline_halo_pixels: int = 0,
@@ -1467,22 +2001,63 @@ def validate_manifest(
         for warning in quality_report.get("warnings", []):
             warnings.append(f"quality report warning: {warning}")
 
+    states_for_review = data.get("states", {})
+    if not isinstance(states_for_review, dict):
+        states_for_review = {}
+
     art_direction_review = load_art_direction_review(manifest_path)
     if art_direction_review is None:
         if require_art_direction_review:
             warnings.append("qa/art-direction-review.json is missing or unreadable")
     else:
-        validate_art_direction_review(manifest_path, art_direction_review, errors, warnings, qa)
+        validate_art_direction_review(manifest_path, art_direction_review, states_for_review, errors, warnings, qa)
+
+    validate_imagegen_job_source_style(manifest_path, errors, warnings, qa, profile=profile)
 
     anatomy_review = load_anatomy_review(manifest_path)
     if anatomy_review is None:
         if require_anatomy_review:
             warnings.append("qa/anatomy-review.json is missing or unreadable")
+        style_for_anatomy_review = data.get("style")
+        anatomy_class_for_review = (
+            style_for_anatomy_review.get("anatomyClass")
+            if isinstance(style_for_anatomy_review, dict)
+            else None
+        )
+        if (
+            profile in {"audition", "chatbot"}
+            and anatomy_class_for_review in VISIBLE_OR_AMBIGUOUS_APPENDAGE_ANATOMY_CLASSES
+        ):
+            high_visibility_states = sorted(HIGH_VISIBILITY_ANATOMY_REVIEW_STATES & set(states_for_review))
+            for state_name in high_visibility_states:
+                warnings.append(
+                    f"high-visibility state {state_name} is missing qa/anatomy-review.json; "
+                    "run frame-by-frame anatomy review so good state read cannot hide extra or drifting appendages"
+                )
 
     state_performance_review = load_state_performance_review(manifest_path)
     if state_performance_review is None:
         if require_state_performance_review:
             warnings.append("qa/state-performance-review.json is missing or unreadable")
+        if profile in {"audition", "chatbot"}:
+            high_visibility_states = sorted(HIGH_VISIBILITY_STATE_PERFORMANCE_REVIEW_STATES & set(states_for_review))
+            for state_name in high_visibility_states:
+                warnings.append(
+                    f"high-visibility state {state_name} is missing qa/state-performance-review.json; "
+                    "run frame-by-frame state-performance review so strong cue motion cannot hide stale mascot acting"
+                )
+
+    eye_grammar_review = load_eye_grammar_review(manifest_path)
+    if eye_grammar_review is None:
+        if require_eye_grammar_review:
+            warnings.append("qa/eye-grammar-review.json is missing or unreadable")
+        if profile in {"audition", "chatbot"}:
+            high_visibility_states = sorted(HIGH_VISIBILITY_EYE_REVIEW_STATES & set(states_for_review))
+            for state_name in high_visibility_states:
+                warnings.append(
+                    f"high-visibility state {state_name} is missing qa/eye-grammar-review.json; "
+                    "run frame-by-frame eye review so strong state read cannot hide eye-grammar drift"
+                )
 
     key_color = resolve_key_color(data, manifest_path, key_color, assembly_report)
     if spill_threshold is None and assembly_report:
@@ -1535,6 +2110,8 @@ def validate_manifest(
         validate_anatomy_review(anatomy_review, states, errors, warnings, qa)
     if state_performance_review is not None:
         validate_state_performance_review(state_performance_review, states, errors, warnings, qa)
+    if eye_grammar_review is not None:
+        validate_eye_grammar_review(eye_grammar_review, states, errors, warnings, qa)
 
     if profile == "chatbot":
         missing_core = sorted(CHATBOT_CORE_STATES - set(states))
@@ -1687,6 +2264,11 @@ def main() -> int:
         action="store_true",
         help="Require qa/state-performance-review.json so production validation includes frame-by-frame state-read acceptance",
     )
+    parser.add_argument(
+        "--require-eye-grammar-review",
+        action="store_true",
+        help="Require qa/eye-grammar-review.json so production validation includes frame-by-frame eye-identity acceptance",
+    )
     parser.add_argument("--json-out", help="Optional path to write validation JSON")
     args = parser.parse_args()
 
@@ -1701,6 +2283,7 @@ def main() -> int:
         require_art_direction_review=args.require_art_direction_review,
         require_anatomy_review=args.require_anatomy_review,
         require_state_performance_review=args.require_state_performance_review,
+        require_eye_grammar_review=args.require_eye_grammar_review,
         key_color=args.key_color,
         spill_threshold=args.spill_threshold,
         max_outline_halo_pixels=args.max_outline_halo_pixels,
@@ -1718,6 +2301,7 @@ def main() -> int:
         "requireArtDirectionReview": args.require_art_direction_review,
         "requireAnatomyReview": args.require_anatomy_review,
         "requireStatePerformanceReview": args.require_state_performance_review,
+        "requireEyeGrammarReview": args.require_eye_grammar_review,
         "errors": errors,
         "warnings": warnings,
         "qa": qa,

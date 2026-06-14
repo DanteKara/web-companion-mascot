@@ -18,7 +18,14 @@ USER_ART_PROVENANCE = {
     "user-provided-integrated-row-art",
     "artist-provided-integrated-row-art",
 }
+IMAGEGEN_CLI_PROVENANCE = "imagegen-cli-fallback"
+BUILT_IN_CHROMA_CLEANUP_PROVENANCE = "built-in-imagegen-chroma-cleanup"
 PALETTE_COMPLEXITY_WARNING = "smooth_or_overdetailed_foreground_palette"
+ROW_SOURCE_BLOCKING_WARNING_CODES = {
+    "fake_checkerboard_transparency_background",
+    "non_uniform_chroma_key_background",
+    "no_foreground_sprite_detected",
+}
 
 
 def load_jobs(path: Path) -> dict[str, Any]:
@@ -146,6 +153,12 @@ def analyze_base_style(path: Path, chroma_key_rgb: tuple[int, int, int]) -> dict
         close_key_count = sum(1 for rgb in border_rgbs if close_to_rgb(rgb, chroma_key_rgb, 3))
         transparent_border_count = sum(1 for alpha in border_alphas if alpha == 0)
         transparent_border_ratio = transparent_border_count / border_count
+        light_gray_border_count = sum(
+            1
+            for red, green, blue in border_rgbs
+            if 220 <= min(red, green, blue) <= 255 and max(red, green, blue) - min(red, green, blue) <= 6
+        )
+        light_gray_border_ratio = light_gray_border_count / border_count
 
         background_like_rgbs: list[tuple[int, int, int]] = []
         foreground_rgbs: list[tuple[int, int, int]] = []
@@ -175,6 +188,21 @@ def analyze_base_style(path: Path, chroma_key_rgb: tuple[int, int, int]) -> dict
     background_like_close_ratio = background_like_close_count / background_like_count
     transparent_background = transparent_border_ratio >= 0.985 and transparent_pixels > 0
 
+    if not transparent_background and light_gray_border_ratio >= 0.8 and close_key_ratio < 0.2:
+        add_style_warning(
+            warnings,
+            code="fake_checkerboard_transparency_background",
+            message=(
+                "Source sprite appears to use fake checkerboard or light-gray transparency pixels; "
+                "reject fake transparency backgrounds and require real alpha or the run chroma key."
+            ),
+            details={
+                "lightGrayBorderRatio": round(light_gray_border_ratio, 4),
+                "closeKeyRatio": round(close_key_ratio, 4),
+                "transparentBorderRatio": round(transparent_border_ratio, 4),
+            },
+        )
+
     if not transparent_background and (
         close_key_ratio < 0.985
         or exact_key_ratio < 0.975
@@ -185,8 +213,8 @@ def analyze_base_style(path: Path, chroma_key_rgb: tuple[int, int, int]) -> dict
             warnings,
             code="non_uniform_chroma_key_background",
             message=(
-                "Canonical base background is not a perfectly flat chroma key; reject "
-                "vignettes, lighting falloff, texture, shadows, or background glow before row generation."
+                "Source sprite background is not a perfectly flat chroma key; reject "
+                "vignettes, lighting falloff, texture, shadows, or background glow before accepting the source."
             ),
             details={
                 "exactKeyRatio": round(exact_key_ratio, 4),
@@ -203,7 +231,7 @@ def analyze_base_style(path: Path, chroma_key_rgb: tuple[int, int, int]) -> dict
         add_style_warning(
             warnings,
             code="no_foreground_sprite_detected",
-            message="Canonical base analysis did not find a non-chroma-key foreground sprite.",
+            message="Source sprite analysis did not find a non-chroma-key foreground sprite.",
             details={"foregroundPixels": 0},
         )
     elif len(foreground_unique) > 64 or len(foreground_quantized) > 48:
@@ -211,9 +239,9 @@ def analyze_base_style(path: Path, chroma_key_rgb: tuple[int, int, int]) -> dict
             warnings,
             code=PALETTE_COMPLEXITY_WARNING,
             message=(
-                "Canonical base foreground has too many color steps for native pixel art; "
+                "Source sprite foreground has too many color steps for native pixel art; "
                 "reject smooth gradients, glossy app-icon shading, airbrushed highlights, "
-                "or over-detailed antialiasing before row generation."
+                "or over-detailed antialiasing before accepting the source."
             ),
             details={
                 "foregroundPixels": len(foreground_rgbs),
@@ -238,6 +266,7 @@ def analyze_base_style(path: Path, chroma_key_rgb: tuple[int, int, int]) -> dict
             "dominantBorderRgb": list(dominant_rgb),
             "dominantBorderRatio": round(dominant_ratio, 4),
             "transparentBorderRatio": round(transparent_border_ratio, 4),
+            "lightGrayBorderRatio": round(light_gray_border_ratio, 4),
             "transparentBackground": transparent_background,
             "transparentPixels": transparent_pixels,
         },
@@ -266,6 +295,15 @@ def blocking_base_style_warnings(
         warning
         for warning in warnings
         if warning.get("code") != PALETTE_COMPLEXITY_WARNING
+    ]
+
+
+def blocking_row_source_style_warnings(analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    warnings = [warning for warning in analysis.get("warnings", []) if isinstance(warning, dict)]
+    return [
+        warning
+        for warning in warnings
+        if warning.get("code") in ROW_SOURCE_BLOCKING_WARNING_CODES
     ]
 
 
@@ -302,12 +340,18 @@ def default_generated_images_root() -> Path:
     return codex_home / "generated_images"
 
 
+def is_builtin_imagegen_source(path: Path) -> bool:
+    generated_root = default_generated_images_root()
+    return is_relative_to(path, generated_root) and path.name.startswith("ig_")
+
+
 def validate_source_path(
     *,
     source: Path,
     run_dir: Path,
     requested_provenance: str,
     allow_synthetic_test_source: bool,
+    chroma_cleanup_source: Path | None = None,
 ) -> str:
     if allow_synthetic_test_source:
         return "synthetic-test"
@@ -318,14 +362,108 @@ def validate_source_path(
         )
     if requested_provenance in USER_ART_PROVENANCE:
         return requested_provenance
+    if requested_provenance == IMAGEGEN_CLI_PROVENANCE:
+        return requested_provenance
+    if requested_provenance == BUILT_IN_CHROMA_CLEANUP_PROVENANCE:
+        if chroma_cleanup_source is None:
+            raise SystemExit(
+                "built-in-imagegen-chroma-cleanup provenance requires --chroma-cleanup-source "
+                "pointing at the original $CODEX_HOME/generated_images/.../ig_*.png"
+            )
+        if not chroma_cleanup_source.is_file():
+            raise SystemExit(f"chroma cleanup original source not found: {chroma_cleanup_source}")
+        if not is_builtin_imagegen_source(chroma_cleanup_source):
+            generated_root = default_generated_images_root()
+            raise SystemExit(
+                "chroma cleanup original source does not look like a built-in $imagegen output; "
+                f"expected {generated_root}/.../ig_*.png"
+            )
+        if source.resolve() == chroma_cleanup_source.resolve():
+            raise SystemExit("chroma cleanup source must be separate from the cleaned output")
+        return BUILT_IN_CHROMA_CLEANUP_PROVENANCE
     generated_root = default_generated_images_root()
-    if not is_relative_to(source, generated_root) or not source.name.startswith("ig_"):
+    if not is_builtin_imagegen_source(source):
         raise SystemExit(
             "source image does not look like a built-in $imagegen output; expected "
             f"{generated_root}/.../ig_*.png. Do not ingest locally drawn, post-processed, "
             "or composited row strips as production visual job outputs."
         )
     return "built-in-imagegen"
+
+
+def cli_fallback_prompt_path_value(path: Path, run_dir: Path) -> str:
+    resolved = path.expanduser().resolve()
+    if is_relative_to(resolved, run_dir.resolve()):
+        return manifest_relative(resolved, run_dir)
+    return str(resolved)
+
+
+def validate_cli_fallback_metadata(
+    *,
+    source_provenance: str,
+    run_dir: Path,
+    approved: bool,
+    model: str | None,
+    background: str | None,
+    output_format: str | None,
+    prompt_file: Path | None,
+) -> dict[str, Any] | None:
+    provided = any([approved, model, background, output_format, prompt_file])
+    if source_provenance != IMAGEGEN_CLI_PROVENANCE:
+        if provided:
+            raise SystemExit(
+                "CLI fallback metadata flags require --source-provenance imagegen-cli-fallback"
+            )
+        return None
+
+    if not approved:
+        raise SystemExit(
+            "imagegen-cli-fallback provenance requires --cli-fallback-approved after explicit user confirmation"
+        )
+    if model != "gpt-image-1.5":
+        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-model gpt-image-1.5")
+    if background != "transparent":
+        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-background transparent")
+    if output_format != "png":
+        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-output-format png")
+    if prompt_file is None:
+        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-prompt-file")
+
+    resolved_prompt = prompt_file.expanduser().resolve()
+    if not resolved_prompt.is_file():
+        raise SystemExit(f"CLI fallback prompt file not found: {resolved_prompt}")
+
+    return {
+        "approved": True,
+        "model": model,
+        "background": background,
+        "outputFormat": output_format,
+        "promptFile": cli_fallback_prompt_path_value(resolved_prompt, run_dir),
+    }
+
+
+def chroma_cleanup_metadata(
+    *,
+    source_provenance: str,
+    original_source: Path | None,
+) -> dict[str, Any] | None:
+    if source_provenance != BUILT_IN_CHROMA_CLEANUP_PROVENANCE:
+        if original_source is not None:
+            raise SystemExit(
+                "--chroma-cleanup-source requires --source-provenance "
+                f"{BUILT_IN_CHROMA_CLEANUP_PROVENANCE}"
+            )
+        return None
+    if original_source is None:
+        raise SystemExit(
+            f"{BUILT_IN_CHROMA_CLEANUP_PROVENANCE} provenance requires --chroma-cleanup-source"
+        )
+    return {
+        "method": "$imagegen chroma-key helper",
+        "originalSourcePath": str(original_source.resolve()),
+        "originalSourceProvenance": "built-in-imagegen",
+        "originalSourceSha256": file_sha256(original_source),
+    }
 
 
 def validate_required_grounding(job: dict[str, Any], run_dir: Path) -> None:
@@ -412,14 +550,37 @@ def record_result(
     force: bool,
     allow_synthetic_test_source: bool,
     strict_base_style: bool = False,
+    strict_row_style: bool = False,
+    cli_fallback_approved: bool = False,
+    cli_fallback_model: str | None = None,
+    cli_fallback_background: str | None = None,
+    cli_fallback_output_format: str | None = None,
+    cli_fallback_prompt_file: Path | None = None,
+    chroma_cleanup_source: Path | None = None,
 ) -> dict[str, Any]:
     if not source.is_file():
         raise SystemExit(f"source image not found: {source}")
+    if chroma_cleanup_source is not None:
+        chroma_cleanup_source = chroma_cleanup_source.expanduser().resolve()
     source_provenance = validate_source_path(
         source=source,
         run_dir=run_dir,
         requested_provenance=source_provenance,
         allow_synthetic_test_source=allow_synthetic_test_source,
+        chroma_cleanup_source=chroma_cleanup_source,
+    )
+    cli_fallback_metadata = validate_cli_fallback_metadata(
+        source_provenance=source_provenance,
+        run_dir=run_dir,
+        approved=cli_fallback_approved,
+        model=cli_fallback_model,
+        background=cli_fallback_background,
+        output_format=cli_fallback_output_format,
+        prompt_file=cli_fallback_prompt_file,
+    )
+    chroma_cleanup = chroma_cleanup_metadata(
+        source_provenance=source_provenance,
+        original_source=chroma_cleanup_source,
     )
 
     manifest_path = run_dir / "imagegen-jobs.json"
@@ -453,6 +614,14 @@ def record_result(
             warning_codes = ", ".join(str(warning["code"]) for warning in blocking_warnings)
             raise SystemExit(f"base style analysis failed for canonical base: {warning_codes}")
 
+    row_source_style_analysis = None
+    if job.get("kind") == "row-strip":
+        row_source_style_analysis = analyze_base_style(source, read_chroma_key_rgb(run_dir))
+        blocking_warnings = blocking_row_source_style_warnings(row_source_style_analysis)
+        if strict_row_style and blocking_warnings:
+            warning_codes = ", ".join(str(warning["code"]) for warning in blocking_warnings)
+            raise SystemExit(f"row source style analysis failed for {job_id}: {warning_codes}")
+
     output.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, output)
     metadata = image_metadata(output)
@@ -468,6 +637,14 @@ def record_result(
         job.pop("synthetic_test_source", None)
     job["completed_at"] = datetime.now(timezone.utc).isoformat()
     job["metadata"] = metadata
+    if cli_fallback_metadata is not None:
+        job["cli_fallback"] = cli_fallback_metadata
+    else:
+        job.pop("cli_fallback", None)
+    if chroma_cleanup is not None:
+        job["chroma_cleanup"] = chroma_cleanup
+    else:
+        job.pop("chroma_cleanup", None)
     if base_style_analysis is not None:
         job["base_style_analysis"] = base_style_analysis
         job["base_style_strict_blocking_warning_codes"] = [
@@ -476,6 +653,12 @@ def record_result(
                 base_style_analysis,
                 source_provenance=source_provenance,
             )
+        ]
+    if row_source_style_analysis is not None:
+        job["row_source_style_analysis"] = row_source_style_analysis
+        job["row_source_style_strict_blocking_warning_codes"] = [
+            str(warning.get("code"))
+            for warning in blocking_row_source_style_warnings(row_source_style_analysis)
         ]
     for key in ["last_error", "secondary_fallback", "repair_reason", "queued_at"]:
         job.pop(key, None)
@@ -504,6 +687,17 @@ def record_result(
                 source_provenance=source_provenance,
             )
         ]
+    if cli_fallback_metadata is not None:
+        result["cli_fallback"] = cli_fallback_metadata
+    if chroma_cleanup is not None:
+        result["chroma_cleanup"] = chroma_cleanup
+        result["source_provenance"] = source_provenance
+    if row_source_style_analysis is not None:
+        result["row_source_style_analysis"] = row_source_style_analysis
+        result["row_source_style_strict_blocking_warning_codes"] = [
+            str(warning.get("code"))
+            for warning in blocking_row_source_style_warnings(row_source_style_analysis)
+        ]
     return result
 
 
@@ -514,15 +708,63 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source", required=True)
     parser.add_argument(
         "--source-provenance",
-        choices=["auto", "built-in-imagegen", "user-provided-integrated-row-art", "artist-provided-integrated-row-art"],
+        choices=[
+            "auto",
+            "built-in-imagegen",
+            BUILT_IN_CHROMA_CLEANUP_PROVENANCE,
+            IMAGEGEN_CLI_PROVENANCE,
+            "user-provided-integrated-row-art",
+            "artist-provided-integrated-row-art",
+        ],
         default="auto",
-        help="Use auto/built-in-imagegen for normal $imagegen outputs, or explicitly mark finished user/artist integrated row art.",
+        help=(
+            "Use auto/built-in-imagegen for normal built-in $imagegen outputs, "
+            "built-in-imagegen-chroma-cleanup for a local alpha PNG produced from a raw "
+            "$CODEX_HOME/generated_images/.../ig_*.png via the $imagegen chroma-key helper, "
+            "imagegen-cli-fallback for explicit approved $imagegen CLI fallback outputs, "
+            "or explicitly mark finished user/artist integrated row art."
+        ),
     )
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
         "--strict-base-style",
         action="store_true",
         help="Fail base recording when chroma-key or native pixel-art style analysis reports warnings.",
+    )
+    parser.add_argument(
+        "--strict-row-style",
+        action="store_true",
+        help="Fail row recording when source chroma-key cleanup analysis reports blocking warnings.",
+    )
+    parser.add_argument(
+        "--cli-fallback-approved",
+        action="store_true",
+        help="Required with --source-provenance imagegen-cli-fallback after explicit user approval.",
+    )
+    parser.add_argument(
+        "--cli-fallback-model",
+        help="Required with --source-provenance imagegen-cli-fallback; expected gpt-image-1.5.",
+    )
+    parser.add_argument(
+        "--cli-fallback-background",
+        help="Required with --source-provenance imagegen-cli-fallback; expected transparent.",
+    )
+    parser.add_argument(
+        "--cli-fallback-output-format",
+        help="Required with --source-provenance imagegen-cli-fallback; expected png.",
+    )
+    parser.add_argument(
+        "--cli-fallback-prompt-file",
+        type=Path,
+        help="Prompt file used for the approved $imagegen CLI fallback call.",
+    )
+    parser.add_argument(
+        "--chroma-cleanup-source",
+        type=Path,
+        help=(
+            "Original raw built-in $imagegen source used for a "
+            "built-in-imagegen-chroma-cleanup recording."
+        ),
     )
     parser.add_argument("--allow-synthetic-test-source", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -535,6 +777,13 @@ def main(argv: list[str] | None = None) -> int:
         force=args.force,
         allow_synthetic_test_source=args.allow_synthetic_test_source,
         strict_base_style=args.strict_base_style,
+        strict_row_style=args.strict_row_style,
+        cli_fallback_approved=args.cli_fallback_approved,
+        cli_fallback_model=args.cli_fallback_model,
+        cli_fallback_background=args.cli_fallback_background,
+        cli_fallback_output_format=args.cli_fallback_output_format,
+        cli_fallback_prompt_file=args.cli_fallback_prompt_file,
+        chroma_cleanup_source=args.chroma_cleanup_source,
     )
     print(json.dumps(result, indent=2))
     return 0

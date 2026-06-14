@@ -63,7 +63,10 @@ def write_anatomy_review(tmp_path: Path, review_extra: dict | None = None) -> No
     review = {
         "status": "pass",
         "productionUse": True,
-        "expectedAnatomy": "Two original hands/arms only; no third hand, sleeve, paw, fin, or mitten.",
+        "expectedAnatomy": (
+            "Stable body core; two original hands/arms anchored at left and right sides; "
+            "allowed side lift and small tilt only; no third hand, sleeve, paw, fin, or mitten."
+        ),
         "expectedIdentityProps": "Single staff remains one staff on the same side.",
         "statesReviewed": ["working"],
         "reviewedFrames": {"working": list(range(1, 13))},
@@ -91,6 +94,8 @@ def write_state_performance_review(tmp_path: Path, review_extra: dict | None = N
         "noWrongStateRead": True,
         "expressionMatchesState": True,
         "cueMotionMatchesState": True,
+        "coherentStateStoryArc": True,
+        "mascotActingVariesAcrossFrames": True,
         "noTiredPantingUnlessStateRequiresIt": True,
         "noOffVibeGenericCue": True,
     }
@@ -115,6 +120,43 @@ def write_state_performance_review(tmp_path: Path, review_extra: dict | None = N
             else:
                 review[key] = value
     (qa_dir / "state-performance-review.json").write_text(json.dumps(review), encoding="utf-8")
+
+
+def write_eye_grammar_review(tmp_path: Path, review_extra: dict | None = None) -> None:
+    qa_dir = tmp_path / "qa"
+    qa_dir.mkdir(exist_ok=True)
+    checks = {
+        "frameByFrameEyeGrammarReviewed": True,
+        "eyeCountStable": True,
+        "eyeShapeStable": True,
+        "eyeFillAndHighlightStable": True,
+        "eyePlacementStable": True,
+        "noWhiteScleraOrCrescentSwap": True,
+        "noMismatchedOrSymbolEyes": True,
+        "blinkStyleMatchesSource": True,
+    }
+    review = {
+        "status": "pass",
+        "productionUse": True,
+        "expectedEyeGrammar": (
+            "Two source-matched oval eyes with stable fill, tiny highlights, matched spacing, "
+            "and source-style blink lines only."
+        ),
+        "statesReviewed": ["working"],
+        "reviewedFrames": {"working": list(range(1, 13))},
+        "checks": checks,
+        "blockers": [],
+        "notes": "All used frames were inspected at enlarged size against the canonical base eye grammar.",
+    }
+    if review_extra:
+        for key, value in review_extra.items():
+            if key == "checks" and isinstance(value, dict):
+                updated_checks = dict(checks)
+                updated_checks.update(value)
+                review[key] = updated_checks
+            else:
+                review[key] = value
+    (qa_dir / "eye-grammar-review.json").write_text(json.dumps(review), encoding="utf-8")
 
 
 class ManifestValidatorTests(unittest.TestCase):
@@ -269,7 +311,9 @@ class ManifestValidatorTests(unittest.TestCase):
                 "referenceQualityMaintained": True,
                 "identityPreserved": True,
                 "eyeGrammarPreserved": True,
+                "eyeGrammarStableEveryFrame": True,
                 "stylePreserved": True,
+                "cleanupReadyFlatChroma": True,
                 "creativeStateReadability": True,
                 "nativeEnhancers": True,
                 "integratedEnhancers": True,
@@ -277,6 +321,7 @@ class ManifestValidatorTests(unittest.TestCase):
                 "noExtraAnatomy": True,
                 "believableOcclusion": True,
                 "noPrototypeFlattening": True,
+                "identityCleanupAndAnatomyOverrideStateRead": True,
             }
             (qa_dir / "art-direction-review.json").write_text(
                 json.dumps(
@@ -318,8 +363,10 @@ class ManifestValidatorTests(unittest.TestCase):
                 "referenceQualityMaintained": True,
                 "identityPreserved": True,
                 "eyeGrammarPreserved": True,
+                "eyeGrammarStableEveryFrame": True,
                 "stylePreserved": True,
                 "pixelArtStyle": True,
+                "cleanupReadyFlatChroma": True,
                 "creativeStateReadability": True,
                 "nativeEnhancers": True,
                 "integratedEnhancers": True,
@@ -327,6 +374,7 @@ class ManifestValidatorTests(unittest.TestCase):
                 "noExtraAnatomy": True,
                 "believableOcclusion": True,
                 "noPrototypeFlattening": True,
+                "identityCleanupAndAnatomyOverrideStateRead": True,
             }
             (qa_dir / "art-direction-review.json").write_text(
                 json.dumps(
@@ -367,8 +415,10 @@ class ManifestValidatorTests(unittest.TestCase):
             checks = {
                 "referenceQualityMaintained": True,
                 "identityPreserved": True,
+                "eyeGrammarStableEveryFrame": True,
                 "stylePreserved": True,
                 "pixelArtStyle": True,
+                "cleanupReadyFlatChroma": True,
                 "creativeStateReadability": True,
                 "themeNativeStateCues": True,
                 "nativeEnhancers": True,
@@ -377,6 +427,7 @@ class ManifestValidatorTests(unittest.TestCase):
                 "noExtraAnatomy": True,
                 "believableOcclusion": True,
                 "noPrototypeFlattening": True,
+                "identityCleanupAndAnatomyOverrideStateRead": True,
             }
             (qa_dir / "art-direction-review.json").write_text(
                 json.dumps(
@@ -400,6 +451,254 @@ class ManifestValidatorTests(unittest.TestCase):
             )
 
             self.assertTrue(any("checks.eyeGrammarPreserved is required" in error for error in errors))
+
+    def test_art_direction_review_must_cover_every_used_frame(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "no-limbs"})
+            source_reference = tmp_path / "source.png"
+            source_reference.write_bytes(b"not-really-an-image")
+            qa_dir = tmp_path / "qa"
+            qa_dir.mkdir()
+            checks = {
+                "referenceQualityMaintained": True,
+                "identityPreserved": True,
+                "eyeGrammarPreserved": True,
+                "eyeGrammarStableEveryFrame": True,
+                "stylePreserved": True,
+                "pixelArtStyle": True,
+                "cleanupReadyFlatChroma": True,
+                "creativeStateReadability": True,
+                "themeNativeStateCues": True,
+                "nativeEnhancers": True,
+                "integratedEnhancers": True,
+                "anatomyPreserved": True,
+                "noExtraAnatomy": True,
+                "believableOcclusion": True,
+                "noPrototypeFlattening": True,
+                "identityCleanupAndAnatomyOverrideStateRead": True,
+            }
+            (qa_dir / "art-direction-review.json").write_text(
+                json.dumps(
+                    {
+                        "status": "pass",
+                        "generationMethod": "imagegen-integrated-row-art",
+                        "sourceReference": str(source_reference),
+                        "productionUse": True,
+                        "statesReviewed": ["working"],
+                        "reviewedFrames": {"working": [1, 2, 3, 4, 5, 6]},
+                        "checks": checks,
+                        "blockers": [],
+                        "notes": "Visual review passed.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+                require_art_direction_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/art-direction-review.json reviewedFrames.working must include every used frame 1..12" in error for error in errors)
+            )
+
+    def test_completed_row_source_style_blockers_fail_validation(self) -> None:
+        enhancer = {
+            "kind": "body-surface-processing-glyph",
+            "attachment": "attached",
+            "description": "A pulsing processing glyph painted on the mascot body surface.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "no-limbs"})
+            (tmp_path / "imagegen-jobs.json").write_text(
+                json.dumps(
+                    {
+                        "jobs": [
+                            {
+                                "id": "thinking",
+                                "kind": "row-strip",
+                                "status": "complete",
+                                "row_source_style_strict_blocking_warning_codes": [
+                                    "non_uniform_chroma_key_background",
+                                ],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertTrue(
+                any("imagegen job thinking row source style failed: non_uniform_chroma_key_background" in error for error in errors)
+            )
+            self.assertEqual(
+                qa["imagegenRowSourceStyleFailures"],
+                [{"job": "thinking", "codes": ["non_uniform_chroma_key_background"]}],
+            )
+
+    def test_completed_generated_row_missing_source_style_evidence_fails_audition_validation(self) -> None:
+        enhancer = {
+            "kind": "thought-bubble",
+            "attachment": "near-head",
+            "description": "A compact thought puff painted into the row.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            (tmp_path / "imagegen-jobs.json").write_text(
+                json.dumps(
+                    {
+                        "jobs": [
+                            {
+                                "id": "thinking",
+                                "kind": "row-strip",
+                                "status": "complete",
+                                "source_provenance": "built-in-imagegen",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertTrue(
+                any("imagegen job thinking is missing row_source_style_analysis" in error for error in errors)
+            )
+            self.assertEqual(
+                qa["imagegenRowSourceStyleMissingEvidence"],
+                [{"job": "thinking", "missing": ["row_source_style_analysis", "row_source_style_strict_blocking_warning_codes"]}],
+            )
+
+    def test_completed_artist_row_can_skip_generated_source_style_evidence(self) -> None:
+        enhancer = {
+            "kind": "thought-bubble",
+            "attachment": "near-head",
+            "description": "A compact thought puff painted into the row.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            (tmp_path / "imagegen-jobs.json").write_text(
+                json.dumps(
+                    {
+                        "jobs": [
+                            {
+                                "id": "thinking",
+                                "kind": "row-strip",
+                                "status": "complete",
+                                "source_provenance": "artist-provided-integrated-row-art",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertFalse(any("missing row_source_style_analysis" in error for error in errors))
+            self.assertNotIn("imagegenRowSourceStyleMissingEvidence", qa)
+
+    def test_completed_base_source_style_blockers_fail_validation(self) -> None:
+        enhancer = {
+            "kind": "thought-bubble",
+            "attachment": "near-head",
+            "description": "A compact thought puff painted into the row.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            (tmp_path / "imagegen-jobs.json").write_text(
+                json.dumps(
+                    {
+                        "jobs": [
+                            {
+                                "id": "base",
+                                "kind": "base-companion",
+                                "status": "complete",
+                                "base_style_analysis": {"ok": False},
+                                "base_style_strict_blocking_warning_codes": [
+                                    "non_uniform_chroma_key_background",
+                                ],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertTrue(
+                any("imagegen job base base source style failed: non_uniform_chroma_key_background" in error for error in errors)
+            )
+            self.assertEqual(
+                qa["imagegenBaseSourceStyleFailures"],
+                [{"job": "base", "codes": ["non_uniform_chroma_key_background"]}],
+            )
+
+    def test_completed_base_missing_source_style_evidence_fails_audition_validation(self) -> None:
+        enhancer = {
+            "kind": "thought-bubble",
+            "attachment": "near-head",
+            "description": "A compact thought puff painted into the row.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            (tmp_path / "imagegen-jobs.json").write_text(
+                json.dumps(
+                    {
+                        "jobs": [
+                            {
+                                "id": "base",
+                                "kind": "base-companion",
+                                "status": "complete",
+                                "source_provenance": "built-in-imagegen",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertTrue(
+                any("imagegen job base is missing base_style_analysis" in error for error in errors)
+            )
+            self.assertEqual(
+                qa["imagegenBaseSourceStyleMissingEvidence"],
+                [{"job": "base", "missing": ["base_style_analysis", "base_style_strict_blocking_warning_codes"]}],
+            )
 
     def test_visual_language_is_required_when_requested(self) -> None:
         enhancer = {
@@ -1092,6 +1391,48 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(any("qa/anatomy-review.json is missing or unreadable" in warning for warning in warnings))
 
+    def test_audition_high_visibility_visible_appendage_state_warns_when_anatomy_review_is_missing(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head while existing hands make a small side gesture.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["states"]["thinking"] = data["states"].pop("working")
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertTrue(
+                any("high-visibility state thinking is missing qa/anatomy-review.json" in warning for warning in warnings)
+            )
+
+    def test_audition_high_visibility_no_limb_state_does_not_warn_for_missing_anatomy_review_by_default(self) -> None:
+        enhancer = {
+            "kind": "body-surface thought shimmer",
+            "attachment": "attached",
+            "description": "A small body-surface processing cue with no appendage acting.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "no-limbs"})
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["states"]["thinking"] = data["states"].pop("working")
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertFalse(
+                any("high-visibility state thinking is missing qa/anatomy-review.json" in warning for warning in warnings)
+            )
+
     def test_anatomy_review_requires_frame_by_frame_check(self) -> None:
         enhancer = {
             "kind": "hand-to-chin thought gesture",
@@ -1130,6 +1471,31 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(
                 any("reviewedFrames.working must include every used frame 1..12" in error for error in errors)
+            )
+
+    def test_anatomy_review_requires_specific_source_anatomy_details(self) -> None:
+        enhancer = {
+            "kind": "hand-to-chin thought gesture",
+            "attachment": "gesture",
+            "description": "The left hand touches the chin while a small thought cue appears near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_anatomy_review(tmp_path, {"expectedAnatomy": "Anatomy looks good."})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_anatomy_review=True,
+            )
+
+            self.assertTrue(
+                any(
+                    "qa/anatomy-review.json expectedAnatomy must describe body core, appendage count, placement/anchors, allowed motion/interactors, and forbidden extra anatomy"
+                    in error
+                    for error in errors
+                )
             )
 
     def test_anatomy_review_passes_when_all_state_frames_are_reviewed(self) -> None:
@@ -1190,6 +1556,69 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertTrue(
                 any("qa/state-performance-review.json checks.noWrongStateRead must be true" in error for error in errors)
+            )
+
+    def test_state_performance_review_requires_coherent_story_arc_check(self) -> None:
+        enhancer = {
+            "kind": "staff-tip work motes",
+            "attachment": "near-hand",
+            "description": "A small work target changes near the staff tip while the mascot focuses.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_state_performance_review(tmp_path, {"checks": {"coherentStateStoryArc": False}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_performance_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/state-performance-review.json checks.coherentStateStoryArc must be true" in error for error in errors)
+            )
+
+    def test_state_performance_review_requires_mascot_acting_variation_check(self) -> None:
+        enhancer = {
+            "kind": "staff-tip work motes",
+            "attachment": "near-hand",
+            "description": "A small work target changes near the staff tip while the mascot focuses.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_state_performance_review(tmp_path, {"checks": {"mascotActingVariesAcrossFrames": False}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_state_performance_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/state-performance-review.json checks.mascotActingVariesAcrossFrames must be true" in error for error in errors)
+            )
+
+    def test_audition_high_visibility_state_warns_when_state_performance_review_is_missing(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["states"]["thinking"] = data["states"].pop("working")
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertTrue(
+                any("high-visibility state thinking is missing qa/state-performance-review.json" in warning for warning in warnings)
             )
 
     def test_state_performance_review_requires_every_used_frame(self) -> None:
@@ -1253,6 +1682,171 @@ class ManifestValidatorTests(unittest.TestCase):
 
             self.assertFalse(any("qa/state-performance-review.json" in error for error in errors))
             self.assertEqual(qa["statePerformanceReview"]["status"], "pass")
+
+    def test_require_eye_grammar_review_warns_when_missing(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_eye_grammar_review=True,
+            )
+
+            self.assertTrue(any("qa/eye-grammar-review.json is missing or unreadable" in warning for warning in warnings))
+
+    def test_chatbot_high_visibility_state_warns_when_eye_grammar_review_is_missing(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["states"]["thinking"] = data["states"].pop("working")
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="chatbot",
+            )
+
+            self.assertTrue(
+                any("high-visibility state thinking is missing qa/eye-grammar-review.json" in warning for warning in warnings)
+            )
+
+    def test_audition_high_visibility_state_warns_when_eye_grammar_review_is_missing(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            manifest_path = write_manifest(Path(raw_tmp), enhancer, {"anatomyClass": "hands"})
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["states"]["thinking"] = data["states"].pop("working")
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+            _data, _errors, warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+            )
+
+            self.assertTrue(
+                any("high-visibility state thinking is missing qa/eye-grammar-review.json" in warning for warning in warnings)
+            )
+
+    def test_eye_grammar_review_requires_no_white_sclera_swap_check(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_eye_grammar_review(tmp_path, {"checks": {"noWhiteScleraOrCrescentSwap": False}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_eye_grammar_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/eye-grammar-review.json checks.noWhiteScleraOrCrescentSwap must be true" in error for error in errors)
+            )
+
+    def test_eye_grammar_review_requires_expected_eye_grammar(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_eye_grammar_review(tmp_path, {"expectedEyeGrammar": ""})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_eye_grammar_review=True,
+            )
+
+            self.assertTrue(any("qa/eye-grammar-review.json expectedEyeGrammar must be a non-empty string" in error for error in errors))
+
+    def test_eye_grammar_review_requires_specific_source_eye_details(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_eye_grammar_review(tmp_path, {"expectedEyeGrammar": "Source eyes look good."})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_eye_grammar_review=True,
+            )
+
+            self.assertTrue(
+                any(
+                    "qa/eye-grammar-review.json expectedEyeGrammar must describe eye count/shape, fill or pupil color, highlight/catchlight logic, spacing/placement, and blink style"
+                    in error
+                    for error in errors
+                )
+            )
+
+    def test_eye_grammar_review_requires_every_used_frame(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_eye_grammar_review(tmp_path, {"reviewedFrames": {"working": [1, 2, 3, 4, 7, 8, 9, 10, 11, 12]}})
+
+            _data, errors, _warnings, _qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_eye_grammar_review=True,
+            )
+
+            self.assertTrue(
+                any("qa/eye-grammar-review.json reviewedFrames.working must include every used frame 1..12" in error for error in errors)
+            )
+
+    def test_eye_grammar_review_passes_when_all_state_frames_are_reviewed(self) -> None:
+        enhancer = {
+            "kind": "side-origin thought puff",
+            "attachment": "near-head",
+            "description": "A compact thought puff near the head.",
+        }
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            manifest_path = write_manifest(tmp_path, enhancer, {"anatomyClass": "hands"})
+            write_eye_grammar_review(tmp_path)
+
+            _data, errors, _warnings, qa = validator.validate_manifest(
+                manifest_path,
+                profile="audition",
+                require_eye_grammar_review=True,
+            )
+
+            self.assertFalse(any("qa/eye-grammar-review.json" in error for error in errors))
+            self.assertEqual(qa["eyeGrammarReview"]["status"], "pass")
 
 
 if __name__ == "__main__":

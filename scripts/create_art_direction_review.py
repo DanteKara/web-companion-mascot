@@ -12,8 +12,10 @@ REQUIRED_CHECKS = [
     "referenceQualityMaintained",
     "identityPreserved",
     "eyeGrammarPreserved",
+    "eyeGrammarStableEveryFrame",
     "stylePreserved",
     "pixelArtStyle",
+    "cleanupReadyFlatChroma",
     "creativeStateReadability",
     "themeNativeStateCues",
     "nativeEnhancers",
@@ -22,6 +24,7 @@ REQUIRED_CHECKS = [
     "noExtraAnatomy",
     "believableOcclusion",
     "noPrototypeFlattening",
+    "identityCleanupAndAnatomyOverrideStateRead",
 ]
 
 ALLOWED_PRODUCTION_GENERATION_METHODS = {
@@ -47,6 +50,21 @@ def parse_check_values(values: list[str]) -> dict[str, bool]:
     return checks
 
 
+def reviewed_frames_for_manifest(manifest_path: Path) -> tuple[list[str], dict[str, list[int]]]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+    states = manifest.get("states", {})
+    state_names: list[str] = []
+    reviewed_frames: dict[str, list[int]] = {}
+    if not isinstance(states, dict):
+        return state_names, reviewed_frames
+    for name, state in states.items():
+        if not isinstance(name, str) or not isinstance(state, dict) or not isinstance(state.get("frames"), int):
+            continue
+        state_names.append(name)
+        reviewed_frames[name] = list(range(1, int(state["frames"]) + 1))
+    return state_names, reviewed_frames
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, help="Path to companion manifest.json")
@@ -63,6 +81,7 @@ def main() -> int:
     )
     parser.add_argument("--source-reference", help="Original reference image used for visual comparison")
     parser.add_argument("--production-use", action="store_true", help="Mark this review as accepted for production use")
+    parser.add_argument("--review-all-frames", action="store_true", help="Declare every used state frame reviewed")
     parser.add_argument(
         "--check",
         action="append",
@@ -95,10 +114,13 @@ def main() -> int:
         source_reference_value = str(source_reference_path.resolve())
 
     checks = parse_check_values(args.check)
+    states_reviewed, reviewed_frames = reviewed_frames_for_manifest(manifest_path) if args.review_all_frames else ([], {})
     if args.status == "pass" and args.production_use:
         false_checks = [key for key, value in checks.items() if value is not True]
         if false_checks:
             parser.error("all required --check values must be true for a production pass: " + ", ".join(false_checks))
+        if not args.review_all_frames:
+            parser.error("--review-all-frames is required for a production pass")
     out_path = args.out.expanduser().resolve() if args.out else manifest_path.parent / "qa" / "art-direction-review.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -107,6 +129,8 @@ def main() -> int:
         "generationMethod": args.generation_method,
         "sourceReference": source_reference_value,
         "productionUse": bool(args.production_use),
+        "statesReviewed": states_reviewed,
+        "reviewedFrames": reviewed_frames,
         "checks": checks,
         "blockers": args.blocker,
         "notes": args.notes,

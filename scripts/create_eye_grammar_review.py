@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a frame-by-frame state-performance QA sheet and review record."""
+"""Create a frame-by-frame eye-grammar QA sheet and review record."""
 
 from __future__ import annotations
 
@@ -12,15 +12,14 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 REQUIRED_CHECKS = [
-    "frameByFrameStateReadReviewed",
-    "intendedStateReadable",
-    "noWrongStateRead",
-    "expressionMatchesState",
-    "cueMotionMatchesState",
-    "coherentStateStoryArc",
-    "mascotActingVariesAcrossFrames",
-    "noTiredPantingUnlessStateRequiresIt",
-    "noOffVibeGenericCue",
+    "frameByFrameEyeGrammarReviewed",
+    "eyeCountStable",
+    "eyeShapeStable",
+    "eyeFillAndHighlightStable",
+    "eyePlacementStable",
+    "noWhiteScleraOrCrescentSwap",
+    "noMismatchedOrSymbolEyes",
+    "blinkStyleMatchesSource",
 ]
 
 
@@ -38,22 +37,6 @@ def parse_check_values(values: list[str]) -> dict[str, bool]:
             raise ValueError(f"check {key!r} must be true or false")
         checks[key] = normalized == "true"
     return checks
-
-
-def parse_expected_state_reads(values: list[str]) -> dict[str, str]:
-    reads: dict[str, str] = {}
-    for value in values:
-        if "=" not in value:
-            raise ValueError(f"expected state=read, got {value!r}")
-        key, raw = value.split("=", 1)
-        key = key.strip()
-        read = raw.strip()
-        if not key:
-            raise ValueError(f"expected non-empty state name in {value!r}")
-        if not read:
-            raise ValueError(f"expected non-empty read for state {key!r}")
-        reads[key] = read
-    return reads
 
 
 def load_font(size: int) -> ImageFont.ImageFont:
@@ -105,7 +88,7 @@ def make_sheet(manifest_path: Path, out_path: Path) -> None:
         raise ValueError("manifest has no states")
 
     tile = (148, 166)
-    label_width = 210
+    label_width = 220
     margin = 14
     gap = 10
     max_frames = max(int(state.get("frames", 0)) for _name, state in states)
@@ -121,9 +104,9 @@ def make_sheet(manifest_path: Path, out_path: Path) -> None:
         draw.rectangle((margin, y, margin + label_width - 14, y + tile[1]), fill=(255, 255, 255, 235))
         draw.text((margin + 8, y + 10), name, fill=(20, 24, 31, 255), font=font)
         draw.text((margin + 8, y + 30), f"{int(state['frames'])} frames", fill=(55, 65, 80, 255), font=small_font)
-        draw.text((margin + 8, y + 48), "read intended state", fill=(55, 65, 80, 255), font=small_font)
-        draw.text((margin + 8, y + 64), "face/cue/acting match", fill=(55, 65, 80, 255), font=small_font)
-        draw.text((margin + 8, y + 80), "reject wrong-state read", fill=(55, 65, 80, 255), font=small_font)
+        draw.text((margin + 8, y + 48), "match source eyes", fill=(55, 65, 80, 255), font=small_font)
+        draw.text((margin + 8, y + 64), "check fill/highlights", fill=(55, 65, 80, 255), font=small_font)
+        draw.text((margin + 8, y + 80), "reject eye-style swaps", fill=(55, 65, 80, 255), font=small_font)
         for index in range(int(state["frames"])):
             x = margin + label_width + index * (tile[0] + gap)
             frame = crop_frame(atlas, state, index, cell_width, cell_height)
@@ -152,40 +135,23 @@ def reviewed_frames_for_manifest(manifest_path: Path) -> tuple[list[str], dict[s
     return state_names, reviewed_frames
 
 
-def manifest_state_names(manifest_path: Path) -> list[str]:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
-    states = manifest.get("states", {})
-    return [
-        name
-        for name, state in states.items()
-        if isinstance(name, str) and isinstance(state, dict) and isinstance(state.get("frames"), int)
-    ]
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path, help="Path to companion manifest.json")
     parser.add_argument("--status", choices=["pass", "fail"], default="fail")
-    parser.add_argument("--production-use", action="store_true", help="Mark this state-performance review as accepted for production")
+    parser.add_argument("--production-use", action="store_true", help="Mark this eye-grammar review as accepted for production")
+    parser.add_argument("--expected-eye-grammar", default="", help="Expected source eye count, shape, fill, highlights, placement, and blink style")
     parser.add_argument("--review-all-frames", action="store_true", help="Declare every used state frame reviewed")
-    parser.add_argument(
-        "--expected-state-read",
-        action="append",
-        default=[],
-        help="Expected state read in state=description form, e.g. --expected-state-read working='active tool use, not panting'",
-    )
-    parser.add_argument("--check", action="append", default=[], help="Set a required boolean check, e.g. --check noWrongStateRead=true")
-    parser.add_argument("--blocker", action="append", default=[], help="Record an unresolved visual state-performance blocker")
-    parser.add_argument("--notes", default="", help="Short frame-by-frame state-performance review notes")
-    parser.add_argument("--out-json", type=Path, help="Output JSON; defaults to qa/state-performance-review.json")
-    parser.add_argument("--out-sheet", type=Path, help="Output sheet; defaults to qa/state-performance-review.png")
+    parser.add_argument("--check", action="append", default=[], help="Set a required boolean check, e.g. --check eyeShapeStable=true")
+    parser.add_argument("--blocker", action="append", default=[], help="Record an unresolved visual eye-grammar blocker")
+    parser.add_argument("--notes", default="", help="Short frame-by-frame eye-grammar review notes")
+    parser.add_argument("--out-json", type=Path, help="Output JSON; defaults to qa/eye-grammar-review.json")
+    parser.add_argument("--out-sheet", type=Path, help="Output sheet; defaults to qa/eye-grammar-review.png")
     args = parser.parse_args()
 
     manifest_path = args.manifest.expanduser().resolve()
     checks = parse_check_values(args.check)
-    expected_state_reads = parse_expected_state_reads(args.expected_state_read)
     states_reviewed, reviewed_frames = reviewed_frames_for_manifest(manifest_path) if args.review_all_frames else ([], {})
-    state_names = manifest_state_names(manifest_path)
 
     if args.status == "pass" and args.production_use:
         false_checks = [key for key, value in checks.items() if value is not True]
@@ -193,31 +159,27 @@ def main() -> int:
             parser.error("all required --check values must be true for a production pass: " + ", ".join(false_checks))
         if not args.review_all_frames:
             parser.error("--review-all-frames is required for a production pass")
-        missing_reads = [state for state in state_names if not expected_state_reads.get(state, "").strip()]
-        if missing_reads:
-            parser.error(
-                "--expected-state-read is required for every state in a production pass: "
-                + ", ".join(missing_reads)
-            )
+        if not args.expected_eye_grammar.strip():
+            parser.error("--expected-eye-grammar is required for a production pass")
 
-    out_json = args.out_json.expanduser().resolve() if args.out_json else manifest_path.parent / "qa" / "state-performance-review.json"
-    out_sheet = args.out_sheet.expanduser().resolve() if args.out_sheet else manifest_path.parent / "qa" / "state-performance-review.png"
+    out_json = args.out_json.expanduser().resolve() if args.out_json else manifest_path.parent / "qa" / "eye-grammar-review.json"
+    out_sheet = args.out_sheet.expanduser().resolve() if args.out_sheet else manifest_path.parent / "qa" / "eye-grammar-review.png"
     make_sheet(manifest_path, out_sheet)
 
     review = {
         "status": args.status,
         "productionUse": bool(args.production_use),
+        "expectedEyeGrammar": args.expected_eye_grammar,
         "statesReviewed": states_reviewed,
         "reviewedFrames": reviewed_frames,
-        "expectedStateReads": expected_state_reads,
         "checks": checks,
         "blockers": args.blocker,
         "notes": args.notes,
-        "statePerformanceReviewSheet": str(out_sheet),
+        "eyeGrammarReviewSheet": str(out_sheet),
     }
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(review, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"ok": True, "statePerformanceReview": str(out_json), "statePerformanceReviewSheet": str(out_sheet)}, indent=2))
+    print(json.dumps({"ok": True, "eyeGrammarReview": str(out_json), "eyeGrammarReviewSheet": str(out_sheet)}, indent=2))
     return 0
 
 
