@@ -422,6 +422,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Keep the strongest character decisions from the provided reference or text concept", base_prompt)
             self.assertIn("Do not substitute a stock assistant mascot", base_prompt)
             self.assertIn("do not redesign the mascot while making it more pixel-native", base_prompt)
+            self.assertIn("Pixel-reference audition loop", base_prompt)
+            self.assertIn("When the attached reference is photographic, realistic, smooth, high-detail, or otherwise non-pixel", base_prompt)
+            self.assertIn("generate a simplified native pixel-art base candidate first", base_prompt)
+            self.assertIn("use that inspected pixel candidate as the next grounding reference", base_prompt)
+            self.assertIn("Only record the final canonical base after the pixel reference itself passes strict base style QA", base_prompt)
             self.assertNotIn("Keep the strong v9-style character read", base_prompt)
 
     def test_row_prompts_inherit_hard_native_pixel_rendering_lock(self) -> None:

@@ -405,6 +405,15 @@ REFERENCE_NATIVE_STYLE_LOCK = (
     "character design and style only; output a perfectly flat production chroma-key background."
 )
 
+PIXEL_REFERENCE_AUDITION_LOOP = (
+    "Pixel-reference audition loop: When the attached reference is photographic, realistic, smooth, high-detail, or "
+    "otherwise non-pixel, generate a simplified native pixel-art base candidate first and inspect it as a pixel "
+    "reference. If the candidate preserves identity but remains too smooth, glossy, over-detailed, or palette-rich, "
+    "use that inspected pixel candidate as the next grounding reference for another base attempt instead of moving "
+    "on to state rows. Do not generate state rows from the original non-pixel reference alone. Only record the final "
+    "canonical base after the pixel reference itself passes strict base style QA."
+)
+
 HATCHPET_COMPACT_SOURCE_TARGET = (
     "HatchPet compact source target: The base should read like a Codex app digital pet first and a website mascot "
     "second. Make it fully visible, readable as a tiny digital pet, and suitable for animation into a 192x208 sprite "
@@ -1213,6 +1222,8 @@ Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped p
 {INDEXED_COLOR_SPRITE_CELL_LOCK}
 
 {REFERENCE_NATIVE_STYLE_LOCK}
+
+{PIXEL_REFERENCE_AUDITION_LOOP}
 
 {REFERENCE_AWARE_PALETTE_GUIDE}
 

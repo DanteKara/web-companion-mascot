@@ -6,8 +6,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class SkillDocumentTests(unittest.TestCase):
+    def test_top_level_skill_stays_compact_and_routes_to_references(self) -> None:
+        text = (ROOT / "SKILL.md").read_text(encoding="utf-8-sig")
+
+        self.assertLess(len(text.encode("utf-8")), 20000)
+        self.assertIn("## Reference Routing", text)
+        self.assertIn("references/production-workflow.md", text)
+        self.assertIn("full production workflow", text)
+        self.assertIn("references/companion-contract.md", text)
+        self.assertIn("references/state-enhancers.md", text)
+        self.assertIn("references/react-integration.md", text)
+        self.assertIn("Use `$imagegen` for all production visual generation.", text)
+        self.assertNotIn("## Generation Delegation", text)
+
     def test_skill_uses_hatchpet_style_workflow_sections(self) -> None:
-        text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
 
         expected_order = [
             "## Overview",
@@ -37,8 +50,22 @@ class SkillDocumentTests(unittest.TestCase):
         self.assertIn("selected_source=/absolute/path/to/$CODEX_HOME/generated_images/.../ig_*.png", text)
         self.assertIn("No silent sequential fallback", text)
 
+    def test_realistic_references_use_pixel_reference_audition_before_rows(self) -> None:
+        workflow_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
+        contract_text = (ROOT / "references" / "companion-contract.md").read_text(encoding="utf-8")
+        enhancer_text = (ROOT / "references" / "state-enhancers.md").read_text(encoding="utf-8")
+
+        for text in (workflow_text, contract_text, enhancer_text):
+            self.assertIn("pixel-reference audition loop", text)
+            self.assertIn("photographic, realistic, smooth, high-detail, or otherwise non-pixel", text)
+            self.assertIn("generate a simplified native pixel-art base candidate first", text)
+            self.assertIn("use that inspected pixel candidate as the next grounding reference", text)
+            self.assertIn("Do not generate state rows from the original non-pixel reference alone", text)
+            self.assertIn("Only record the final canonical base after the pixel reference itself passes strict base style QA", text)
+
     def test_top_level_skill_does_not_seed_specific_mascot_examples(self) -> None:
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8").lower()
+        workflow_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig").lower()
 
         for forbidden in (
             "tridy",
@@ -55,12 +82,13 @@ class SkillDocumentTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, text)
 
-        self.assertIn("row prompts must not hard-code", text)
-        self.assertIn("do not let examples in this skill become default mascot identity", text)
+        self.assertIn("row prompts must not hard-code", workflow_text)
+        self.assertIn("do not let examples in this skill become default mascot identity", workflow_text)
 
     def test_generic_skill_references_do_not_leak_audition_specific_identity(self) -> None:
         paths = [
             ROOT / "SKILL.md",
+            ROOT / "references" / "production-workflow.md",
             ROOT / "references" / "companion-contract.md",
             ROOT / "references" / "state-enhancers.md",
             ROOT / "scripts" / "prepare_companion_run.py",
@@ -71,7 +99,7 @@ class SkillDocumentTests(unittest.TestCase):
             self.assertNotIn(forbidden, text)
 
     def test_repeated_flat_key_failure_escalates_instead_of_normalizing_sources(self) -> None:
-        skill_text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        skill_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
         contract_text = (ROOT / "references" / "companion-contract.md").read_text(encoding="utf-8")
         enhancer_text = (ROOT / "references" / "state-enhancers.md").read_text(encoding="utf-8")
 
@@ -201,7 +229,7 @@ class SkillDocumentTests(unittest.TestCase):
         self.assertIn("Do not record or assemble rejected candidates", enhancer_text)
 
     def test_art_direction_review_requires_frame_covered_eye_grammar_review(self) -> None:
-        skill_text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        skill_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
         contract_text = (ROOT / "references" / "companion-contract.md").read_text(encoding="utf-8")
         enhancer_text = (ROOT / "references" / "state-enhancers.md").read_text(encoding="utf-8")
 
@@ -225,7 +253,7 @@ class SkillDocumentTests(unittest.TestCase):
         self.assertIn("mascotActingVariesAcrossFrames", enhancer_text)
 
     def test_high_visibility_auditions_require_eye_grammar_gate(self) -> None:
-        skill_text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        skill_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
         contract_text = (ROOT / "references" / "companion-contract.md").read_text(encoding="utf-8")
         readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
 
@@ -246,7 +274,7 @@ class SkillDocumentTests(unittest.TestCase):
         self.assertIn("--require-eye-grammar-review", readme_text)
 
     def test_anatomy_review_requires_specific_source_anatomy_details(self) -> None:
-        skill_text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        skill_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
         contract_text = (ROOT / "references" / "companion-contract.md").read_text(encoding="utf-8")
         readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
         enhancer_text = (ROOT / "references" / "state-enhancers.md").read_text(encoding="utf-8")
@@ -264,13 +292,13 @@ class SkillDocumentTests(unittest.TestCase):
     def test_thinking_idea_peak_stays_deliberate_without_mandating_puffs(self) -> None:
         paths = [
             ROOT / "README.md",
-            ROOT / "SKILL.md",
+            ROOT / "references" / "production-workflow.md",
             ROOT / "references" / "companion-contract.md",
             ROOT / "references" / "state-enhancers.md",
         ]
 
         for path in paths:
-            text = path.read_text(encoding="utf-8")
+            text = path.read_text(encoding="utf-8-sig")
             self.assertIn("primary cue element is only slightly larger, never oversized", text)
             self.assertIn("do not enlarge the cue to prove the idea landed", text)
             self.assertIn("accepted cue vocabulary", text)
