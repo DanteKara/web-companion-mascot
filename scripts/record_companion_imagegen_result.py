@@ -18,8 +18,17 @@ USER_ART_PROVENANCE = {
     "user-provided-integrated-row-art",
     "artist-provided-integrated-row-art",
 }
-IMAGEGEN_CLI_PROVENANCE = "imagegen-cli-fallback"
 BUILT_IN_CHROMA_CLEANUP_PROVENANCE = "built-in-imagegen-chroma-cleanup"
+CODEX_APP_IMAGEGEN_PROVENANCE = "codex-app-imagegen"
+CODEX_APP_CHROMA_CLEANUP_PROVENANCE = "codex-app-imagegen-chroma-cleanup"
+CODEX_APP_PROVENANCES = {
+    CODEX_APP_IMAGEGEN_PROVENANCE,
+    CODEX_APP_CHROMA_CLEANUP_PROVENANCE,
+}
+CHROMA_CLEANUP_PROVENANCES = {
+    BUILT_IN_CHROMA_CLEANUP_PROVENANCE,
+    CODEX_APP_CHROMA_CLEANUP_PROVENANCE,
+}
 PALETTE_COMPLEXITY_WARNING = "smooth_or_overdetailed_foreground_palette"
 ROW_SOURCE_BLOCKING_WARNING_CODES = {
     "fake_checkerboard_transparency_background",
@@ -286,11 +295,8 @@ def blocking_base_style_warnings(
     source_provenance: str,
 ) -> list[dict[str, Any]]:
     warnings = [warning for warning in analysis.get("warnings", []) if isinstance(warning, dict)]
-    if source_provenance not in USER_ART_PROVENANCE:
-        return warnings
-    # Finished user/artist integrated sprite art may be transparent and richer than a
-    # prompt-generated indexed source. Keep palette complexity visible for review,
-    # but do not block trusted transparent art on that advisory alone.
+    # Palette complexity is a visual-review advisory: keep it in the analysis
+    # record, but do not block an otherwise clean base solely on color count.
     return [
         warning
         for warning in warnings
@@ -362,8 +368,24 @@ def validate_source_path(
         )
     if requested_provenance in USER_ART_PROVENANCE:
         return requested_provenance
-    if requested_provenance == IMAGEGEN_CLI_PROVENANCE:
+    if requested_provenance == CODEX_APP_IMAGEGEN_PROVENANCE:
         return requested_provenance
+    if requested_provenance == CODEX_APP_CHROMA_CLEANUP_PROVENANCE:
+        if chroma_cleanup_source is None:
+            raise SystemExit(
+                "codex-app-imagegen-chroma-cleanup provenance requires --chroma-cleanup-source "
+                "pointing at the original captured Codex app imagegen PNG"
+            )
+        if not chroma_cleanup_source.is_file():
+            raise SystemExit(f"chroma cleanup original source not found: {chroma_cleanup_source}")
+        if is_relative_to(chroma_cleanup_source, run_dir):
+            raise SystemExit(
+                "chroma cleanup original source is inside the companion run directory; "
+                "capture Codex app imagegen outputs to a separate workspace folder first"
+            )
+        if source.resolve() == chroma_cleanup_source.resolve():
+            raise SystemExit("chroma cleanup source must be separate from the cleaned output")
+        return CODEX_APP_CHROMA_CLEANUP_PROVENANCE
     if requested_provenance == BUILT_IN_CHROMA_CLEANUP_PROVENANCE:
         if chroma_cleanup_source is None:
             raise SystemExit(
@@ -391,54 +413,58 @@ def validate_source_path(
     return "built-in-imagegen"
 
 
-def cli_fallback_prompt_path_value(path: Path, run_dir: Path) -> str:
-    resolved = path.expanduser().resolve()
-    if is_relative_to(resolved, run_dir.resolve()):
-        return manifest_relative(resolved, run_dir)
-    return str(resolved)
+def default_codex_app_capture_metadata_path(source: Path) -> Path:
+    return source.with_name(source.name + ".codex-imagegen.json")
 
 
-def validate_cli_fallback_metadata(
+def validate_codex_app_imagegen_metadata(
     *,
     source_provenance: str,
-    run_dir: Path,
-    approved: bool,
-    model: str | None,
-    background: str | None,
-    output_format: str | None,
-    prompt_file: Path | None,
+    source: Path,
+    metadata_path: Path | None,
 ) -> dict[str, Any] | None:
-    provided = any([approved, model, background, output_format, prompt_file])
-    if source_provenance != IMAGEGEN_CLI_PROVENANCE:
-        if provided:
-            raise SystemExit(
-                "CLI fallback metadata flags require --source-provenance imagegen-cli-fallback"
-            )
+    if source_provenance not in CODEX_APP_PROVENANCES:
+        if metadata_path is not None:
+            raise SystemExit("--codex-app-capture-metadata requires Codex app imagegen provenance")
         return None
 
-    if not approved:
+    resolved_metadata_path = (
+        metadata_path.expanduser().resolve()
+        if metadata_path is not None
+        else default_codex_app_capture_metadata_path(source)
+    )
+    if not resolved_metadata_path.is_file():
         raise SystemExit(
-            "imagegen-cli-fallback provenance requires --cli-fallback-approved after explicit user confirmation"
+            "codex-app-imagegen provenance requires capture metadata; run "
+            "scripts/capture_codex_app_imagegen_result.py and keep the .codex-imagegen.json sidecar"
         )
-    if model != "gpt-image-1.5":
-        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-model gpt-image-1.5")
-    if background != "transparent":
-        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-background transparent")
-    if output_format != "png":
-        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-output-format png")
-    if prompt_file is None:
-        raise SystemExit("imagegen-cli-fallback provenance requires --cli-fallback-prompt-file")
 
-    resolved_prompt = prompt_file.expanduser().resolve()
-    if not resolved_prompt.is_file():
-        raise SystemExit(f"CLI fallback prompt file not found: {resolved_prompt}")
+    metadata = json.loads(resolved_metadata_path.read_text(encoding="utf-8"))
+    if not isinstance(metadata, dict):
+        raise SystemExit(f"invalid Codex app imagegen metadata: {resolved_metadata_path}")
+    if metadata.get("source") != CODEX_APP_IMAGEGEN_PROVENANCE:
+        raise SystemExit("Codex app imagegen metadata must contain source=codex-app-imagegen")
+    expected_hash = metadata.get("sha256")
+    actual_hash = file_sha256(source)
+    if expected_hash != actual_hash:
+        raise SystemExit(
+            "Codex app imagegen metadata hash does not match source image: "
+            f"expected {expected_hash}, got {actual_hash}"
+        )
+    output_path = metadata.get("outputPath")
+    if isinstance(output_path, str) and Path(output_path).expanduser().resolve() != source.resolve():
+        raise SystemExit("Codex app imagegen metadata outputPath does not match --source")
 
     return {
-        "approved": True,
-        "model": model,
-        "background": background,
-        "outputFormat": output_format,
-        "promptFile": cli_fallback_prompt_path_value(resolved_prompt, run_dir),
+        "metadataPath": str(resolved_metadata_path),
+        "sessionPath": metadata.get("sessionPath"),
+        "lineNumber": metadata.get("lineNumber"),
+        "callId": metadata.get("callId"),
+        "status": metadata.get("status"),
+        "timestamp": metadata.get("timestamp"),
+        "sha256": actual_hash,
+        "bytes": metadata.get("bytes"),
+        "revisedPrompt": metadata.get("revisedPrompt"),
     }
 
 
@@ -447,21 +473,20 @@ def chroma_cleanup_metadata(
     source_provenance: str,
     original_source: Path | None,
 ) -> dict[str, Any] | None:
-    if source_provenance != BUILT_IN_CHROMA_CLEANUP_PROVENANCE:
+    if source_provenance not in CHROMA_CLEANUP_PROVENANCES:
         if original_source is not None:
-            raise SystemExit(
-                "--chroma-cleanup-source requires --source-provenance "
-                f"{BUILT_IN_CHROMA_CLEANUP_PROVENANCE}"
-            )
+            raise SystemExit("--chroma-cleanup-source requires chroma-cleanup source provenance")
         return None
     if original_source is None:
-        raise SystemExit(
-            f"{BUILT_IN_CHROMA_CLEANUP_PROVENANCE} provenance requires --chroma-cleanup-source"
-        )
+        raise SystemExit(f"{source_provenance} provenance requires --chroma-cleanup-source")
     return {
         "method": "$imagegen chroma-key helper",
         "originalSourcePath": str(original_source.resolve()),
-        "originalSourceProvenance": "built-in-imagegen",
+        "originalSourceProvenance": (
+            CODEX_APP_IMAGEGEN_PROVENANCE
+            if source_provenance == CODEX_APP_CHROMA_CLEANUP_PROVENANCE
+            else "built-in-imagegen"
+        ),
         "originalSourceSha256": file_sha256(original_source),
     }
 
@@ -551,12 +576,8 @@ def record_result(
     allow_synthetic_test_source: bool,
     strict_base_style: bool = False,
     strict_row_style: bool = False,
-    cli_fallback_approved: bool = False,
-    cli_fallback_model: str | None = None,
-    cli_fallback_background: str | None = None,
-    cli_fallback_output_format: str | None = None,
-    cli_fallback_prompt_file: Path | None = None,
     chroma_cleanup_source: Path | None = None,
+    codex_app_capture_metadata: Path | None = None,
 ) -> dict[str, Any]:
     if not source.is_file():
         raise SystemExit(f"source image not found: {source}")
@@ -569,14 +590,15 @@ def record_result(
         allow_synthetic_test_source=allow_synthetic_test_source,
         chroma_cleanup_source=chroma_cleanup_source,
     )
-    cli_fallback_metadata = validate_cli_fallback_metadata(
+    codex_metadata_source = (
+        chroma_cleanup_source
+        if source_provenance == CODEX_APP_CHROMA_CLEANUP_PROVENANCE
+        else source
+    )
+    codex_app_imagegen = validate_codex_app_imagegen_metadata(
         source_provenance=source_provenance,
-        run_dir=run_dir,
-        approved=cli_fallback_approved,
-        model=cli_fallback_model,
-        background=cli_fallback_background,
-        output_format=cli_fallback_output_format,
-        prompt_file=cli_fallback_prompt_file,
+        source=codex_metadata_source,
+        metadata_path=codex_app_capture_metadata,
     )
     chroma_cleanup = chroma_cleanup_metadata(
         source_provenance=source_provenance,
@@ -637,10 +659,11 @@ def record_result(
         job.pop("synthetic_test_source", None)
     job["completed_at"] = datetime.now(timezone.utc).isoformat()
     job["metadata"] = metadata
-    if cli_fallback_metadata is not None:
-        job["cli_fallback"] = cli_fallback_metadata
+    job.pop("cli_fallback", None)
+    if codex_app_imagegen is not None:
+        job["codex_app_imagegen"] = codex_app_imagegen
     else:
-        job.pop("cli_fallback", None)
+        job.pop("codex_app_imagegen", None)
     if chroma_cleanup is not None:
         job["chroma_cleanup"] = chroma_cleanup
     else:
@@ -676,6 +699,7 @@ def record_result(
         "ok": True,
         "job_id": job_id,
         "output": str(output),
+        "source_provenance": source_provenance,
         "metadata": metadata,
     }
     if base_style_analysis is not None:
@@ -687,11 +711,10 @@ def record_result(
                 source_provenance=source_provenance,
             )
         ]
-    if cli_fallback_metadata is not None:
-        result["cli_fallback"] = cli_fallback_metadata
+    if codex_app_imagegen is not None:
+        result["codex_app_imagegen"] = codex_app_imagegen
     if chroma_cleanup is not None:
         result["chroma_cleanup"] = chroma_cleanup
-        result["source_provenance"] = source_provenance
     if row_source_style_analysis is not None:
         result["row_source_style_analysis"] = row_source_style_analysis
         result["row_source_style_strict_blocking_warning_codes"] = [
@@ -711,17 +734,20 @@ def main(argv: list[str] | None = None) -> int:
         choices=[
             "auto",
             "built-in-imagegen",
+            CODEX_APP_IMAGEGEN_PROVENANCE,
             BUILT_IN_CHROMA_CLEANUP_PROVENANCE,
-            IMAGEGEN_CLI_PROVENANCE,
+            CODEX_APP_CHROMA_CLEANUP_PROVENANCE,
             "user-provided-integrated-row-art",
             "artist-provided-integrated-row-art",
         ],
         default="auto",
         help=(
-            "Use auto/built-in-imagegen for normal built-in $imagegen outputs, "
+            "Use codex-app-imagegen for PNGs captured from the Codex app built-in $imagegen "
+            "session result, codex-app-imagegen-chroma-cleanup for a local alpha PNG produced "
+            "from a captured Codex app imagegen source, auto/built-in-imagegen for direct "
+            "$CODEX_HOME/generated_images outputs, "
             "built-in-imagegen-chroma-cleanup for a local alpha PNG produced from a raw "
             "$CODEX_HOME/generated_images/.../ig_*.png via the $imagegen chroma-key helper, "
-            "imagegen-cli-fallback for explicit approved $imagegen CLI fallback outputs, "
             "or explicitly mark finished user/artist integrated row art."
         ),
     )
@@ -737,33 +763,19 @@ def main(argv: list[str] | None = None) -> int:
         help="Fail row recording when source chroma-key cleanup analysis reports blocking warnings.",
     )
     parser.add_argument(
-        "--cli-fallback-approved",
-        action="store_true",
-        help="Required with --source-provenance imagegen-cli-fallback after explicit user approval.",
-    )
-    parser.add_argument(
-        "--cli-fallback-model",
-        help="Required with --source-provenance imagegen-cli-fallback; expected gpt-image-1.5.",
-    )
-    parser.add_argument(
-        "--cli-fallback-background",
-        help="Required with --source-provenance imagegen-cli-fallback; expected transparent.",
-    )
-    parser.add_argument(
-        "--cli-fallback-output-format",
-        help="Required with --source-provenance imagegen-cli-fallback; expected png.",
-    )
-    parser.add_argument(
-        "--cli-fallback-prompt-file",
-        type=Path,
-        help="Prompt file used for the approved $imagegen CLI fallback call.",
-    )
-    parser.add_argument(
         "--chroma-cleanup-source",
         type=Path,
         help=(
-            "Original raw built-in $imagegen source used for a "
-            "built-in-imagegen-chroma-cleanup recording."
+            "Original raw built-in $imagegen source or captured Codex app imagegen source used "
+            "for a chroma-cleanup recording."
+        ),
+    )
+    parser.add_argument(
+        "--codex-app-capture-metadata",
+        type=Path,
+        help=(
+            "Metadata sidecar from capture_codex_app_imagegen_result.py; defaults to "
+            "<source>.codex-imagegen.json for codex-app-imagegen provenance."
         ),
     )
     parser.add_argument("--allow-synthetic-test-source", action="store_true", help=argparse.SUPPRESS)
@@ -778,12 +790,8 @@ def main(argv: list[str] | None = None) -> int:
         allow_synthetic_test_source=args.allow_synthetic_test_source,
         strict_base_style=args.strict_base_style,
         strict_row_style=args.strict_row_style,
-        cli_fallback_approved=args.cli_fallback_approved,
-        cli_fallback_model=args.cli_fallback_model,
-        cli_fallback_background=args.cli_fallback_background,
-        cli_fallback_output_format=args.cli_fallback_output_format,
-        cli_fallback_prompt_file=args.cli_fallback_prompt_file,
         chroma_cleanup_source=args.chroma_cleanup_source,
+        codex_app_capture_metadata=args.codex_app_capture_metadata,
     )
     print(json.dumps(result, indent=2))
     return 0

@@ -146,7 +146,7 @@ class CompanionCandidateRejectionReportTests(unittest.TestCase):
             self.assertEqual(report["candidates"][1]["strictBlockingWarningCodes"], [])
             self.assertIn("eye grammar drift", report["candidates"][1]["visualBlockers"][0])
             self.assertTrue(report["conclusion"]["doNotRecordOrAssembleRejectedCandidates"])
-            self.assertIn("true-transparency fallback", report["conclusion"]["nextRecommendedAction"])
+            self.assertIn("Codex app $imagegen", report["conclusion"]["nextRecommendedAction"])
             self.assertEqual(jobs_path.read_text(encoding="utf-8"), before_jobs)
 
     def test_rejected_candidate_requires_a_reason(self) -> None:

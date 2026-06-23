@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 SEPARATE_ENHANCER_ATTACHMENTS = {"near-head", "near-hand", "aura"}
 OVERLAP_OK_COMPONENT_POLICIES = {"overlap-ok", "integrated-ok", "occlusion-ok"}
-DEFAULT_MAX_CORE_SCALE_RANGE_RATIO = 0.08
+DEFAULT_MAX_CORE_SCALE_RANGE_RATIO = 0.09
 
 
 def separate_component_required(enhancer: dict[str, Any], attachment: str) -> bool:

@@ -626,6 +626,7 @@ def body_anchor_state_y_offset(
 def body_anchor_edges_clear(
     sprite_infos: list[dict[str, Any]],
     scale: float,
+    cell_width: int,
     cell_height: int,
     padding: int,
     edge_margin: int = 1,
@@ -635,9 +636,20 @@ def body_anchor_edges_clear(
     for info in sprite_infos:
         sprite = info["sprite"]
         body_bbox = info["body_bbox"]
+        center_bbox = info.get("fit_bbox") or body_bbox
+        width = max(1, int(round(sprite.width * scale)))
         height = max(1, int(round(sprite.height * scale)))
+        center_x0, _center_y0, center_x1, _center_y1 = [value * scale for value in center_bbox]
+        body_center_x = (center_x0 + center_x1) / 2
+        x = int(round(cell_width / 2 - body_center_x))
+        min_x = cell_width - padding - width
+        max_x = padding
+        if min_x <= max_x:
+            x = min(max(x, min_x), max_x)
         body_bottom_y = body_bbox[3] * scale
         y = int(round(cell_height - padding - body_bottom_y)) + y_offset
+        if x < edge_margin or x + width > cell_width - edge_margin:
+            return False
         if y < edge_margin or y + height > cell_height - edge_margin:
             return False
     return True
@@ -646,19 +658,20 @@ def body_anchor_edges_clear(
 def body_anchor_scale_for_edge_clearance(
     sprite_infos: list[dict[str, Any]],
     scale: float,
+    cell_width: int,
     cell_height: int,
     padding: int,
     edge_margin: int = 1,
     max_y_offset: int | None = 2,
 ) -> float:
-    if body_anchor_edges_clear(sprite_infos, scale, cell_height, padding, edge_margin, max_y_offset):
+    if body_anchor_edges_clear(sprite_infos, scale, cell_width, cell_height, padding, edge_margin, max_y_offset):
         return scale
 
     low = 0.01
     high = scale
     for _attempt in range(24):
         middle = (low + high) / 2
-        if body_anchor_edges_clear(sprite_infos, middle, cell_height, padding, edge_margin, max_y_offset):
+        if body_anchor_edges_clear(sprite_infos, middle, cell_width, cell_height, padding, edge_margin, max_y_offset):
             low = middle
         else:
             high = middle
@@ -942,6 +955,7 @@ def extract_state_frames(
             state_fit_scale = body_anchor_scale_for_edge_clearance(
                 body_anchored_sprites,
                 state_fit_scale,
+                args.cell_width,
                 args.cell_height,
                 args.padding,
                 max_y_offset=args.max_body_anchor_y_offset,

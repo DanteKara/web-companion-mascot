@@ -195,21 +195,57 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertNotIn("working", manifest["states"])
+            self.assertNotIn("confused", manifest["states"])
+            self.assertIn("hover", manifest["states"])
+            self.assertIn("dragging", manifest["states"])
             self.assertIn("thinking", manifest["states"])
             self.assertIn("answering", manifest["states"])
 
             request = json.loads((out_dir / "companion_request.json").read_text(encoding="utf-8"))
             self.assertNotIn("working", request["states"])
+            self.assertNotIn("confused", request["states"])
+            self.assertIn("hover", request["states"])
+            self.assertIn("dragging", request["states"])
 
             jobs = json.loads((out_dir / "imagegen-jobs.json").read_text(encoding="utf-8"))
             job_ids = [job["id"] for job in jobs["jobs"]]
             self.assertNotIn("working", job_ids)
+            self.assertNotIn("confused", job_ids)
+            self.assertIn("hover", job_ids)
+            self.assertIn("dragging", job_ids)
             self.assertIn("thinking", job_ids)
 
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("assistant is thinking, processing, retrieving, using tools, or waiting on backend progress", thinking_prompt)
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("Do not create a separate working state unless the user explicitly requests one", cue_plan["states"]["thinking"]["frameArc"])
+
+    def test_default_interaction_states_have_pointer_specific_prompts(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            out_dir = Path(raw_tmp) / "run"
+
+            result = prepare.main(
+                [
+                    "--companion-name",
+                    "PointerPal",
+                    "--output-dir",
+                    str(out_dir),
+                    "--quiet",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
+            self.assertIn("pointer hover over the companion", cue_plan["states"]["hover"]["semanticRead"])
+            self.assertIn("user is dragging the companion around the app", cue_plan["states"]["dragging"]["semanticRead"])
+            self.assertIn("cursor icons", cue_plan["states"]["hover"]["rejectIf"])
+            self.assertIn("external hands", cue_plan["states"]["dragging"]["rejectIf"])
+
+            hover_prompt = (out_dir / "prompts" / "hover.md").read_text(encoding="utf-8")
+            dragging_prompt = (out_dir / "prompts" / "dragging.md").read_text(encoding="utf-8")
+            self.assertIn("Communicate the state through the canonical mascot's expression", hover_prompt)
+            self.assertIn("cursor-follow movement", dragging_prompt)
+            self.assertIn("cursor icons", dragging_prompt.lower())
 
     def test_base_prompt_requires_native_pixel_art_and_no_unrequested_identity_marks(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -365,12 +401,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             base_prompt = (out_dir / "prompts" / "base.md").read_text(encoding="utf-8")
-            self.assertIn("HatchPet compact source target", base_prompt)
-            self.assertIn("The base should read like a Codex app digital pet first and a website mascot second", base_prompt)
-            self.assertIn("fully visible, readable as a tiny digital pet, and suitable for animation into a 192x208 sprite cell", base_prompt)
+            self.assertIn("Compact web companion source target", base_prompt)
+            self.assertIn("The base should be fully visible, readable as a small website companion", base_prompt)
+            self.assertIn("simple enough to animate without redesign", base_prompt)
             self.assertIn("pixel-art-adjacent low-resolution mascot sprite", base_prompt)
-            self.assertIn("flat cel shading with at most one small highlight and one shadow step", base_prompt)
-            self.assertIn("no detail that disappears at 192x208", base_prompt)
+            self.assertIn("flat cel shading with hard blocked highlights/shadows", base_prompt)
+            self.assertIn("no detail that disappears at companion-widget sizes", base_prompt)
             self.assertIn("Do not compose it as a large glossy product mascot, large hero character, app icon, or high-resolution sticker", base_prompt)
             self.assertIn("leave generous chroma-key padding and keep the sprite compact", base_prompt)
 
@@ -400,13 +436,12 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             base_prompt = (out_dir / "prompts" / "base.md").read_text(encoding="utf-8")
-            self.assertIn("Indexed-color sprite cell lock", base_prompt)
-            self.assertIn("Use the fewest colors that preserve identity", base_prompt)
-            self.assertIn("roughly 8-16 total non-background colors", base_prompt)
-            self.assertIn("No per-pixel color ramps", base_prompt)
-            self.assertIn("no smooth shade bands", base_prompt)
-            self.assertIn("no gradient-filled body areas, face areas, clothing, props, accessories, or appendages", base_prompt)
-            self.assertIn("Favor simpler and flatter over prettier", base_prompt)
+            self.assertIn("Indexed-color sprite discipline", base_prompt)
+            self.assertIn("Use a controlled sprite palette that preserves identity and charm", base_prompt)
+            self.assertIn("Avoid per-pixel color ramps", base_prompt)
+            self.assertIn("smooth shade bands", base_prompt)
+            self.assertIn("gradient-filled body areas", base_prompt)
+            self.assertIn("keep signature costume, magic, material, and character color relationships when they matter", base_prompt)
             self.assertIn("Part simplification lock", base_prompt)
             self.assertIn("Do not invent parts from these instructions", base_prompt)
             self.assertIn("Small accessories should become plain readable silhouettes", base_prompt)
@@ -415,9 +450,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("Reference-native style lock", base_prompt)
             self.assertIn("If an attached reference already looks like a HatchPet or Codex digital-pet sprite", base_prompt)
             self.assertIn("Reference-aware palette guide", base_prompt)
-            self.assertIn("Build a tiny per-mascot palette from the attached reference or the text concept", base_prompt)
+            self.assertIn("Build a compact per-mascot palette from the attached reference or the text concept", base_prompt)
             self.assertIn("Never impose a preselected color palette", base_prompt)
-            self.assertIn("Do not blend between palette colors", base_prompt)
+            self.assertIn("Avoid unnecessary intermediate blends", base_prompt)
+            self.assertIn("do not erase important reference color personality", base_prompt)
             self.assertIn("Reference character direction lock", base_prompt)
             self.assertIn("Keep the strongest character decisions from the provided reference or text concept", base_prompt)
             self.assertIn("Do not substitute a stock assistant mascot", base_prompt)
@@ -426,7 +462,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("When the attached reference is photographic, realistic, smooth, high-detail, or otherwise non-pixel", base_prompt)
             self.assertIn("generate a simplified native pixel-art base candidate first", base_prompt)
             self.assertIn("use that inspected pixel candidate as the next grounding reference", base_prompt)
-            self.assertIn("Only record the final canonical base after the pixel reference itself passes strict base style QA", base_prompt)
+            self.assertIn("Only record the final canonical base after the pixel reference itself passes source and visual QA", base_prompt)
             self.assertNotIn("Keep the strong v9-style character read", base_prompt)
 
     def test_row_prompts_inherit_hard_native_pixel_rendering_lock(self) -> None:
@@ -1820,7 +1856,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(thinking_job["depends_on"], ["base"])
             self.assertFalse(thinking_job["allow_prompt_only_generation"])
             self.assertTrue(thinking_job["subagent_eligible"])
-            self.assertEqual(thinking_job["generation_owner"], "subagent-when-authorized")
+            self.assertEqual(thinking_job["generation_owner"], "subagent-default-when-available")
             self.assertEqual(thinking_job["recording_owner"], "parent")
             self.assertEqual(thinking_job["subagent_handoff"]["return_only"], ["selected_source", "qa_note"])
             self.assertIn("edit imagegen-jobs.json", thinking_job["subagent_handoff"]["forbidden_actions"])
@@ -1896,7 +1932,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             ready_after_base = job_status.status(out_dir)
             self.assertEqual(ready_after_base["counts"]["ready"], 1)
             self.assertEqual(ready_after_base["ready_jobs"][0]["id"], "working")
-            self.assertEqual(ready_after_base["ready_jobs"][0]["generation_owner"], "subagent-when-authorized")
+            self.assertEqual(ready_after_base["ready_jobs"][0]["generation_owner"], "subagent-default-when-available")
             self.assertTrue(ready_after_base["ready_jobs"][0]["subagent_eligible"])
             self.assertEqual(ready_after_base["ready_jobs"][0]["subagent_handoff"]["return_only"], ["selected_source", "qa_note"])
 
@@ -2120,17 +2156,6 @@ class PrepareCompanionRunTests(unittest.TestCase):
                 ]
             )
 
-            with self.assertRaisesRegex(SystemExit, "base style analysis failed"):
-                record.record_result(
-                    run_dir=out_dir,
-                    job_id="base",
-                    source=base_source,
-                    source_provenance="auto",
-                    force=False,
-                    allow_synthetic_test_source=True,
-                    strict_base_style=True,
-                )
-
             result = record.record_result(
                 run_dir=out_dir,
                 job_id="base",
@@ -2138,10 +2163,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
                 source_provenance="auto",
                 force=False,
                 allow_synthetic_test_source=True,
-                strict_base_style=False,
+                strict_base_style=True,
             )
             warning_codes = {warning["code"] for warning in result["base_style_analysis"]["warnings"]}
             self.assertIn("smooth_or_overdetailed_foreground_palette", warning_codes)
+            self.assertEqual(result["base_style_strict_blocking_warning_codes"], [])
 
     def test_recording_strict_row_style_blocks_nonuniform_chroma_key_background(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -2329,6 +2355,71 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(thinking_job["source_provenance"], "built-in-imagegen-chroma-cleanup")
             self.assertEqual(thinking_job["chroma_cleanup"], result["chroma_cleanup"])
 
+    def test_recording_accepts_codex_app_imagegen_capture_with_sidecar_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            out_dir = tmp_path / "run"
+            source_dir = tmp_path / "codex-app-imagegen"
+            base_source = source_dir / "base.png"
+            row_source = source_dir / "thinking.png"
+            write_flat_pixel_base(base_source)
+            write_flat_pixel_base(row_source)
+            metadata_path = row_source.with_name(row_source.name + ".codex-imagegen.json")
+
+            prepare.main(
+                [
+                    "--companion-name",
+                    "CodexAppCapture",
+                    "--output-dir",
+                    str(out_dir),
+                    "--states",
+                    "thinking",
+                    "--quiet",
+                ]
+            )
+
+            record.record_result(
+                run_dir=out_dir,
+                job_id="base",
+                source=base_source,
+                source_provenance="user-provided-integrated-row-art",
+                force=False,
+                allow_synthetic_test_source=False,
+                strict_base_style=True,
+            )
+
+            metadata_path.write_text(
+                json.dumps(
+                    {
+                        "source": "codex-app-imagegen",
+                        "sessionPath": str(tmp_path / "rollout-test.jsonl"),
+                        "callId": "ig_thinking",
+                        "outputPath": str(row_source.resolve()),
+                        "sha256": record.file_sha256(row_source),
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = record.record_result(
+                run_dir=out_dir,
+                job_id="thinking",
+                source=row_source,
+                source_provenance="codex-app-imagegen",
+                force=False,
+                allow_synthetic_test_source=False,
+                strict_row_style=True,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["source_provenance"], "codex-app-imagegen")
+            self.assertEqual(result["codex_app_imagegen"]["callId"], "ig_thinking")
+            self.assertEqual(result["codex_app_imagegen"]["sha256"], record.file_sha256(row_source))
+            jobs = json.loads((out_dir / "imagegen-jobs.json").read_text(encoding="utf-8"))
+            thinking_job = next(job for job in jobs["jobs"] if job["id"] == "thinking")
+            self.assertEqual(thinking_job["source_provenance"], "codex-app-imagegen")
+            self.assertEqual(thinking_job["codex_app_imagegen"]["callId"], "ig_thinking")
+
     def test_recording_rejects_chroma_cleanup_without_builtin_original_source(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp_path = Path(raw_tmp)
@@ -2371,110 +2462,6 @@ class PrepareCompanionRunTests(unittest.TestCase):
                     allow_synthetic_test_source=False,
                     strict_row_style=True,
                 )
-
-    def test_recording_accepts_explicit_imagegen_cli_fallback_provenance(self) -> None:
-        with tempfile.TemporaryDirectory() as raw_tmp:
-            tmp_path = Path(raw_tmp)
-            out_dir = tmp_path / "run"
-            source_dir = tmp_path / "imagegen-cli-output"
-            base_source = source_dir / "base.png"
-            row_source = source_dir / "thinking.png"
-            write_flat_pixel_base(base_source)
-            write_flat_pixel_base(row_source)
-
-            prepare.main(
-                [
-                    "--companion-name",
-                    "CliFallback",
-                    "--output-dir",
-                    str(out_dir),
-                    "--states",
-                    "thinking",
-                    "--quiet",
-                ]
-            )
-            cli_prompt = out_dir / "prompts" / "rows" / "thinking-cli-fallback.md"
-            cli_prompt.write_text("CLI fallback prompt", encoding="utf-8")
-
-            record.record_result(
-                run_dir=out_dir,
-                job_id="base",
-                source=base_source,
-                source_provenance="imagegen-cli-fallback",
-                force=False,
-                allow_synthetic_test_source=False,
-                strict_base_style=True,
-                cli_fallback_approved=True,
-                cli_fallback_model="gpt-image-1.5",
-                cli_fallback_background="transparent",
-                cli_fallback_output_format="png",
-                cli_fallback_prompt_file=cli_prompt,
-            )
-
-            result = record.record_result(
-                run_dir=out_dir,
-                job_id="thinking",
-                source=row_source,
-                source_provenance="imagegen-cli-fallback",
-                force=False,
-                allow_synthetic_test_source=False,
-                strict_row_style=True,
-                cli_fallback_approved=True,
-                cli_fallback_model="gpt-image-1.5",
-                cli_fallback_background="transparent",
-                cli_fallback_output_format="png",
-                cli_fallback_prompt_file=cli_prompt,
-            )
-
-            self.assertTrue(result["ok"])
-            self.assertTrue(result["row_source_style_analysis"]["ok"])
-            self.assertEqual(
-                result["cli_fallback"],
-                {
-                    "approved": True,
-                    "model": "gpt-image-1.5",
-                    "background": "transparent",
-                    "outputFormat": "png",
-                    "promptFile": "prompts\\rows\\thinking-cli-fallback.md",
-                },
-            )
-            jobs = json.loads((out_dir / "imagegen-jobs.json").read_text(encoding="utf-8"))
-            thinking_job = next(job for job in jobs["jobs"] if job["id"] == "thinking")
-            self.assertEqual(thinking_job["source_provenance"], "imagegen-cli-fallback")
-            self.assertEqual(thinking_job["cli_fallback"], result["cli_fallback"])
-            self.assertEqual(thinking_job["row_source_style_strict_blocking_warning_codes"], [])
-
-    def test_recording_cli_fallback_provenance_requires_approval_metadata(self) -> None:
-        with tempfile.TemporaryDirectory() as raw_tmp:
-            tmp_path = Path(raw_tmp)
-            out_dir = tmp_path / "run"
-            source_dir = tmp_path / "imagegen-cli-output"
-            base_source = source_dir / "base.png"
-            write_flat_pixel_base(base_source)
-
-            prepare.main(
-                [
-                    "--companion-name",
-                    "CliFallbackNeedsMetadata",
-                    "--output-dir",
-                    str(out_dir),
-                    "--states",
-                    "thinking",
-                    "--quiet",
-                ]
-            )
-
-            with self.assertRaisesRegex(SystemExit, "--cli-fallback-approved"):
-                record.record_result(
-                    run_dir=out_dir,
-                    job_id="base",
-                    source=base_source,
-                    source_provenance="imagegen-cli-fallback",
-                    force=False,
-                    allow_synthetic_test_source=False,
-                    strict_base_style=True,
-                )
-
 
 if __name__ == "__main__":
     unittest.main()

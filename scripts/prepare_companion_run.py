@@ -58,22 +58,25 @@ ROW_SUBAGENT_HANDOFF = {
 
 DEFAULT_STATES = [
     "idle",
+    "hover",
+    "dragging",
     "greeting",
     "listening",
     "thinking",
     "answering",
     "success",
     "error",
-    "confused",
     "sleeping",
 ]
-OPTIONAL_STATES = ["working"]
+OPTIONAL_STATES = ["working", "confused"]
 SUPPORTED_STATES = DEFAULT_STATES + OPTIONAL_STATES
 
 SEMANTIC_STATES = {"listening", "thinking", "working", "answering", "success", "error", "confused"}
 LONG_STATES = {"thinking", "working", "answering"}
 STATE_PURPOSES = {
     "idle": "default calm presence",
+    "hover": "pointer hover over the companion",
+    "dragging": "user is dragging the companion around the app",
     "greeting": "chat opens or first welcome",
     "listening": "user is typing or speaking",
     "thinking": "assistant is thinking, processing, retrieving, using tools, or waiting on backend progress before output",
@@ -87,6 +90,8 @@ STATE_PURPOSES = {
 
 STATE_ACTING = {
     "idle": "slow breathing, soft blink, tiny posture settle",
+    "hover": "curious notice, tiny lift or perk, friendly ready expression, no semantic symbols",
+    "dragging": "gentle picked-up or carried pose with compact body, stable appendages, and safe grab/readiness acting",
     "greeting": "friendly anticipation, small wave or body bounce, warm smile, return to rest",
     "listening": "attentive lean toward the user, eyes tracking, small blink hold",
     "thinking": "clear-face thinking performance with curious head/body tilt, source-matched eyes mostly forward with only tiny in-eye shifts, changing tiny closed smile or gently upturned thoughtful mouth, low side-anchored appendage beats when supported, and readable processing/idea beats",
@@ -122,6 +127,15 @@ STATE_SPECIFIC_GUARDS = {
     "idle": (
         "Idle stays calm and present. Do not turn it into greeting, speaking, sleeping, error, or thinking; "
         "avoid wide open mouths, semantic cues, and dramatic mood changes."
+    ),
+    "hover": (
+        "Hover should read as the mascot noticing the user's pointer: curious, friendly, and lightly perked. "
+        "Do not add cursor icons, UI pointers, text, glow rings, or large reaction symbols."
+    ),
+    "dragging": (
+        "Dragging should read as the mascot being picked up or carried while staying cute and compact. "
+        "Keep the body/core stable enough for cursor-follow movement; do not add external hands, cursor icons, "
+        "drop shadows, speed lines, dust, impact marks, or stretched smear motion."
     ),
     "greeting": (
         "Greeting should stay warm and welcoming. Use a small wave, bounce, or smile peak only if the mascot anatomy "
@@ -162,6 +176,8 @@ STATE_SPECIFIC_GUARDS = {
 
 STATE_STORY_BEATS = {
     "idle": "calm rest -> soft blink -> tiny breath lift -> relaxed settle",
+    "hover": "notice pointer -> perk/lean -> friendly hold -> settle while still attentive",
+    "dragging": "grab notice -> tiny lift/squash -> carried hold -> soft settle-ready loop",
     "greeting": "notice user -> warm smile -> peak greeting gesture/bounce -> friendly settle",
     "listening": "attentive start -> eyes track input -> focused hold/blink -> ready settle",
     "thinking": "neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle",
@@ -189,6 +205,18 @@ STATE_ACTING_CHOREOGRAPHY = {
         "Frame 3: tiny breath lift or body rise. Frame 4: relaxed hold with appendages still accounted for. "
         "Frame 5: small gaze or mouth micro-change. Frame 6: breath lowers. Frame 7: second soft blink or "
         "settle beat. Frame 8: return cleanly to the first resting pose."
+    ),
+    "hover": (
+        "Frame 1: resting pose notices the pointer. Frame 2: eyes brighten or track upward without changing eye grammar. "
+        "Frame 3: tiny lift, lean, ear/prop/appendage perk, or posture alert. Frame 4: friendly hover-ready hold. "
+        "Frame 5: subtle blink or smile change. Frame 6: body/appendages settle slightly. Frame 7: attentive hold. "
+        "Frame 8: return cleanly to the first hover-notice pose."
+    ),
+    "dragging": (
+        "Frame 1: notices the grab. Frame 2: compact body lifts or tucks slightly. Frame 3: carried pose with original "
+        "appendages accounted for and identity props stable. Frame 4: tiny bob or sway while being dragged. Frame 5: "
+        "quick blink or determined cute hold. Frame 6: appendages/prop follow through subtly. Frame 7: settle-ready "
+        "carried pose. Frame 8: loop back without stretching, smearing, or changing body scale."
     ),
     "greeting": (
         "Frame 1: notices the user. Frame 2: eyes brighten and smile starts. Frame 3: an existing appendage "
@@ -264,6 +292,8 @@ STATE_VISUAL_AIDS = {
 }
 
 STATE_REJECTS = {
+    "hover": "cursor icons, pointer arrows, UI labels, glow rings, detached reaction symbols, large surprise faces, identity drift",
+    "dragging": "external hands, cursor icons, drag handles, text labels, drop shadows, speed lines, dust, impact marks, stretched smear motion, body scale jumps, dangling detached appendages",
     "working": "anger, hostile eyes, slanted angry eyes, V-shaped eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, duplicate identity props, prop-shaped glyph copies, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues, single isolated voice speck, one-frame voice ticks, one-frame sound marks, detached fleck, cheek-mark-like voice cue",
     "thinking": "detached icon floating above the mascot, oversized second head/body-sized thought orb, giant bubble peak, thought cue fused into the body core causing body growth, static dots, loose sparkles, isolated white specks, star glints, stray final-frame dot, expression-panel skew or body warp, unsupported or poorly connected face-touch that reads as extra anatomy, a lower-face patch, detached mitten, duplicated hand, or covered expression, appendage-like cluster below the face, lower-face marks, worried frowns, sad/serious/downturned expressions, stale same-face row, confused/error mouth shapes, cue too subtle to read as thinking",
@@ -274,6 +304,15 @@ STATE_REJECTS = {
 }
 
 STATE_FRAME_ARCS = {
+    "hover": (
+        "Frame-by-frame acting arc: 1 calm mascot notices the pointer, 2 eyes or face brighten, 3 small perk/lean/lift, "
+        "4 friendly attentive hold, 5 blink or tiny smile change, 6 body/appendage settle, 7 ready hold, 8 loop back. "
+        "Show hover through the mascot's own face, posture, appendages, ears, props, or costume motion; do not draw a cursor, UI pointer, text, or detached attention symbol."
+    ),
+    "dragging": (
+        "Frame-by-frame acting arc: 1 grab notice, 2 compact lift/tuck, 3 carried pose, 4 tiny bob/sway, 5 blink or cute determined hold, "
+        "6 subtle appendage/prop follow-through, 7 settle-ready carried pose, 8 loop back. This row is used while the React component follows the pointer, so keep the sprite compact, stable, centered, and free of floor shadows, speed lines, cursor icons, or smear/stretch motion."
+    ),
     "thinking": (
         "Frame-by-frame acting arc for expressive thinking performance: 1 neutral-curious face and stable identity "
         "props, 2 source-matched eyes stay mostly forward while appendages stay side-anchored or begin a tiny side bob when anatomy supports it, "
@@ -329,7 +368,7 @@ REFERENCE_PALETTE_FIDELITY_POLICY = (
     "Reference palette fidelity lock: Preserve the actual reference colors for eye whites/highlights, pupils, eye "
     "outlines, face base color, cheek marks, outfit, props, and signature markings. Do not force white eyes or white "
     "highlights when the reference uses another color; only keep whites white when the source uses white. Translate "
-    "colors into a limited pixel-art palette, but keep hue relationships and identity colors faithful to the reference. "
+    "colors into a controlled pixel-art palette, but keep hue relationships and identity colors faithful to the reference. "
     "Do not let a glow, aura, bloom, prop color, or gold effect tint or recolor the mascot identity palette. Any "
     "prop-end light may touch the prop end, but it must not recolor eyes, face, clothing, markings, or must-keep props."
 )
@@ -357,7 +396,7 @@ EYE_IDENTITY_CONTINUITY_POLICY = (
 
 BASE_PRODUCTION_LOCK = (
     "Base production lock: create a native pixel-art sprite, not a scaled-down smooth illustration. Use flat "
-    "cel-shaded pixel clusters, a limited palette, hard stepped edges, chunky readable silhouette, and an intentional "
+    "cel-shaded pixel clusters, a controlled sprite palette, hard stepped edges, chunky readable silhouette, and an intentional "
     "1-2 px dark outline. Use simple blocked highlights only where needed. Use no glossy gradients, no soft airbrush, "
     "no bloom, no rim glow, no 3D lighting, no high-detail specular shine, and no smooth vector curves."
 )
@@ -380,20 +419,19 @@ SOURCE_PIXEL_GRID_LOCK = (
 )
 
 INDEXED_COLOR_SPRITE_CELL_LOCK = (
-    "Indexed-color sprite cell lock: Use the fewest colors that preserve identity, roughly 8-16 total non-background "
-    "colors for the base sprite. Think indexed-color sprite, not digital painting. No per-pixel color ramps, no "
-    "smooth shade bands, no gradient-filled body areas, face areas, clothing, props, accessories, or appendages, and no dozens "
-    "of near-identical source-color, outline, shadow, or highlight colors. Favor simpler and flatter over prettier: one flat base color, one "
-    "hard stepped shadow, and one tiny blocked highlight per material is enough."
+    "Indexed-color sprite discipline: Use a controlled sprite palette that preserves identity and charm. Think "
+    "sprite art, not digital painting. Avoid per-pixel color ramps, smooth shade bands, gradient-filled body areas, "
+    "and dozens of near-identical source-color, outline, shadow, or highlight colors. Favor clear flat clusters over "
+    "glossy polish, but keep signature costume, magic, material, and character color relationships when they matter."
 )
 
 REFERENCE_AWARE_PALETTE_GUIDE = (
-    "Reference-aware palette guide: Build a tiny per-mascot palette from the attached reference or the text concept, "
+    "Reference-aware palette guide: Build a compact per-mascot palette from the attached reference or the text concept, "
     "not from a stock assistant-mascot palette. Preserve the source hue relationships for body, face areas, eye fills "
     "or highlights, pupils, cheek marks, clothing, trim, emblems, and held props. Never impose a preselected color "
-    "palette on a mascot whose reference uses different identity colors. Use flat fills only: one base, one hard "
-    "shadow, and one small blocked highlight per material is usually enough. Do not blend between palette colors, "
-    "do not create intermediate shades, and do not anti-alias edges with many in-between colors."
+    "palette on a mascot whose reference uses different identity colors. Use mostly flat fills with hard blocked "
+    "shadow/highlight steps. Avoid unnecessary intermediate blends, but do not erase important reference color "
+    "personality just to reduce the count."
 )
 
 REFERENCE_NATIVE_STYLE_LOCK = (
@@ -408,19 +446,18 @@ REFERENCE_NATIVE_STYLE_LOCK = (
 PIXEL_REFERENCE_AUDITION_LOOP = (
     "Pixel-reference audition loop: When the attached reference is photographic, realistic, smooth, high-detail, or "
     "otherwise non-pixel, generate a simplified native pixel-art base candidate first and inspect it as a pixel "
-    "reference. If the candidate preserves identity but remains too smooth, glossy, over-detailed, or palette-rich, "
+    "reference. If the candidate preserves identity but remains too smooth, glossy, over-detailed, or visually non-sprite-like, "
     "use that inspected pixel candidate as the next grounding reference for another base attempt instead of moving "
     "on to state rows. Do not generate state rows from the original non-pixel reference alone. Only record the final "
-    "canonical base after the pixel reference itself passes strict base style QA."
+    "canonical base after the pixel reference itself passes source and visual QA."
 )
 
 HATCHPET_COMPACT_SOURCE_TARGET = (
-    "HatchPet compact source target: The base should read like a Codex app digital pet first and a website mascot "
-    "second. Make it fully visible, readable as a tiny digital pet, and suitable for animation into a 192x208 sprite "
-    "cell even if the final web atlas later uses larger cells. Use pixel-art-adjacent low-resolution mascot sprite "
+    "Compact web companion source target: The base should be fully visible, readable as a small website companion, "
+    "and simple enough to animate without redesign. Use pixel-art-adjacent low-resolution mascot sprite "
     "rendering: compact chibi proportions, chunky whole-body silhouette, thick dark 1-2 px outline, visible "
-    "stepped/pixel edges, limited palette, flat cel shading with at most one small highlight and one shadow step, "
-    "simple readable face, tiny limbs, and no detail that disappears at 192x208. Do not compose it as a large glossy "
+    "stepped/pixel edges, controlled palette, flat cel shading with hard blocked highlights/shadows, "
+    "simple readable face, tiny limbs, and no detail that disappears at companion-widget sizes. Do not compose it as a large glossy "
     "product mascot, large hero character, app icon, or high-resolution sticker; leave generous chroma-key padding "
     "and keep the sprite compact."
 )
@@ -745,6 +782,14 @@ VISIBLE_APPENDAGE_ACTING_POLICY = (
 )
 
 APPENDAGE_STATE_ACTING_HINTS = {
+    "hover": (
+        "State-specific appendage acting: hover rows can use a tiny side lift, paw/hand perk, ear/wing/tail twitch, "
+        "or held-prop micro-tilt when present. Keep it small and friendly; no new pointers or extra limbs."
+    ),
+    "dragging": (
+        "State-specific appendage acting: dragging rows can tuck, brace, dangle slightly, or hold an identity prop close "
+        "as if being carried. Preserve every original appendage and do not invent a grabbing hand or handle."
+    ),
     "thinking": (
         "State-specific appendage acting: thinking rows can use a side-anchored low free-hand lift, side bob, "
         "tiny outward side tilt, low outer-body tuck beside the body, staff-hand grip shift, or one polished "
@@ -1211,7 +1256,7 @@ Eye grammar to preserve: {eye_grammar}
 Generic cues to avoid: {forbidden}
 Anatomy class: {anatomy_class}
 
-Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped pixel edges, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite details, simple expressive face, readable silhouette at website sizes. No smooth illustration, glossy rendering, 3D, painterly gradients, vector-flat icon style, text, labels, scenery, shadows, UI panels, or marketing artwork.
+Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped pixel edges, thick dark 1-2 px outline, controlled sprite palette, flat cel shading, hard-edged sprite details, simple expressive face, readable silhouette at website sizes. No smooth illustration, glossy rendering, 3D, painterly gradients, vector-flat icon style, text, labels, scenery, shadows, UI panels, or marketing artwork.
 
 {BASE_PRODUCTION_LOCK}
 
@@ -1318,7 +1363,7 @@ Identity/style lock:
 Preserve the same mascot body, palette, outline weight, appendage count, markings, and held props. {identity_prop_line} Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area.
 Scale/layout: {cell_width}x{cell_height} cells. Match canonical base and accepted rows for body size/center, top/bottom edge, and core width.
 Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight logic from base/reference."}
-Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, limited palette, flat cel shading. {thinking_background_lock} No smooth illustration, glossy rendering, UI panels, text, symbols, action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or motion marks.
+Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, controlled sprite palette, flat cel shading. {thinking_background_lock} No smooth illustration, glossy rendering, UI panels, text, symbols, action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or motion marks.
 
 {state_plan["semanticRead"]}; not surprised, answering, worried, sleepy, or confused. Face/body/appendage timing should sell thinking before the cue is noticed.
 {STATE_SPECIFIC_GUARDS["thinking"]}
@@ -1463,7 +1508,7 @@ Identity lock:
 - Closed-eye frames must keep the same eye positions and spacing as simple short lines/curves, not symbols or a new eye style.
 
 Style lock:
-Native Codex digital-pet pixel-art sprite, hard square pixels, thick dark 1-2 px outline, limited palette, flat cel shading, hard-edged sprite effects. {BACKGROUND_SOURCE_LOCK} Chosen chroma key: {key_name} {key_hex}. No smooth illustration, glossy sticker rendering, 3D, painterly gradients, vector icons, soft antialiasing, shadows, scenery, UI panels, text, symbols, or guide marks. No action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or cartoon motion marks unless the state prompt explicitly asks for a tiny attached cue.
+Native Codex digital-pet pixel-art sprite, hard square pixels, thick dark 1-2 px outline, controlled sprite palette, flat cel shading, hard-edged sprite effects. {BACKGROUND_SOURCE_LOCK} Chosen chroma key: {key_name} {key_hex}. No smooth illustration, glossy sticker rendering, 3D, painterly gradients, vector icons, soft antialiasing, shadows, scenery, UI panels, text, symbols, or guide marks. No action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or cartoon motion marks unless the state prompt explicitly asks for a tiny attached cue.
 
 State goal:
 - State: {state}
@@ -1574,7 +1619,7 @@ def make_jobs(
                 "allow_prompt_only_generation": False,
                 "identity_reference_paths": identity_reference_paths,
                 "parallelizable_after": ["base"],
-                "generation_owner": "subagent-when-authorized",
+                "generation_owner": "subagent-default-when-available",
                 "subagent_eligible": True,
                 "subagent_handoff": ROW_SUBAGENT_HANDOFF,
                 "recording_owner": "parent",
