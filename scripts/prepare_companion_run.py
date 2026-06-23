@@ -118,9 +118,10 @@ SOURCE_EYE_LOCK = (
 )
 
 THINKING_EYE_LOCK = (
-    "Open eyes preserve the source-matched fill, outline, and highlight/catchlight logic. Open eyes must remain "
-    "the same source-colored eye masses in the same eye boxes. No white crescent side-glance eyes, hollow eyes, "
-    "mismatched eyes, extra catchlights, or symbol eyes; no new white sclera."
+    "Open eyes preserve source-matched fill/outline/highlights and the same source-colored eye masses in the "
+    "same eye boxes. No white crescent side-glance eyes, hollow/mismatched eyes, extra catchlights, symbol "
+    "eyes, new white sclera, or one-frame dramatic side glances. In thinking, keep open eyes forward/nearly "
+    "forward; carry processing with body, appendage/prop, mouth, blink, cue timing."
 )
 
 STATE_SPECIFIC_GUARDS = {
@@ -180,7 +181,7 @@ STATE_STORY_BEATS = {
     "dragging": "grab notice -> tiny lift/squash -> carried hold -> soft settle-ready loop",
     "greeting": "notice user -> warm smile -> peak greeting gesture/bounce -> friendly settle",
     "listening": "attentive start -> eyes track input -> focused hold/blink -> ready settle",
-    "thinking": "neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle",
+    "thinking": "neutral-curious -> focused processing -> compact cue or prop beat -> idea lands -> pleased settle",
     "working": "notice -> focus -> effort -> progress -> pleased settle",
     "answering": "ready/listening -> first syllable -> clearer speech -> conversational blink/smile -> settled speaking loop",
     "success": "anticipation -> bright success peak -> proud hold -> warm settle",
@@ -315,20 +316,20 @@ STATE_FRAME_ARCS = {
     ),
     "thinking": (
         "Frame-by-frame acting arc for expressive thinking performance: 1 neutral-curious face and stable identity "
-        "props, 2 source-matched eyes stay mostly forward while appendages stay side-anchored or begin a tiny side bob when anatomy supports it, "
-        "3 tiny closed pondering smile or gently upturned one-pixel smile and one tiny compact cue kept close to the inferred thought-cue source, 4 slightly larger compact cue with more curious eyes and a tiny closed thoughtful smile, "
-        "5 compact cue peak beside the inferred source with one slightly larger primary cue element only when the accepted cue vocabulary supports it while the face remains unobscured without changing the body footprint, 6 cue starts smaller with a quick active processing blink or pondering hold, "
+        "props, 2 source-matched eyes stay forward or nearly forward while appendages stay side-anchored or begin a tiny side bob when anatomy supports it, "
+        "3 focused open-eye or tiny mouth beat and one tiny compact cue kept close to the inferred thought-cue source, 4 slightly larger compact cue with body/appendage/prop timing while eyes keep the same source grammar, "
+        "5 compact cue peak beside the inferred source with one slightly larger primary cue element only when the accepted cue vocabulary supports it while the face remains unobscured without changing the body footprint, 6 cue starts smaller with a quick active processing blink or focused hold, "
         "7 small smile/idea recognition as the cue shrinks, 8 settle back into the loop. Use one compact thought bubble, thought puff, "
-        "or idea orb when acting alone is unclear; make the thinking read unmistakable at 64-96 px without turning "
+        "idea orb, mascot-native processing aura, or active prop/source cue when acting alone is unclear; make the thinking read unmistakable at 64-96 px without turning "
         "the cue into the main character. Thinking also covers processing, retrieval, tool-use waiting, and backend "
         "progress for chatbot companions. Do not create a separate working state unless the user explicitly requests one. "
         "Keep the thought cue secondary to the mascot: medium is the maximum thought cue size, it is never larger "
         "than about one-quarter of the mascot body width, and do not let the thought cue become a second "
         "head/body-sized orb. Do not use a giant bubble peak; shrink back down before the loop settles. "
-        "For shorter or longer rows, preserve the same expression-changing neutral-curious -> noticing -> curious pondering -> "
+        "For shorter or longer rows, preserve the same neutral-curious -> focused processing -> compact cue or prop beat -> "
         "idea lands -> settle arc and the same small -> slightly larger -> medium -> smaller -> tiny/settle cue growth; this is not the "
         "same face or same cue pasted in every frame. Keep the thinking expression story adjacent and character-appropriate, "
-        "not random sad, sleepy, angry, blank, or unrelated faces."
+        "not random sad, sleepy, angry, blank, unrelated faces, or one-frame expression-style outliers."
     ),
     "working": (
         "Frame-by-frame acting arc: 1 mascot notices a concrete work target, 2 leans in and the target wakes up while eyes focus on it, "
@@ -653,12 +654,14 @@ STATE_PERFORMANCE_STORY_POLICY = (
     "shuffled faces. Avoid abrupt mood jumps, unrelated sad/serious/sleepy/angry/blank faces, and facial expressions that "
     "do not fit the state. Each expression change should be caused by the state action and supported by eye direction, "
     "mouth shape, blink timing, body tilt, appendage motion, prop motion, or cue motion. The final frame must loop "
-    "cleanly back to the first frame without a sudden emotional reset."
+    "cleanly back to the first frame without a sudden emotional reset. Reject even a single expression-style outlier "
+    "when the row played left-to-right would feel like it briefly becomes a different mascot, mood, or eye grammar."
 )
 
 THINKING_STATE_READ_POLICY = (
-    "Thinking must read as curious pondering and processing, not worry, confusion, sadness, anger, sleepiness, or error. "
-    "Use neutral-curious, tiny closed pondering smiles, gently upturned one-pixel thoughtful smile mouths, blink/hold, and small recognition-smile beats. "
+    "Thinking must read as curious processing, not worry, confusion, sadness, anger, sleepiness, or error. "
+    "Prefer a focused processing/working loop: forward or nearly forward curious eyes, tiny closed or gently "
+    "upturned one-pixel mouths, body/appendage/prop timing, a compact mascot-native cue, and small recognition-smile beats. "
     "Recognition in thinking should be a closed or tiny pixel smile, not a wide open speaking mouth, not an "
     "exclamation mouth, and not a syllable mouth from answering. "
     "Keep the mouth level or slightly upturned; avoid downturned mouths, downturned frowns, "
@@ -667,7 +670,8 @@ THINKING_STATE_READ_POLICY = (
     "active during that blink, and place open-eye curious or recognition frames immediately before and after it. "
     "Processing blinks should use simple closed curved or short horizontal eyes, not squeezed shut X-eyes, chevron "
     "eyes, scrunched effort eyes, or strain grimaces. Do not use long closed-eye holds, droopy eyelids, sleepy "
-    "breathing, or relaxed sleeping mouths in thinking."
+    "breathing, or relaxed sleeping mouths in thinking. If a closed-eye or side-eye beat creates a one-frame "
+    "expression-style outlier, reject it and regenerate with a steadier forward-eye processing story."
 )
 
 THINKING_MOOD_CONTINUITY_POLICY = (
@@ -675,7 +679,9 @@ THINKING_MOOD_CONTINUITY_POLICY = (
     "Use neutral-curious, focused pondering, quick active blink, recognition, and pleased settle only. "
     "There should be no worried frown frames, no serious/downturned mouth frames, no confused/error mouth frames, no sleepy closed-eye smile frames, "
     "no blank unrelated face, and no open exclamation or speaking-mouth frames that make the row read as "
-    "answering, surprise, confusion, fatigue, or error."
+    "answering, surprise, confusion, fatigue, or error. Review the row as animation, not as isolated stills: "
+    "a single exaggerated side glance, closed-eye style swap, or odd face that breaks the left-to-right motion story "
+    "is a failed thinking row even when the row technically reads as thinking."
 )
 
 THINKING_CUE_CONTINUITY_POLICY = (
@@ -1315,10 +1321,11 @@ def build_thinking_prompt(
     )
     if anatomy_class in {"hands", "paws"}:
         hand_line = (
-            "Use only existing appendages. A free appendage may lift, tilt, settle, or make one polished thinking "
-            "face-touch beat. Keep any prop-holding appendage attached. Face-touch is acceptable only when the "
-            "appendage stays connected to its original anchor, leaves eyes and mouth readable, and does not read as "
-            "a face patch, duplicate appendage, or lower-face blob. If unclear, use a side-anchored lift/tilt/tuck."
+            "Use only existing appendages. Prefer side-anchored lift/tilt/settle, tiny grip/prop motion, or a "
+            "compact processing cue near the active source before face-touch. A free appendage may make one polished "
+            "thinking face-touch beat only if it improves the loop. Keep any prop-holding appendage attached. "
+            "Face-touch is acceptable only when the appendage stays connected, leaves eyes and mouth readable, "
+            "and does not read as a face patch, duplicate appendage, or lower-face blob. If unclear, use a side-anchored lift/tilt/tuck."
         )
     elif anatomy_class in {"fins-no-hands", "ambiguous-limbs"}:
         hand_line = (
@@ -1334,14 +1341,14 @@ def build_thinking_prompt(
     if frame_count == 6:
         frame_story = """Six-frame acting story:
 1 reset: open eyes, tiny calm closed smile, no thought cue.
-2 thought starts: source-matched open eyes, no white side-glance or new sclera; one tiny compact cue appears near the inferred thought-cue source.
-3 pondering: tiny closed pondering smile or gently upturned one-pixel smile; the cue grows slightly while staying close and secondary.
-4 forming: compact source-bound cluster or pulse; no cue element drops or reverses.
-5 idea lands: compact cue peak beside the inferred source; primary cue element is only slightly larger, never oversized; pleased blink or tiny closed-mouth recognition smile.
+2 thought starts: source-matched open eyes stay forward or nearly forward; no white side-glance or new sclera; one tiny compact cue appears near the inferred thought-cue source.
+3 processing: focused open-eye or tiny mouth beat; the cue grows slightly while staying close and secondary.
+4 forming: compact source-bound cluster, active prop beat, or pulse; no cue element drops or reverses.
+5 idea lands: compact cue peak beside the inferred source; primary cue element is only slightly larger, never oversized; optional quick active processing blink or tiny closed-mouth recognition smile.
 6 settle: eyes open; cue shrinks to one tiny close remnant or resolves cleanly; loop cleanly back to the first frame."""
     else:
         frame_story = f"""{frame_count}-frame acting story:
-Neutral-curious reset -> attention shift -> closed-smile pondering -> compact cue forming -> idea lands -> pleased settle. Peak with compact source-bound cue; primary cue element is only slightly larger, never oversized. Use a quick active processing blink or tiny closed-mouth recognition smile. Loop back cleanly."""
+Open-eye reset -> focused processing starts -> small body/appendage/prop beat -> compact cue forming -> quick active processing blink or tiny closed-mouth recognition smile -> idea lands -> pleased settle. Peak with compact source-bound cue; primary cue element is only slightly larger, never oversized. Keep open eyes forward/nearly forward; use body/prop/cue timing instead of dramatic side glances. Loop back cleanly."""
     vibe_line = (
         f"\nVibe fit: {source_vibe}"
         if source_vibe and source_vibe != "Infer from the reference before choosing state cues."
@@ -1349,26 +1356,26 @@ Neutral-curious reset -> attention shift -> closed-smile pondering -> compact cu
     )
     thinking_background_lock = (
         "Perfectly uniform exact flat flood-fill background: Use a plain digital solid-color canvas; "
-        "recordable by a strict cleanup gate; exact key RGB or true transparency. "
+        "recordable by a strict cleanup gate; exact key RGB/true transparency. "
         "No gradients, shadows, texture, darker/lighter key-color variations."
     )
     return f"""# {name} thinking row prompt - compact
 
 Create one horizontal sprite row strip: exactly {frame_count} separated frames on a perfectly flat {key_hex} chroma background.
-Leave wide empty {key_hex} margin; no sprite, identity prop, appendage, outline, cue, or effect may touch the outer row image border.
+Leave wide empty {key_hex} margin; no sprite, prop, appendage, outline, cue, or effect may touch the outer row image border.
 
-Inputs: refs; base size/eyes/props/style; accepted rows define apparent body size/padding; guide.
+Inputs: refs; accepted rows define apparent body size/padding; guide.
 
 Identity/style lock:
-Preserve the same mascot body, palette, outline weight, appendage count, markings, and held props. {identity_prop_line} Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area.
-Scale/layout: {cell_width}x{cell_height} cells. Match canonical base and accepted rows for body size/center, top/bottom edge, and core width.
+Preserve the same mascot body, palette, outline weight, appendage count, markings, and props. {identity_prop_line} Do not skew, stretch, rotate, squash, or warp the body core or face-bearing area.
+Scale/layout: {cell_width}x{cell_height} cells. Match canonical base and accepted rows for body size, center, and core width.
 Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight logic from base/reference."}
-Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, controlled sprite palette, flat cel shading. {thinking_background_lock} No smooth illustration, glossy rendering, UI panels, text, symbols, action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or motion marks.
+Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, flat cel shading. {thinking_background_lock} No smooth illustration, glossy rendering, UI panels, action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or motion marks.
 
 {state_plan["semanticRead"]}; not surprised, answering, worried, sleepy, or confused. Face/body/appendage timing should sell thinking before the cue is noticed.
 {STATE_SPECIFIC_GUARDS["thinking"]}
 
-Story arc: neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle. Expressions are adjacent state-caused beats, not random sad, serious, sleepy, angry, blank, or unrelated faces. Every frame changes face, posture, body/appendage timing, or cue; no stale same-face holds.
+Story arc: neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle. Expressions are adjacent state-caused beats, not random sad, serious, sleepy, angry, blank, or unrelated faces. Every frame changes face, posture, body/appendage timing, prop timing, or cue; no stale same-face holds; no one-frame expression-style outliers.
 
 Frame-by-frame acting arc:
 {frame_story}
@@ -1377,8 +1384,8 @@ Thought cue rules:
 - Thinking cue solidity lock: use deliberate compact cue shapes, not loose specks.
 - Use one compact source-appropriate non-chroma-key cue vocabulary only; no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, or glow.
 - The peak should be a compact cue beat, not a mandated symbol or puff count; primary cue element is only slightly larger, never oversized; do not enlarge the cue to prove the idea landed.
-- Separated cue elements keep a stable source-to-peak trail; smallest element stays closest to the inferred source. Do not let intermediate cue elements drift downward, reverse, jump sideways, or reorder.
-- Cue envelope lock: keep the cue close, low, compact, and secondary inside the accepted top edge. Do not make a tall vertical stack or high peak. Do not let the cue force the mascot smaller.
+- Separated cues keep a stable source-to-peak trail; smallest element stays closest to the inferred source. Do not let intermediate cue elements drift downward, reverse, jump sideways, or reorder.
+- keep the cue close, low, compact, and secondary. Do not make a tall vertical stack or high peak. Do not let the cue force the mascot smaller.
 
 Expression and eye rules:
 - Use closed/thoughtful mouths only: closed smile, tiny pleased smile, or gently upturned one-pixel smile.
@@ -1390,7 +1397,7 @@ Hand/appendage rules:
 
 {vibe_line}
 
-Reject if any frame has wrong eye grammar, surprised/answering mouth, stale same-face row, sad/serious/downturned expression, extra/missing held prop or limb, random symbol, giant/high thought cue, cue vocabulary switch, scale shrink, non-flat {key_name} {key_hex} background, or smooth/glossy or non-native pixel-art rendering. Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts.
+Reject if any frame has wrong eye grammar, stale same-face row, sad/serious/downturned expression, extra/missing held prop or limb, random symbol, giant/high thought cue, cue vocabulary switch, scale shrink, non-flat {key_name} {key_hex} background, or non-native pixel-art rendering. Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts.
 """
 
 

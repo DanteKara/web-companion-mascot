@@ -130,6 +130,8 @@ State rows should act through the mascot first: expression, blink, mouth shape, 
 
 Do not let validation make the art timid. Technical blockers must be fixed, but small intentional state-specific motion such as a success cheer, sleepy droop, error jitter, or thinking lean can pass when the manual review documents that it improves the read without breaking identity or app usability.
 
+Review state rows as animation loops, not just still images. A technically clean row can still fail when one frame has an exaggerated side glance, closed-eye style swap, odd mood jump, or expression outlier that breaks the left-to-right motion story. For `thinking`, prefer a steady processing/working loop carried by body, appendage/prop, blink, mouth, and compact cue timing before using dramatic eye-direction changes.
+
 ## React Notes
 
 When integrating into React, serve final assets from a stable public path, drive animation from manifest frame durations, respect `prefers-reduced-motion`, keep `state`, `size`, and `paused` controlled by app state, map pointer hover to `hover`, map active drag/drop movement to `dragging`, and use `image-rendering: pixelated`.

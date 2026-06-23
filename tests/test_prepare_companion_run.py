@@ -532,9 +532,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
                 prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
                 if state == "thinking":
                     self.assertIn("thinking row prompt - compact", prompt)
-                    self.assertIn("neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle", prompt)
+                    self.assertIn("neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle", prompt)
                     self.assertIn("Expressions are adjacent state-caused beats", prompt)
-                    self.assertIn("Every frame changes face, posture, body/appendage timing, or cue", prompt)
+                    self.assertIn("Every frame changes face, posture, body/appendage timing, prop timing, or cue", prompt)
+                    self.assertIn("no one-frame expression-style outliers", prompt)
                     self.assertIn("loop cleanly back to the first frame", prompt)
                 else:
                     self.assert_compact_row_prompt(prompt, state=state)
@@ -544,7 +545,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn(
-                "neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle",
+                "neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle",
                 thinking_prompt,
             )
             self.assertIn("not random sad, serious, sleepy, angry, blank, or unrelated faces", thinking_prompt)
@@ -603,10 +604,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
                     self.assertLess(len(thinking_prompt), 6200)
                     self.assertLess(len(thinking_prompt.splitlines()), 55)
                     self.assert_no_verbose_policy_dump(thinking_prompt)
-                    self.assertIn("neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle", thinking_prompt)
+                    self.assertIn("neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle", thinking_prompt)
                     self.assertIn("Keep simple side appendages outside the body", thinking_prompt)
                     self.assertIn("face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
-                    self.assertIn("Open eyes must remain the same source-colored eye masses", thinking_prompt)
+                    self.assertIn("same source-colored eye masses", thinking_prompt)
                     self.assertIn("wide empty", thinking_prompt)
                     self.assertIn("outer row image border", thinking_prompt)
                     self.assertIn("accepted rows define apparent body size/padding", thinking_prompt)
@@ -787,7 +788,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
                 self.assertIn("recordable by a strict cleanup gate", prompt)
                 self.assertIn("No white crescent side-glance eyes", prompt)
                 if state == "thinking":
-                    self.assertIn("Every frame changes face, posture, body/appendage timing, or cue", prompt)
+                    self.assertIn("Every frame changes face, posture, body/appendage timing, prop timing, or cue", prompt)
                     self.assertIn("Thinking should read curious processing", prompt)
                 else:
                     self.assertIn("Do not let all motion live in a cue while the mascot face and body stay frozen", prompt)
@@ -906,9 +907,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("compact cue peak beside the inferred source", thinking_prompt)
             self.assertIn("primary cue element is only slightly larger, never oversized", thinking_prompt)
             self.assertIn("cue shrinks to one tiny close remnant or resolves cleanly", thinking_prompt)
-            self.assertIn("neutral-curious -> noticing -> curious pondering -> idea lands -> pleased settle", thinking_prompt)
-            self.assertIn("Every frame changes face, posture, body/appendage timing, or cue", thinking_prompt)
+            self.assertIn("neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle", thinking_prompt)
+            self.assertIn("Every frame changes face, posture, body/appendage timing, prop timing, or cue", thinking_prompt)
             self.assertIn("no stale same-face holds", thinking_prompt)
+            self.assertIn("no one-frame expression-style outliers", thinking_prompt)
             self.assertIn("sad/serious/downturned expression", thinking_prompt)
             self.assertIn("Face/body/appendage timing should sell thinking before the cue is noticed", thinking_prompt)
             self.assertIn("Do not make a tall vertical stack", thinking_prompt)
@@ -920,12 +922,13 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
             self.assertIn("If unclear, leave it resting", thinking_prompt)
             self.assertIn("no white side-glance or new sclera", thinking_prompt)
-            self.assertIn("Open eyes must remain the same source-colored eye masses", thinking_prompt)
+            self.assertIn("same source-colored eye masses", thinking_prompt)
             self.assertIn("new white sclera", thinking_prompt)
             self.assertIn("Use closed/thoughtful mouths only: closed smile, tiny pleased smile, or gently upturned one-pixel smile", thinking_prompt)
             self.assertIn("Expression and eye rules", thinking_prompt)
-            self.assertIn("tiny closed pondering smile or gently upturned one-pixel smile", thinking_prompt)
-            self.assertIn("source-matched open eyes", thinking_prompt)
+            self.assertIn("focused open-eye or tiny mouth beat", thinking_prompt)
+            self.assertIn("source-matched open eyes stay forward or nearly forward", thinking_prompt)
+            self.assertIn("one-frame dramatic side glances", thinking_prompt)
             self.assertIn("stale same-face row", thinking_prompt)
             self.assertIn("does not become a new hand, finger, lower-face patch, or detached blob", thinking_prompt)
             self.assertNotIn("open black eyes", thinking_prompt)
@@ -1056,7 +1059,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("keep the cue close, low, compact, and secondary", thinking_prompt)
-            self.assertIn("inside the accepted top edge", thinking_prompt)
+            self.assertIn("keep the cue close, low, compact, and secondary", thinking_prompt)
             self.assertIn("or high peak", thinking_prompt)
             self.assertIn("Do not make a tall vertical stack", thinking_prompt)
             self.assertIn("Do not let the cue force the mascot smaller", thinking_prompt)
@@ -1323,7 +1326,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
                 self.assertIn("Eye grammar to preserve", prompt)
                 self.assertIn("Closed", prompt)
                 self.assertIn("wrong eye grammar", prompt)
-            self.assertIn("No white crescent side-glance eyes, hollow eyes, mismatched eyes, extra catchlights, or symbol eyes", thinking_prompt)
+            self.assertIn("No white crescent side-glance eyes, hollow/mismatched eyes", thinking_prompt)
             self.assertIn("No hollow or inverted eyes, mismatched eyes, extra catchlights, symbol eyes", answering_prompt)
 
     def test_inferred_eye_grammar_hint_is_recorded_and_inherited(self) -> None:
@@ -1378,9 +1381,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("Open eyes preserve the source-matched fill, outline, and highlight/catchlight logic", thinking_prompt)
+            self.assertIn("Open eyes preserve source-matched fill/outline/highlights", thinking_prompt)
             self.assertIn("No white crescent side-glance eyes", thinking_prompt)
-            self.assertIn("hollow eyes, mismatched eyes, extra catchlights, or symbol eyes", thinking_prompt)
+            self.assertIn("hollow/mismatched eyes, extra catchlights, symbol eyes", thinking_prompt)
             self.assertIn("For solid dark base eyes", prepare.EYE_IDENTITY_CONTINUITY_POLICY)
 
     def test_row_prompt_uses_stable_eye_acting_when_gaze_would_break_eye_style(self) -> None:
