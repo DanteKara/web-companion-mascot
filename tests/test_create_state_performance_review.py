@@ -59,7 +59,7 @@ def production_pass_args(manifest_path: Path) -> list[str]:
         "--production-use",
         "--review-all-frames",
         "--expected-state-read",
-        "thinking=Coherent curious processing arc with expression, body timing, and compact thought cue.",
+        "thinking=Coherent source-vibe processing arc with expression, body timing, and compact thought cue.",
         "--check",
         "frameByFrameStateReadReviewed=true",
         "--check",

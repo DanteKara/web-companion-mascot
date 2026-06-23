@@ -728,7 +728,7 @@ class ManifestValidatorTests(unittest.TestCase):
         style = {
             "anatomyClass": "fins-no-hands",
             "visualLanguage": {
-                "sourceVibe": "soft round icy companion with a cute face and two side fins",
+                "sourceVibe": "soft round icy companion with a simple face and two side fins",
                 "motifs": ["frost puffs", "snowflake dots", "pale blue rim"],
                 "forbiddenGenericCues": ["gears", "circuit boards", "speech panels"],
                 "stateCueRules": {

@@ -532,7 +532,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
                 prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
                 if state == "thinking":
                     self.assertIn("thinking row prompt - compact", prompt)
-                    self.assertIn("neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle", prompt)
+                    self.assertIn("source-vibe baseline -> focused processing -> compact cue/prop beat -> resolution beat -> settle", prompt)
                     self.assertIn("Expressions are adjacent state-caused beats", prompt)
                     self.assertIn("Every frame changes face, posture, body/appendage timing, prop timing, or cue", prompt)
                     self.assertIn("no one-frame expression-style outliers", prompt)
@@ -545,10 +545,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn(
-                "neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle",
+                "source-vibe baseline -> focused processing -> compact cue/prop beat -> resolution beat -> settle",
                 thinking_prompt,
             )
-            self.assertIn("not random sad, serious, sleepy, angry, blank, or unrelated faces", thinking_prompt)
+            self.assertIn("not random off-vibe or neighboring-state faces", thinking_prompt)
 
     def test_row_prompts_are_compact_and_do_not_dump_full_policy_docs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -571,7 +571,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             for state in ("idle", "thinking", "answering", "working"):
                 prompt = (out_dir / "prompts" / f"{state}.md").read_text(encoding="utf-8")
-                self.assertLess(len(prompt), 6500)
+                self.assertLess(len(prompt), 7000)
                 self.assertIn("row prompt - compact", prompt)
 
             for state in ("idle", "answering", "working"):
@@ -604,7 +604,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
                     self.assertLess(len(thinking_prompt), 6200)
                     self.assertLess(len(thinking_prompt.splitlines()), 55)
                     self.assert_no_verbose_policy_dump(thinking_prompt)
-                    self.assertIn("neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle", thinking_prompt)
+                    self.assertIn("source-vibe baseline -> focused processing -> compact cue/prop beat -> resolution beat -> settle", thinking_prompt)
                     self.assertIn("Keep simple side appendages outside the body", thinking_prompt)
                     self.assertIn("face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
                     self.assertIn("same source-colored eye masses", thinking_prompt)
@@ -668,9 +668,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
             self.assert_compact_row_prompt(working_prompt, state="working")
             self.assert_no_verbose_policy_dump(working_prompt)
-            self.assertIn("busy-but-friendly", working_prompt)
-            self.assertIn("no slanted angry eyes", working_prompt)
-            self.assertIn("V-shaped", working_prompt)
+            self.assertIn("source vibe", working_prompt)
+            self.assertIn("hostile eyes", working_prompt)
+            self.assertIn("stock happy helper smiles", working_prompt)
 
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
@@ -789,7 +789,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
                 self.assertIn("No white crescent side-glance eyes", prompt)
                 if state == "thinking":
                     self.assertIn("Every frame changes face, posture, body/appendage timing, prop timing, or cue", prompt)
-                    self.assertIn("Thinking should read curious processing", prompt)
+                    self.assertIn("Thinking should read focused processing inside the reference vibe", prompt)
                 else:
                     self.assertIn("Do not let all motion live in a cue while the mascot face and body stay frozen", prompt)
                 self.assertIn("stateActingChoreography", cue_plan["states"][state])
@@ -797,7 +797,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("compact source-bound cue", thinking_prompt)
             self.assertIn("primary cue element is only slightly larger, never oversized", thinking_prompt)
-            self.assertIn("recognition smile", thinking_prompt)
+            self.assertIn("recognition beat", thinking_prompt)
 
             answering_prompt = (out_dir / "prompts" / "answering.md").read_text(encoding="utf-8")
             self.assertIn("Mouth shapes must visibly cycle", answering_prompt)
@@ -809,7 +809,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             error_prompt = (out_dir / "prompts" / "error.md").read_text(encoding="utf-8")
             self.assertIn("clearest read", error_prompt)
-            self.assertIn("Do not include happy/success/answering frames", error_prompt)
+            self.assertIn("Do not include success/answering frames", error_prompt)
 
     def test_non_thinking_prompts_include_neighboring_state_guards(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -837,9 +837,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertIn("Listening should read attentive and ready, not thinking, surprised", listening_prompt)
             self.assertIn("Avoid open shocked mouths, hand-to-chin poses", listening_prompt)
-            self.assertIn("Error should remain a gentle recoverable failure loop", error_prompt)
+            self.assertIn("Error should remain a recoverable failure loop in the mascot's own personality", error_prompt)
             self.assertIn("no white-eye stress rewrites", error_prompt)
-            self.assertIn("Confused should read curious-uncertain rather than sad/error", confused_prompt)
+            self.assertIn("Confused should read source-vibe uncertainty or clarification-seeking rather than error", confused_prompt)
             self.assertIn("avoid hand-to-chin/under-face clusters", confused_prompt)
             self.assertIn("Sleeping should be quiet breathing and closed-eye settle", sleeping_prompt)
             self.assertIn("avoid hand-to-mouth clusters and sleep symbols", sleeping_prompt)
@@ -869,7 +869,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("A near-face or face-touch beat is acceptable only if it clearly remains the original connected appendage", thinking_prompt)
             self.assert_compact_row_prompt(working_prompt, state="working")
             self.assertIn("invented angry eyebrows", working_prompt)
-            self.assertIn("slanted angry eyes", working_prompt)
+            self.assertIn("hostile eyes", working_prompt)
 
             manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
@@ -907,11 +907,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("compact cue peak beside the inferred source", thinking_prompt)
             self.assertIn("primary cue element is only slightly larger, never oversized", thinking_prompt)
             self.assertIn("cue shrinks to one tiny close remnant or resolves cleanly", thinking_prompt)
-            self.assertIn("neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle", thinking_prompt)
+            self.assertIn("source-vibe baseline -> focused processing -> compact cue/prop beat -> resolution beat -> settle", thinking_prompt)
             self.assertIn("Every frame changes face, posture, body/appendage timing, prop timing, or cue", thinking_prompt)
             self.assertIn("no stale same-face holds", thinking_prompt)
             self.assertIn("no one-frame expression-style outliers", thinking_prompt)
-            self.assertIn("sad/serious/downturned expression", thinking_prompt)
+            self.assertIn("off-vibe or neighboring-state expression", thinking_prompt)
             self.assertIn("Face/body/appendage timing should sell thinking before the cue is noticed", thinking_prompt)
             self.assertIn("Do not make a tall vertical stack", thinking_prompt)
             self.assertIn("Do not let the cue force the mascot smaller", thinking_prompt)
@@ -924,9 +924,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("no white side-glance or new sclera", thinking_prompt)
             self.assertIn("same source-colored eye masses", thinking_prompt)
             self.assertIn("new white sclera", thinking_prompt)
-            self.assertIn("Use closed/thoughtful mouths only: closed smile, tiny pleased smile, or gently upturned one-pixel smile", thinking_prompt)
+            self.assertIn("Use source-vibe thinking mouths only", thinking_prompt)
             self.assertIn("Expression and eye rules", thinking_prompt)
-            self.assertIn("focused open-eye or tiny mouth beat", thinking_prompt)
+            self.assertIn("focused open-eye or tiny source-vibe mouth beat", thinking_prompt)
             self.assertIn("source-matched open eyes stay forward or nearly forward", thinking_prompt)
             self.assertIn("one-frame dramatic side glances", thinking_prompt)
             self.assertIn("stale same-face row", thinking_prompt)
@@ -967,7 +967,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertLessEqual(len(thinking_prompt), 5000)
+            self.assertLessEqual(len(thinking_prompt), 5900)
             self.assertEqual(thinking_prompt.count("Frame-by-frame acting arc"), 1)
             self.assertEqual(thinking_prompt.count("Thought cue rules"), 1)
             self.assertEqual(thinking_prompt.count("Expression and eye rules"), 1)
@@ -976,7 +976,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertNotIn("random emotion collage", thinking_prompt)
             self.assertNotIn("Mouth pixels must be", thinking_prompt)
             self.assertNotIn("No single-dot mouth", thinking_prompt)
-            self.assertIn("Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts", thinking_prompt)
+            self.assertIn("Good state read is not enough if identity, cleanup, eye grammar, anatomy, source vibe, or scale drifts", thinking_prompt)
 
     def test_thinking_prompt_rejects_speck_sparkle_cues_as_primary_read(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1000,8 +1000,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("Thinking cue solidity lock", thinking_prompt)
             self.assertIn("use deliberate compact cue shapes, not loose specks", thinking_prompt)
-            self.assertIn("no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, or glow", thinking_prompt)
-            self.assertIn("random symbol", thinking_prompt)
+            self.assertIn("avoid generic lightbulbs, rays, punctuation, UI icons, and unrelated symbols", thinking_prompt)
+            self.assertIn("Mascot-native runes, orbs, sparks, puffs, or pulses are allowed", thinking_prompt)
+            self.assertIn("random generic symbol", thinking_prompt)
             self.assertIn("The peak should be a compact cue beat, not a mandated symbol or puff count", thinking_prompt)
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("do not use loose sparkles", cue_plan["states"]["thinking"]["thinkingCueVocabularyPolicy"])
@@ -1092,7 +1093,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("not surprised, answering, worried, sleepy, or confused", thinking_prompt)
+            self.assertIn("not surprise, sleep, confused, answering, or error", thinking_prompt)
             self.assertIn("No appendage acting", thinking_prompt)
             self.assertIn("Do not invent hands, hand-to-chin poses, or face-touching appendages", thinking_prompt)
 
@@ -1100,7 +1101,7 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertIn("thinkingStateReadPolicy", cue_plan["states"]["thinking"])
             self.assertIn("faceArtifactPolicy", cue_plan["states"]["thinking"])
             self.assertIn("No-limb thinking face artifact guard", cue_plan["states"]["thinking"]["faceArtifactPolicy"])
-            self.assertIn("worried squiggles", cue_plan["states"]["thinking"]["thinkingStateReadPolicy"])
+            self.assertIn("source expression grammar", cue_plan["states"]["thinking"]["thinkingStateReadPolicy"])
 
     def test_thinking_processing_blink_must_not_read_as_sleepy(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1123,11 +1124,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("quick active processing blink", thinking_prompt)
-            self.assertIn("round open o-mouth, exclamation mouth, speaking syllable mouth", thinking_prompt)
+            self.assertIn("round open o-mouths, exclamation mouths, or speaking syllable mouths", thinking_prompt)
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             policy = cue_plan["states"]["thinking"]["thinkingStateReadPolicy"]
-            self.assertIn("quick active processing blink, not sleep", policy)
-            self.assertIn("Processing blinks should use simple closed curved or short horizontal eyes", policy)
+            self.assertIn("quick active blink or deliberate processing beat, not sleep", policy)
+            self.assertIn("Closed-eye processing beats should use the source blink grammar", policy)
 
     def test_hands_thinking_prompt_prefers_safe_hand_acting_over_face_patch(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1179,9 +1180,9 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("not surprised, answering, worried, sleepy, or confused", thinking_prompt)
-            self.assertIn("Story arc: neutral-curious", thinking_prompt)
-            self.assertIn("no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon", thinking_prompt)
+            self.assertIn("not surprise, sleep, confused, answering, or error", thinking_prompt)
+            self.assertIn("Story arc: source-vibe baseline", thinking_prompt)
+            self.assertIn("avoid generic lightbulbs, rays, punctuation, UI icons, and unrelated symbols", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("thinkingMoodContinuityPolicy", cue_plan["states"]["thinking"])
@@ -1211,7 +1212,8 @@ class PrepareCompanionRunTests(unittest.TestCase):
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
             self.assertIn("Use one compact source-appropriate non-chroma-key cue vocabulary only", thinking_prompt)
-            self.assertIn("no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon", thinking_prompt)
+            self.assertIn("avoid generic lightbulbs, rays, punctuation, UI icons, and unrelated symbols", thinking_prompt)
+            self.assertIn("Mascot-native runes, orbs, sparks, puffs, or pulses are allowed", thinking_prompt)
 
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("thinkingCueVocabularyPolicy", cue_plan["states"]["thinking"])
@@ -1549,10 +1551,10 @@ class PrepareCompanionRunTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             thinking_prompt = (out_dir / "prompts" / "thinking.md").read_text(encoding="utf-8")
-            self.assertIn("tiny closed-mouth recognition smile", thinking_prompt)
-            self.assertIn("round open o-mouth, exclamation mouth, speaking syllable mouth", thinking_prompt)
+            self.assertIn("tiny source-vibe recognition beat", thinking_prompt)
+            self.assertIn("round open o-mouths, exclamation mouths, or speaking syllable mouths", thinking_prompt)
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
-            self.assertIn("Recognition in thinking should be a closed or tiny pixel smile", cue_plan["states"]["thinking"]["thinkingStateReadPolicy"])
+            self.assertIn("Recognition can be a tiny smirk, tightened focus, prop pulse, or other source-vibe beat", cue_plan["states"]["thinking"]["thinkingStateReadPolicy"])
 
     def test_default_frame_counts_use_hatch_style_eight_frame_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -1718,11 +1720,11 @@ class PrepareCompanionRunTests(unittest.TestCase):
             working_prompt = (out_dir / "prompts" / "working.md").read_text(encoding="utf-8")
             self.assert_compact_row_prompt(working_prompt, state="working")
             self.assertIn("Preserve the same mascot body, silhouette, palette", working_prompt)
-            self.assertIn("busy-but-friendly", working_prompt)
+            self.assertIn("source vibe", working_prompt)
             self.assertIn("Show a concrete before/during/after work action", working_prompt)
             cue_plan = json.loads((out_dir / "qa" / "state-cue-plan.json").read_text(encoding="utf-8"))
             self.assertIn("Reference palette fidelity lock", prepare.REFERENCE_PALETTE_FIDELITY_POLICY)
-            self.assertIn("Every working frame must stay busy-friendly or cute-focused", cue_plan["states"]["working"]["workStateReadPolicy"])
+            self.assertIn("Every working frame must stay inside the source vibe", cue_plan["states"]["working"]["workStateReadPolicy"])
             self.assertIn("Active-end bloom animation must change frame by frame", cue_plan["states"]["working"]["workLongHeldPropPolicy"])
             self.assertIn("Every frame must include a visible mascot acting change", cue_plan["states"]["working"]["workMascotActingPolicy"])
 

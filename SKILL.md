@@ -122,13 +122,15 @@ If `python` cannot import required image libraries, call `load_workspace_depende
 
 ## Visual Standards
 
-Production art must be native pixel-art sprite work: compact chibi proportions, visible stepped pixel edges, thick dark 1-2 px outline, readable face, stable silhouette, stable eye grammar, and consistent appendage/prop count.
+Production art must be native pixel-art sprite work: compact digital-pet proportions appropriate to the reference, visible stepped pixel edges, thick dark 1-2 px outline, readable face, stable silhouette, stable eye grammar, and consistent appendage/prop count.
 
 Reject smooth illustration, glossy app-icon rendering, painterly gradients, 3D material shading, high-detail antialiasing, vector-flat symbols, CSS-scaled smooth art, fake transparency, non-flat chroma backgrounds, cropped frames, detached random symbols, shadows, glows, smear effects, and identity drift.
 
-State rows should act through the mascot first: expression, blink, mouth shape, body rhythm, appendages, and identity props. Let rows be expressive and characterful: tasteful bounces, tilts, prop beats, costume/accessory/appendage motion, mouth shapes, and theme-native effects are good when identity stays stable. Use one small mascot-native semantic enhancer when acting alone would not read clearly.
+The user prompt/reference vibe is authoritative. Do not impose a default cute, happy, friendly, harmless, or helper-like personality. A dark, evil, stern, sly, chaotic, elegant, shy, soft, heroic, or strange mascot should perform every state through that personality. Keep state readability and app usability, but let the source vibe choose the emotional language.
 
-Do not let validation make the art timid. Technical blockers must be fixed, but small intentional state-specific motion such as a success cheer, sleepy droop, error jitter, or thinking lean can pass when the manual review documents that it improves the read without breaking identity or app usability.
+State rows should act through the mascot first: expression, blink, mouth shape, body rhythm, appendages, and identity props. Let rows be expressive and characterful: bounces, tilts, prop beats, costume/accessory/appendage motion, mouth shapes, and theme-native effects are good when identity stays stable and the reference vibe supports them. Use one small mascot-native semantic enhancer when acting alone would not read clearly.
+
+Do not let validation make the art timid or flatten personality. Technical blockers must be fixed, but intentional state-specific acting such as a triumphant success beat, ominous success beat, sleepy droop, annoyed/recoverable error beat, or intense thinking lean can pass when the manual review documents that it improves the read without breaking identity or app usability.
 
 Review state rows as animation loops, not just still images. A technically clean row can still fail when one frame has an exaggerated side glance, closed-eye style swap, odd mood jump, or expression outlier that breaks the left-to-right motion story. For `thinking`, prefer a steady processing/working loop carried by body, appendage/prop, blink, mouth, and compact cue timing before using dramatic eye-direction changes.
 

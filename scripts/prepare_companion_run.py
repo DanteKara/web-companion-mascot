@@ -89,16 +89,16 @@ STATE_PURPOSES = {
 }
 
 STATE_ACTING = {
-    "idle": "slow breathing, soft blink, tiny posture settle",
-    "hover": "curious notice, tiny lift or perk, friendly ready expression, no semantic symbols",
-    "dragging": "gentle picked-up or carried pose with compact body, stable appendages, and safe grab/readiness acting",
-    "greeting": "friendly anticipation, small wave or body bounce, warm smile, return to rest",
+    "idle": "baseline presence, blink, tiny posture settle",
+    "hover": "pointer notice, tiny lift or perk, source-vibe ready expression, no semantic symbols",
+    "dragging": "picked-up or carried pose with compact body, stable appendages, and safe grab/readiness acting",
+    "greeting": "source-vibe greeting expression, small wave or body bounce when supported, return to rest",
     "listening": "attentive lean toward the user, eyes tracking, small blink hold",
-    "thinking": "clear-face thinking performance with curious head/body tilt, source-matched eyes mostly forward with only tiny in-eye shifts, changing tiny closed smile or gently upturned thoughtful mouth, low side-anchored appendage beats when supported, and readable processing/idea beats",
-    "working": "busy-but-friendly concentration, attentive eye tracking toward the work target, lean-in, faster purposeful body/hand/prop motion; never angry, no slanted angry eyes, no V-shaped brow or eye marks",
+    "thinking": "clear-face processing performance with source-vibe focus, stable eye grammar, mouth/face changes that fit the reference, body/appendage/prop timing, and readable processing beats",
+    "working": "purposeful concentration, attentive eye tracking toward the work target, lean-in, faster body/hand/prop motion inside the reference vibe",
     "answering": "talking performance through clear speaking mouth shapes, bright eyes, blink timing, and rhythmic face/body beats; voice cues are optional",
-    "success": "cheerful bounce, proud hold, bright face, return to loop",
-    "error": "worried recognition, small recoil or slump, recovery beat",
+    "success": "clear completion beat, source-vibe victory/pride/resolution hold, return to loop",
+    "error": "recoverable failure recognition, small recoil/slump/reaction, recovery beat",
     "confused": "squint, head tilt, uncertain mouth, small recovery",
     "sleeping": "closed eyes, slow breathing, sleepy settle",
 }
@@ -126,43 +126,43 @@ THINKING_EYE_LOCK = (
 
 STATE_SPECIFIC_GUARDS = {
     "idle": (
-        "Idle stays calm and present. Do not turn it into greeting, speaking, sleeping, error, or thinking; "
+        "Idle stays as the mascot's baseline presence. Do not turn it into greeting, speaking, sleeping, error, or thinking; "
         "avoid wide open mouths, semantic cues, and dramatic mood changes."
     ),
     "hover": (
-        "Hover should read as the mascot noticing the user's pointer: curious, friendly, and lightly perked. "
+        "Hover should read as the mascot noticing the user's pointer in its own personality: perked, intrigued, wary, sly, or friendly as the reference supports. "
         "Do not add cursor icons, UI pointers, text, glow rings, or large reaction symbols."
     ),
     "dragging": (
-        "Dragging should read as the mascot being picked up or carried while staying cute and compact. "
+        "Dragging should read as the mascot being picked up or carried while staying compact and source-vibe consistent. "
         "Keep the body/core stable enough for cursor-follow movement; do not add external hands, cursor icons, "
         "drop shadows, speed lines, dust, impact marks, or stretched smear motion."
     ),
     "greeting": (
-        "Greeting should stay warm and welcoming. Use a small wave, bounce, or smile peak only if the mascot anatomy "
-        "supports it; do not add detached marks, text, confetti, or a second prop."
+        "Greeting should read as the mascot acknowledging the user in its own vibe, which may be warm, formal, shy, sly, ominous, or intense. "
+        "Use a small wave, bounce, nod, prop beat, or expression peak only if the mascot anatomy supports it; do not add detached marks, text, confetti, or a second prop."
     ),
     "listening": (
         "Listening should read attentive and ready, not thinking, surprised, sleepy, worried, confused, or answering. "
         "Avoid open shocked mouths, hand-to-chin poses, question/thought cues, and side-glance eye rewrites."
     ),
     "thinking": (
-        "Thinking should read curious processing, not surprise/sad/sleep/confused/answering; cue compact."
+        "Thinking should read focused processing inside the reference vibe, not surprise, sleep, confused, answering, or error; keep any cue compact."
     ),
     "answering": (
         "Answering should stay engaged and mouth-led. Do not let the row become greeting, panting, exhaling, idle, "
         "or thinking; omit voice pixels if they become detached flecks or cheek marks."
     ),
     "success": (
-        "Success should read as a proud completion beat. Keep any glint/check tiny, attached or source-bound, and "
+        "Success should read as a completion/victory beat in the mascot's own personality. Keep any glint/check tiny, attached or source-bound, and "
         "secondary; do not use loose sparkle fields, confetti, text, or a generic UI badge."
     ),
     "error": (
-        "Error should remain a gentle recoverable failure loop. Do not include happy/success/answering frames in the "
-        "same row, no harsh anger, no red X labels, no generic warning panels, and no white-eye stress rewrites."
+        "Error should remain a recoverable failure loop in the mascot's own personality. Do not include success/answering frames in the "
+        "same row, no red X labels, no generic warning panels, and no white-eye stress rewrites."
     ),
     "confused": (
-        "Confused should read curious-uncertain rather than sad/error. Use mild squint, tilt, or uncertain mouth only; "
+        "Confused should read source-vibe uncertainty or clarification-seeking rather than error. Use mild squint, tilt, or uncertain mouth only; "
         "avoid hand-to-chin/under-face clusters, large punctuation, and white crescent side-glance eyes."
     ),
     "sleeping": (
@@ -170,23 +170,23 @@ STATE_SPECIFIC_GUARDS = {
         "resting unless the source has clear articulated hands; avoid hand-to-mouth clusters and sleep symbols."
     ),
     "working": (
-        "Working should read purposeful progress, not error, anger, answering, or generic busy icons. Keep the work "
+        "Working should read purposeful progress, not error, answering, or generic busy icons. Keep the work "
         "cue source-bound and do not invent tools, hands, screens, or text."
     ),
 }
 
 STATE_STORY_BEATS = {
-    "idle": "calm rest -> soft blink -> tiny breath lift -> relaxed settle",
-    "hover": "notice pointer -> perk/lean -> friendly hold -> settle while still attentive",
-    "dragging": "grab notice -> tiny lift/squash -> carried hold -> soft settle-ready loop",
-    "greeting": "notice user -> warm smile -> peak greeting gesture/bounce -> friendly settle",
+    "idle": "baseline rest -> blink -> tiny breath lift -> settle",
+    "hover": "notice pointer -> perk/lean -> source-vibe hold -> settle while still attentive",
+    "dragging": "grab notice -> tiny lift/squash -> carried hold -> stable settle-ready loop",
+    "greeting": "notice user -> source-vibe greeting expression -> peak greeting gesture/bounce -> settle",
     "listening": "attentive start -> eyes track input -> focused hold/blink -> ready settle",
-    "thinking": "neutral-curious -> focused processing -> compact cue or prop beat -> idea lands -> pleased settle",
-    "working": "notice -> focus -> effort -> progress -> pleased settle",
-    "answering": "ready/listening -> first syllable -> clearer speech -> conversational blink/smile -> settled speaking loop",
-    "success": "anticipation -> bright success peak -> proud hold -> warm settle",
-    "error": "notice problem -> worried dip/recoil -> soft recovery -> stable retry-ready settle",
-    "confused": "notice mismatch -> squint/tilt -> uncertain hold -> softened recovery",
+    "thinking": "baseline focus -> processing -> compact cue or prop beat -> resolution beat -> settle",
+    "working": "notice -> focus -> effort/progress -> result -> settle",
+    "answering": "ready/listening -> first syllable -> clearer speech -> conversational blink/mouth variation -> settled speaking loop",
+    "success": "anticipation -> completion peak -> source-vibe hold -> settle",
+    "error": "notice problem -> failure reaction -> recovery -> stable retry-ready settle",
+    "confused": "notice mismatch -> squint/tilt -> uncertain hold -> source-vibe recovery",
     "sleeping": "drowsy settle -> closed-eye breath -> deeper sleepy hold -> gentle loop reset",
 }
 
@@ -209,20 +209,20 @@ STATE_ACTING_CHOREOGRAPHY = {
     ),
     "hover": (
         "Frame 1: resting pose notices the pointer. Frame 2: eyes brighten or track upward without changing eye grammar. "
-        "Frame 3: tiny lift, lean, ear/prop/appendage perk, or posture alert. Frame 4: friendly hover-ready hold. "
-        "Frame 5: subtle blink or smile change. Frame 6: body/appendages settle slightly. Frame 7: attentive hold. "
+        "Frame 3: tiny lift, lean, ear/prop/appendage perk, or posture alert. Frame 4: source-vibe hover-ready hold. "
+        "Frame 5: subtle blink or expression change. Frame 6: body/appendages settle slightly. Frame 7: attentive hold. "
         "Frame 8: return cleanly to the first hover-notice pose."
     ),
     "dragging": (
         "Frame 1: notices the grab. Frame 2: compact body lifts or tucks slightly. Frame 3: carried pose with original "
         "appendages accounted for and identity props stable. Frame 4: tiny bob or sway while being dragged. Frame 5: "
-        "quick blink or determined cute hold. Frame 6: appendages/prop follow through subtly. Frame 7: settle-ready "
+        "quick blink or source-vibe determined hold. Frame 6: appendages/prop follow through subtly. Frame 7: settle-ready "
         "carried pose. Frame 8: loop back without stretching, smearing, or changing body scale."
     ),
     "greeting": (
-        "Frame 1: notices the user. Frame 2: eyes brighten and smile starts. Frame 3: an existing appendage "
-        "or whole body begins a greeting lift/bounce if anatomy supports it. Frame 4: peak warm greeting. "
-        "Frame 5: smile hold with tiny follow-through. Frame 6: gesture lowers. Frame 7: friendly settle. "
+        "Frame 1: notices the user. Frame 2: source-vibe greeting expression starts. Frame 3: an existing appendage "
+        "or whole body begins a greeting lift/bounce/nod if anatomy supports it. Frame 4: peak greeting. "
+        "Frame 5: expression hold with tiny follow-through. Frame 6: gesture lowers. Frame 7: source-vibe settle. "
         "Frame 8: return to ready rest without a mood jump."
     ),
     "listening": (
@@ -232,48 +232,48 @@ STATE_ACTING_CHOREOGRAPHY = {
         "settle. Frame 8: loop back to attentive neutral."
     ),
     "thinking": (
-        "Frame 1: neutral-curious face with stable identity props. Frame 2: source-matched eyes stay mostly forward while "
+        "Frame 1: source-vibe baseline focus with stable identity props. Frame 2: source-matched eyes stay mostly forward while "
         "appendages stay side-anchored or start a tiny side bob if anatomy supports it. Frame 3: tiny closed pondering "
-        "smile or gently upturned one-pixel smile; tiny first thought cue appears only if needed. Frame 4: cue grows to slightly larger "
-        "while the face stays curious and any supported appendage motion remains side-anchored, low, and outside the body centerline. "
+        "mouth beat in the reference's expression language; tiny first processing cue appears only if needed. Frame 4: cue grows to slightly larger "
+        "while the face stays focused and any supported appendage motion remains safe, readable, and outside crowded face areas. "
         "Frame 5: medium compact cue peak with one slightly larger primary cue element when the chosen vocabulary supports it, still secondary "
         "to the mascot and with the face unobscured. Frame 6: cue shrinks with a quick active processing blink or thoughtful "
-        "hold while the mouth stays smile-like and appendages remain separated from the mouth and chin. "
-        "Frame 7: recognition smile; appendages start returning to rest. Frame 8: settled curious "
+        "hold while the mouth stays inside source expression grammar and appendages remain separated from the mouth and chin. "
+        "Frame 7: recognition/resolution beat; appendages start returning to rest. Frame 8: settled focused "
         "face ready to loop."
     ),
     "working": (
         "Frame 1: notices the work target or active prop end. Frame 2: eyes focus and body leans in slightly. "
         "Frame 3: existing hand, prop tip, tool end, or body cue begins the operation. Frame 4: purposeful work "
-        "peak with small follow-through. Frame 5: visible progress change. Frame 6: quick blink or pleased "
-        "effort beat. Frame 7: result or resolved work mark. Frame 8: busy-friendly settle with identity and "
+        "peak with small follow-through. Frame 5: visible progress change. Frame 6: quick blink or source-vibe "
+        "effort beat. Frame 7: result or resolved work mark. Frame 8: focused settle with identity and "
         "scale intact."
     ),
     "answering": (
-        "Frame 1: attentive ready face with closed or small smile. Frame 2: small open mouth begins speech. "
+        "Frame 1: attentive ready face with closed or tiny mouth. Frame 2: small open mouth begins speech. "
         "Frame 3: wider mouth; free hand begins a small presenting gesture if anatomy supports it. Frame 4: "
         "clearest syllable hold with bright eyes and slight body bob. Frame 5: quick speaking blink or "
-        "smile-open beat with a tiny conversational hand bounce. Frame 6: smaller mouth and hand/body "
-        "follow-through. Frame 7: closed smile while the body or appendage settles. Frame 8: ready speaking-rest pose that "
+        "open-mouth beat with a tiny conversational hand bounce. Frame 6: smaller mouth and hand/body "
+        "follow-through. Frame 7: closed/tiny mouth while the body or appendage settles. Frame 8: ready speaking-rest pose that "
         "loops naturally back to frame 1."
     ),
     "success": (
-        "Frame 1: anticipation or completion notice. Frame 2: smile grows. Frame 3: tiny upward bounce or proud "
+        "Frame 1: anticipation or completion notice. Frame 2: completion expression builds. Frame 3: tiny upward bounce or proud/victorious "
         "lift. Frame 4: proud peak with existing appendages lifted only if the reference supports it. Frame 5: "
-        "attached check/glint or mascot-native success cue appears only if needed. Frame 6: pleased hold. "
-        "Frame 7: appendages/body lower. Frame 8: warm settled success face ready to loop."
+        "attached check/glint or mascot-native success cue appears only if needed. Frame 6: source-vibe hold. "
+        "Frame 7: appendages/body lower. Frame 8: settled success face ready to loop."
     ),
     "error": (
-        "Frame 1: notices something is wrong. Frame 2: small worried mouth or eye change. Frame 3: tiny dip, "
-        "slump, or recoil without anger. Frame 4: small recoil or tuck; appendages pull inward only if that "
-        "preserves the original count. Frame 5: quick recovery blink. Frame 6: softer retry-ready expression. "
-        "Frame 7: body/appendages settle. Frame 8: stable gentle error face that can loop without looking hostile."
+        "Frame 1: notices something is wrong. Frame 2: small source-vibe failure mouth or eye change. Frame 3: tiny dip, "
+        "slump, recoil, or source-vibe failure reaction. Frame 4: small recoil or tuck; appendages pull inward only if that "
+        "preserves the original count. Frame 5: quick recovery blink. Frame 6: source-vibe retry-ready expression. "
+        "Frame 7: body/appendages settle. Frame 8: stable recoverable error face that can loop without becoming success or answering."
     ),
     "confused": (
         "Frame 1: notices mismatch. Frame 2: eyes shift or pupils search. Frame 3: head/body tilts. Frame 4: "
         "uncertain mouth or small squint within the source expression language. Frame 5: optional tiny attached "
-        "question cue only if needed. Frame 6: soft realization or ask-ready face. Frame 7: tilt eases back. "
-        "Frame 8: gentle confused settle."
+        "question cue only if needed. Frame 6: source-vibe realization or ask-ready face. Frame 7: tilt eases back. "
+        "Frame 8: source-vibe confused settle."
     ),
     "sleeping": (
         "Frame 1: drowsy settle. Frame 2: eyelids lower. Frame 3: closed-eye breath lift. Frame 4: sleepy hold. "
@@ -295,9 +295,9 @@ STATE_VISUAL_AIDS = {
 STATE_REJECTS = {
     "hover": "cursor icons, pointer arrows, UI labels, glow rings, detached reaction symbols, large surprise faces, identity drift",
     "dragging": "external hands, cursor icons, drag handles, text labels, drop shadows, speed lines, dust, impact marks, stretched smear motion, body scale jumps, dangling detached appendages",
-    "working": "anger, hostile eyes, slanted angry eyes, V-shaped eyes, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, duplicate identity props, prop-shaped glyph copies, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
+    "working": "off-vibe attack/rage frames unless explicitly requested or clearly source-supported, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, duplicate identity props, prop-shaped glyph copies, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
     "answering": "speech panels, text, punctuation, generic chat UI, mouthless talking cues, single isolated voice speck, one-frame voice ticks, one-frame sound marks, detached fleck, cheek-mark-like voice cue",
-    "thinking": "detached icon floating above the mascot, oversized second head/body-sized thought orb, giant bubble peak, thought cue fused into the body core causing body growth, static dots, loose sparkles, isolated white specks, star glints, stray final-frame dot, expression-panel skew or body warp, unsupported or poorly connected face-touch that reads as extra anatomy, a lower-face patch, detached mitten, duplicated hand, or covered expression, appendage-like cluster below the face, lower-face marks, worried frowns, sad/serious/downturned expressions, stale same-face row, confused/error mouth shapes, cue too subtle to read as thinking",
+    "thinking": "detached generic icon floating above the mascot, oversized second head/body-sized thought orb, giant bubble peak, thought cue fused into the body core causing body growth, static dots, loose decorative specks, stray final-frame dot, expression-panel skew or body warp, unsupported or poorly connected face-touch that reads as extra anatomy, a lower-face patch, detached mitten, duplicated hand, or covered expression, appendage-like cluster below the face, lower-face marks, stale same-face row, off-vibe or neighboring-state expressions that read as confused/error/sleeping/answering instead of processing, cue too subtle to read as thinking",
     "listening": "microphone props for non-voice apps, detached sound clutter",
     "success": "large confetti, loose sparkles, text labels",
     "error": "red X labels, detached symbols, scenery",
@@ -306,43 +306,43 @@ STATE_REJECTS = {
 
 STATE_FRAME_ARCS = {
     "hover": (
-        "Frame-by-frame acting arc: 1 calm mascot notices the pointer, 2 eyes or face brighten, 3 small perk/lean/lift, "
-        "4 friendly attentive hold, 5 blink or tiny smile change, 6 body/appendage settle, 7 ready hold, 8 loop back. "
+        "Frame-by-frame acting arc: 1 baseline mascot notices the pointer, 2 eyes or face react, 3 small perk/lean/lift, "
+        "4 source-vibe attentive hold, 5 blink or tiny expression change, 6 body/appendage settle, 7 ready hold, 8 loop back. "
         "Show hover through the mascot's own face, posture, appendages, ears, props, or costume motion; do not draw a cursor, UI pointer, text, or detached attention symbol."
     ),
     "dragging": (
-        "Frame-by-frame acting arc: 1 grab notice, 2 compact lift/tuck, 3 carried pose, 4 tiny bob/sway, 5 blink or cute determined hold, "
+        "Frame-by-frame acting arc: 1 grab notice, 2 compact lift/tuck, 3 carried pose, 4 tiny bob/sway, 5 blink or source-vibe determined hold, "
         "6 subtle appendage/prop follow-through, 7 settle-ready carried pose, 8 loop back. This row is used while the React component follows the pointer, so keep the sprite compact, stable, centered, and free of floor shadows, speed lines, cursor icons, or smear/stretch motion."
     ),
     "thinking": (
-        "Frame-by-frame acting arc for expressive thinking performance: 1 neutral-curious face and stable identity "
+        "Frame-by-frame acting arc for expressive thinking performance: 1 source-vibe focused face and stable identity "
         "props, 2 source-matched eyes stay forward or nearly forward while appendages stay side-anchored or begin a tiny side bob when anatomy supports it, "
-        "3 focused open-eye or tiny mouth beat and one tiny compact cue kept close to the inferred thought-cue source, 4 slightly larger compact cue with body/appendage/prop timing while eyes keep the same source grammar, "
+        "3 focused open-eye or tiny mouth beat in the reference's expression language and one tiny compact cue kept close to the inferred thought-cue source, 4 slightly larger compact cue with body/appendage/prop timing while eyes keep the same source grammar, "
         "5 compact cue peak beside the inferred source with one slightly larger primary cue element only when the accepted cue vocabulary supports it while the face remains unobscured without changing the body footprint, 6 cue starts smaller with a quick active processing blink or focused hold, "
-        "7 small smile/idea recognition as the cue shrinks, 8 settle back into the loop. Use one compact thought bubble, thought puff, "
+        "7 source-vibe idea/resolution beat as the cue shrinks, 8 settle back into the loop. Use one compact thought bubble, thought puff, "
         "idea orb, mascot-native processing aura, or active prop/source cue when acting alone is unclear; make the thinking read unmistakable at 64-96 px without turning "
         "the cue into the main character. Thinking also covers processing, retrieval, tool-use waiting, and backend "
         "progress for chatbot companions. Do not create a separate working state unless the user explicitly requests one. "
         "Keep the thought cue secondary to the mascot: medium is the maximum thought cue size, it is never larger "
         "than about one-quarter of the mascot body width, and do not let the thought cue become a second "
         "head/body-sized orb. Do not use a giant bubble peak; shrink back down before the loop settles. "
-        "For shorter or longer rows, preserve the same neutral-curious -> focused processing -> compact cue or prop beat -> "
+        "For shorter or longer rows, preserve the same source-vibe baseline -> focused processing -> compact cue or prop beat -> "
         "idea lands -> settle arc and the same small -> slightly larger -> medium -> smaller -> tiny/settle cue growth; this is not the "
         "same face or same cue pasted in every frame. Keep the thinking expression story adjacent and character-appropriate, "
-        "not random sad, sleepy, angry, blank, unrelated faces, or one-frame expression-style outliers."
+        "not random off-vibe, neighboring-state, blank, unrelated faces, or one-frame expression-style outliers."
     ),
     "working": (
         "Frame-by-frame acting arc: 1 mascot notices a concrete work target, 2 leans in and the target wakes up while eyes focus on it, "
         "3 begins an action on the target, 4 active work peak with hand/prop/body follow-through, "
-        "5 visible progress change on the target, 6 small blink/effort or satisfied beat, 7 result/check/sorted state, "
+        "5 visible progress change on the target, 6 small blink/effort or source-vibe result beat, 7 result/check/sorted state, "
         "8 settle back while the target remains active. For shorter or longer rows, preserve the same notice -> "
         "operate/sort/check -> result -> settle arc with meaningful face, gaze, hand/prop, and target changes."
     ),
     "answering": (
-        "Frame-by-frame acting arc: Talking performance is primary. 1 neutral/listen face with closed smile, "
+        "Frame-by-frame acting arc: Talking performance is primary. 1 neutral/listen face with closed/tiny mouth, "
         "2 small open mouth, 3 wider open mouth, 4 syllable hold with the clearest speaking beat, "
-        "5 smile-open mouth or quick speaking blink, 6 smaller mouth, 7 closed smile, 8 settle back into the loop. "
-        "Use a readable mouth cycle such as closed smile -> small open -> wider open -> syllable hold -> smile, "
+        "5 open-mouth beat or quick speaking blink, 6 smaller mouth, 7 closed/tiny mouth, 8 settle back into the loop. "
+        "Use a readable mouth cycle such as closed/tiny mouth -> small open -> wider open -> syllable hold -> settle, "
         "plus bright eyes, tiny conversational bob, and subtle head/body timing. If a voice cue is used, keep it "
         "near the mouth/lip edge and secondary to the mouth animation, not as a detached cue away from the mouth. "
         "Voice cues are optional and should be omitted when they cannot stay clearly attached to the mouth; when used, "
@@ -587,7 +587,7 @@ WORK_MASCOT_ACTING_POLICY = (
     "Every frame must include a visible mascot acting change, not only bloom or cue animation. Add small but readable "
     "body bob, head tilt, surface/detail settle, appendage grip shift, subtle prop follow-through, eye direction, blink, "
     "mouth shape, or cheek/body tilt changes while preserving identity and stable scale. The emotion arc should read "
-    "as notice -> focus -> effort -> progress -> pleased settle, with friendly concentration throughout."
+    "as notice -> focus -> effort -> progress -> source-vibe result/settle, with character-appropriate concentration throughout."
 )
 
 WORK_TARGET_FIT_POLICY = (
@@ -624,8 +624,8 @@ WORK_STATE_READ_POLICY = (
     "Working must not borrow answering, sleeping, or exhaustion visuals. Do not use breath puffs, speech beads, "
     "panting clouds, sleepy exhale cues, or tired closed-eye holds to show working. A closed-eye frame in working "
     "may only be a quick blink, not a tired or sleepy beat. Keep the face busy, alert, and character-appropriate; "
-    "Every working frame must stay busy-friendly or cute-focused; reject even a single frame with angry, hostile, "
-    "slanted, narrowed, or V-shaped eyes. "
+    "Every working frame must stay inside the source vibe; dark, intense, stern, or mischievous focus is allowed when the reference supports it. "
+    "Reject only off-vibe aggression that turns work into attack/error, or invented hostile eye grammar not present in the source. "
     "working cues must stay at the work target or tool tip, not at the mouth, and must read as sorting, charging, "
     "checking, tool use, or transformation."
 )
@@ -641,7 +641,7 @@ BODY_SURFACE_CUE_POLICY = (
 
 ARTISTIC_QUALITY_POLICY = (
     "Art direction floor: make the row feel like a polished mascot performance, not a checklist of constraints. "
-    "Choose the most charming mascot-native acting beat that still preserves identity: expressive eyes, mouth shapes, "
+    "Choose the most characterful mascot-native acting beat that still preserves identity and source vibe: expressive eyes, mouth shapes, "
     "head/body tilt, timing, appendage follow-through, and a tiny state cue only when it improves readability. "
     "The result should look like the referenced character naturally doing the state in Codex pixel-pet style, with "
     "confident simple shapes, tasteful asymmetry, and deliberate frame-to-frame acting. Reject bland, stiff, generic, "
@@ -651,35 +651,33 @@ ARTISTIC_QUALITY_POLICY = (
 STATE_PERFORMANCE_STORY_POLICY = (
     "State performance story arc: every state row must read as one coherent mini-story, not a random emotion collage. "
     "Expressions must be adjacent beats caused by the state action, with small believable transitions rather than "
-    "shuffled faces. Avoid abrupt mood jumps, unrelated sad/serious/sleepy/angry/blank faces, and facial expressions that "
-    "do not fit the state. Each expression change should be caused by the state action and supported by eye direction, "
+    "shuffled faces. Avoid abrupt mood jumps, neighboring-state reads, unrelated blank faces, and facial expressions that "
+    "do not fit the state or source vibe. Each expression change should be caused by the state action and supported by eye direction, "
     "mouth shape, blink timing, body tilt, appendage motion, prop motion, or cue motion. The final frame must loop "
     "cleanly back to the first frame without a sudden emotional reset. Reject even a single expression-style outlier "
     "when the row played left-to-right would feel like it briefly becomes a different mascot, mood, or eye grammar."
 )
 
 THINKING_STATE_READ_POLICY = (
-    "Thinking must read as curious processing, not worry, confusion, sadness, anger, sleepiness, or error. "
-    "Prefer a focused processing/working loop: forward or nearly forward curious eyes, tiny closed or gently "
-    "upturned one-pixel mouths, body/appendage/prop timing, a compact mascot-native cue, and small recognition-smile beats. "
-    "Recognition in thinking should be a closed or tiny pixel smile, not a wide open speaking mouth, not an "
-    "exclamation mouth, and not a syllable mouth from answering. "
-    "Keep the mouth level or slightly upturned; avoid downturned mouths, downturned frowns, "
-    "curled lower-lip marks, worried squiggles, serious blank faces, and confused/error mouth shapes. Any closed-eye thinking frame must "
-    "read as a quick active processing blink, not sleep, idle rest, fatigue, or meditation. Keep the thought cue "
-    "active during that blink, and place open-eye curious or recognition frames immediately before and after it. "
-    "Processing blinks should use simple closed curved or short horizontal eyes, not squeezed shut X-eyes, chevron "
-    "eyes, scrunched effort eyes, or strain grimaces. Do not use long closed-eye holds, droopy eyelids, sleepy "
-    "breathing, or relaxed sleeping mouths in thinking. If a closed-eye or side-eye beat creates a one-frame "
-    "expression-style outlier, reject it and regenerate with a steadier forward-eye processing story."
+    "Thinking must read as focused processing, planning, retrieval, or backend/tool waiting inside the source vibe, "
+    "not answering, sleeping, idle, confused, or error. Dark, evil, stern, calculating, mischievous, intense, or soft "
+    "thinking expressions are all valid when the reference or user request supports them. Prefer a focused processing/working loop: "
+    "source-matched eyes, source-appropriate mouth beats, body/appendage/prop timing, a compact mascot-native cue, and a clear "
+    "recognition/resolution beat. Recognition can be a tiny smirk, tightened focus, prop pulse, or other source-vibe beat; "
+    "it does not have to be a happy smile. Avoid wide open speaking mouths, exclamation mouths, or syllable mouths from answering. "
+    "Any closed-eye thinking frame must read as a quick active blink or deliberate processing beat, not sleep, idle rest, fatigue, or meditation. "
+    "Keep the processing cue active during that beat, and place coherent open-eye or focused frames immediately before and after it. "
+    "Closed-eye processing beats should use the source blink grammar; if unclear, use simple closed curved or short horizontal eyes, not X-eyes, chevrons, or strain marks. "
+    "Do not use eye or mouth shapes that swap the source expression grammar for one frame. If a closed-eye, side-eye, or mouth beat "
+    "creates a one-frame expression-style outlier, reject it and regenerate with a steadier source-vibe processing story."
 )
 
 THINKING_MOOD_CONTINUITY_POLICY = (
-    "Thinking mood continuity lock: keep every thinking frame inside one adjacent curious-processing story. "
-    "Use neutral-curious, focused pondering, quick active blink, recognition, and pleased settle only. "
-    "There should be no worried frown frames, no serious/downturned mouth frames, no confused/error mouth frames, no sleepy closed-eye smile frames, "
-    "no blank unrelated face, and no open exclamation or speaking-mouth frames that make the row read as "
-    "answering, surprise, confusion, fatigue, or error. Review the row as animation, not as isolated stills: "
+    "Thinking mood continuity lock: keep every thinking frame inside one adjacent source-vibe processing story. "
+    "Do not impose a happy, cute, or friendly thinking mood unless the reference itself has that personality. "
+    "There should be no off-vibe mood jumps, confused/error mouth frames, sleepy closed-eye frames, blank unrelated faces, "
+    "or open exclamation/speaking-mouth frames that make the row read as answering, surprise, confusion, fatigue, or error. "
+    "Review the row as animation, not as isolated stills: "
     "a single exaggerated side glance, closed-eye style swap, or odd face that breaks the left-to-right motion story "
     "is a failed thinking row even when the row technically reads as thinking."
 )
@@ -790,7 +788,7 @@ VISIBLE_APPENDAGE_ACTING_POLICY = (
 APPENDAGE_STATE_ACTING_HINTS = {
     "hover": (
         "State-specific appendage acting: hover rows can use a tiny side lift, paw/hand perk, ear/wing/tail twitch, "
-        "or held-prop micro-tilt when present. Keep it small and friendly; no new pointers or extra limbs."
+        "or held-prop micro-tilt when present. Keep it small and source-vibe consistent; no new pointers or extra limbs."
     ),
     "dragging": (
         "State-specific appendage acting: dragging rows can tuck, brace, dangle slightly, or hold an identity prop close "
@@ -828,7 +826,7 @@ VOICE_CUE_POLICY = (
     "conversational bob, and subtle head/body rhythm. Speech pips, sound ticks, tiny rings, breath marks, or voice "
     "pixels are optional; use them only when they improve readability. Voice cues are optional and should be omitted "
     "when they cannot stay clearly attached to the mouth. Mouth shapes must change clearly even when no voice cue is "
-    "used: closed smile -> small open -> wider open -> syllable hold -> smile. If a voice cue is used, it must "
+    "used: closed/tiny mouth -> small open -> wider open -> syllable hold -> settle. If a voice cue is used, it must "
     "touch or overlap the mouth/lip edge or begin within 1-2 pixels of it, close enough to support the speaking "
     "impression instead of carrying the whole state, and not as a detached cue away from the mouth. Prefer a short "
     "2-3 frame outward trail that starts at the mouth and fades or returns; not a single isolated speck in only "
@@ -851,7 +849,7 @@ ANSWERING_STATE_READ_POLICY = (
 
 EXPRESSION_VARIATION_POLICY = (
     "Expression variation is mandatory for high-visibility states. Across the row, change at least two of: eye "
-    "direction, blink/closed-eye frame, tiny anchored pupil/highlight shift, mouth shape, smile/open-mouth size, "
+    "direction, blink/closed-eye frame, tiny anchored pupil/highlight shift, mouth shape, mouth/intensity size, "
     "cheek/body tilt, or hand/appendage pose. Do not keep the same face in every frame while only moving the visual "
     "aid, and do not treat expression variation as permission to change the mascot's eye grammar."
 )
@@ -1078,7 +1076,7 @@ def build_state_plan(state: str, anatomy_class: str, state_clarity: str) -> dict
         body_surface_cue_policy = BODY_SURFACE_CUE_POLICY
     if anatomy_class in {"fins-no-hands", "ambiguous-limbs"} and state == "working":
         visual_aid = (
-            "busy-but-friendly face/body acting plus a compact attached, overlapping, rim-touching, or body-surface "
+            "source-vibe focused face/body acting plus a compact attached, overlapping, rim-touching, or body-surface "
             "processing cue; freestanding/resting props only as a last-resort fallback; no held props or tiny "
             "detached specks in the draft plan"
         )
@@ -1294,7 +1292,7 @@ Style lock: Codex digital-pet pixel art, compact chibi sprite, visible stepped p
 
 {CHARACTER_DIRECTION_LOCK}
 
-Output one neutral full-body mascot sprite pose only on a perfectly flat pure {key_name} {key_hex} chroma-key background. Preserve the reference identity, silhouette cues, palette family, face, must-keep markings, appendage count, and charm. Do not include state props, speech bubbles, thought bubbles, detached particles, scenery, or extra anatomy. Do not use {key_hex}, pure {key_name}, or colors close to that chroma key in the mascot, outline, highlights, or effects.
+Output one neutral full-body mascot sprite pose only on a perfectly flat pure {key_name} {key_hex} chroma-key background. Preserve the reference identity, silhouette cues, palette family, face, must-keep markings, appendage count, and personality. Do not include state props, speech bubbles, thought bubbles, detached particles, scenery, or extra anatomy. Do not use {key_hex}, pure {key_name}, or colors close to that chroma key in the mascot, outline, highlights, or effects.
 """
 
 
@@ -1340,15 +1338,15 @@ def build_thinking_prompt(
         )
     if frame_count == 6:
         frame_story = """Six-frame acting story:
-1 reset: open eyes, tiny calm closed smile, no thought cue.
+1 reset: source-vibe focused baseline, no thought cue.
 2 thought starts: source-matched open eyes stay forward or nearly forward; no white side-glance or new sclera; one tiny compact cue appears near the inferred thought-cue source.
-3 processing: focused open-eye or tiny mouth beat; the cue grows slightly while staying close and secondary.
+3 processing: focused open-eye or tiny source-vibe mouth beat; the cue grows slightly while staying close and secondary.
 4 forming: compact source-bound cluster, active prop beat, or pulse; no cue element drops or reverses.
-5 idea lands: compact cue peak beside the inferred source; primary cue element is only slightly larger, never oversized; optional quick active processing blink or tiny closed-mouth recognition smile.
+5 idea lands: compact cue peak beside the inferred source; primary cue element is only slightly larger, never oversized; optional quick active processing blink or tiny source-vibe recognition beat.
 6 settle: eyes open; cue shrinks to one tiny close remnant or resolves cleanly; loop cleanly back to the first frame."""
     else:
         frame_story = f"""{frame_count}-frame acting story:
-Open-eye reset -> focused processing starts -> small body/appendage/prop beat -> compact cue forming -> quick active processing blink or tiny closed-mouth recognition smile -> idea lands -> pleased settle. Peak with compact source-bound cue; primary cue element is only slightly larger, never oversized. Keep open eyes forward/nearly forward; use body/prop/cue timing instead of dramatic side glances. Loop back cleanly."""
+Source-vibe focused reset -> processing starts -> small body/appendage/prop beat -> compact cue forming -> quick active processing blink or tiny source-vibe recognition beat -> idea lands -> settle. Peak with compact source-bound cue; primary cue element is only slightly larger, never oversized. Keep open eyes forward/nearly forward when the source eye grammar cannot support stronger gaze; use body/prop/cue timing instead of dramatic eye-style swaps. Loop back cleanly."""
     vibe_line = (
         f"\nVibe fit: {source_vibe}"
         if source_vibe and source_vibe != "Infer from the reference before choosing state cues."
@@ -1372,24 +1370,25 @@ Scale/layout: {cell_width}x{cell_height} cells. Match canonical base and accepte
 Eye grammar to preserve: {eye_grammar or "infer exact eye count, shape, spacing, fill, outline, and highlight logic from base/reference."}
 Native Codex digital-pet pixel-art sprite: hard square pixels, chunky outline, flat cel shading. {thinking_background_lock} No smooth illustration, glossy rendering, UI panels, action rays, sound rays, emphasis strokes, wave lines, alert marks, exclamation marks, or motion marks.
 
-{state_plan["semanticRead"]}; not surprised, answering, worried, sleepy, or confused. Face/body/appendage timing should sell thinking before the cue is noticed.
+{state_plan["semanticRead"]}; keep the personality from the reference while avoiding neighboring-state reads such as answering, sleeping, idle, confused, or error. Face/body/appendage timing should sell thinking before the cue is noticed.
 {STATE_SPECIFIC_GUARDS["thinking"]}
+Source-vibe rule: infer the mascot's personality from the user request, reference, and canonical base. Do not impose happy, cute, friendly, soft, or harmless expressions unless that is actually the source vibe.
 
-Story arc: neutral-curious -> focused processing -> compact cue/prop beat -> idea lands -> pleased settle. Expressions are adjacent state-caused beats, not random sad, serious, sleepy, angry, blank, or unrelated faces. Every frame changes face, posture, body/appendage timing, prop timing, or cue; no stale same-face holds; no one-frame expression-style outliers.
+Story arc: source-vibe baseline -> focused processing -> compact cue/prop beat -> resolution beat -> settle. Expressions are adjacent state-caused beats inside the requested/reference personality, not random off-vibe or neighboring-state faces. Every frame changes face, posture, body/appendage timing, prop timing, or cue; no stale same-face holds; no one-frame expression-style outliers.
 
 Frame-by-frame acting arc:
 {frame_story}
 
 Thought cue rules:
 - Thinking cue solidity lock: use deliberate compact cue shapes, not loose specks.
-- Use one compact source-appropriate non-chroma-key cue vocabulary only; no lightbulb, star, ray, sparkle, diamond, rune, punctuation, UI icon, or glow.
+- Use one compact source-appropriate non-chroma-key cue vocabulary only; avoid generic lightbulbs, rays, punctuation, UI icons, and unrelated symbols. Mascot-native runes, orbs, sparks, puffs, or pulses are allowed when they fit the reference and stay hard-edged, compact, and state-bound.
 - The peak should be a compact cue beat, not a mandated symbol or puff count; primary cue element is only slightly larger, never oversized; do not enlarge the cue to prove the idea landed.
 - Separated cues keep a stable source-to-peak trail; smallest element stays closest to the inferred source. Do not let intermediate cue elements drift downward, reverse, jump sideways, or reorder.
 - keep the cue close, low, compact, and secondary. Do not make a tall vertical stack or high peak. Do not let the cue force the mascot smaller.
 
 Expression and eye rules:
-- Use closed/thoughtful mouths only: closed smile, tiny pleased smile, or gently upturned one-pixel smile.
-- No round open o-mouth, exclamation mouth, speaking syllable mouth.
+- Use source-vibe thinking mouths only: tiny closed, tight, smirk, neutral, stern, sly, focused, or otherwise reference-native mouth beats are all acceptable when they read as processing.
+- Avoid round open o-mouths, exclamation mouths, or speaking syllable mouths that make the row read as answering or surprise.
 - {THINKING_EYE_LOCK} Closed eyes are simple short curved lines in the same eye positions and spacing.
 
 Hand/appendage rules:
@@ -1397,7 +1396,7 @@ Hand/appendage rules:
 
 {vibe_line}
 
-Reject if any frame has wrong eye grammar, stale same-face row, sad/serious/downturned expression, extra/missing held prop or limb, random symbol, giant/high thought cue, cue vocabulary switch, scale shrink, non-flat {key_name} {key_hex} background, or non-native pixel-art rendering. Good state read is not enough if identity, cleanup, eye grammar, anatomy, or scale drifts.
+Reject if any frame has wrong eye grammar, stale same-face row, an off-vibe or neighboring-state expression, extra/missing held prop or limb, random generic symbol, giant/high thought cue, cue vocabulary switch, scale shrink, non-flat {key_name} {key_hex} background, or non-native pixel-art rendering. Good state read is not enough if identity, cleanup, eye grammar, anatomy, source vibe, or scale drifts.
 """
 
 
@@ -1406,7 +1405,7 @@ def compact_frame_story(*, state: str, state_plan: dict[str, str], frame_count: 
     if state == "answering":
         return (
             f"Use all {frame_count} frames as one loop: {beats}. Mouth shapes must visibly cycle from closed/tiny "
-            "smile to small open to wider open or syllable hold, then back toward a settled speaking pose. Add eye "
+            "mouth to small open to wider open or syllable hold, then back toward a settled speaking pose. Add eye "
             "engagement, blink timing, and small body/appendage rhythm so the mascot itself reads as talking."
         )
     if state == "working":
@@ -1524,6 +1523,7 @@ State goal:
 - Story: {state_plan["stateStoryBeats"]}
 - State boundary: {state_guard}
 - Vibe fit: {source_vibe}
+- Source-vibe rule: do not impose happy, cute, friendly, soft, or harmless expressions unless the reference or user request points that way. Dark, evil, stern, sly, elegant, chaotic, intense, or other personalities should perform every state in their own visual language.
 
 State performance story arc:
 Make the row a coherent mini-story, not a checklist or random emotion collage. Expressions must be adjacent beats caused by the state action and loop cleanly back to the first frame. Do not let all motion live in a cue while the mascot face and body stay frozen.
@@ -1535,7 +1535,7 @@ Cue/prop rule:
 {cue_rule}
 
 Expression and anatomy rules:
-- Preserve the reference's expression language. Avoid angry brows, hostile eyes, teeth, sweat, dramatic marks, or state-inappropriate mood jumps unless the source design already supports them.
+- Preserve the reference's expression language. Do not add generic emotion shortcuts such as stock happy helper smiles, angry brows, hostile eyes, teeth, sweat, blush, or dramatic marks unless the source design already supports them and the state calls for them.
 - {SOURCE_EYE_LOCK}
 - Use only appendages and props visible in the canonical base/reference. Preserve count, side, attachment, and basic silhouette across the row.
 - If an appendage affordance is unclear, keep movement subtle and side/body-attached; carry the state through eyes, mouth, body timing, and source-bound cue timing.
