@@ -74,7 +74,7 @@ SUPPORTED_STATES = DEFAULT_STATES + OPTIONAL_STATES
 SEMANTIC_STATES = {"listening", "thinking", "working", "answering", "success", "error", "confused"}
 LONG_STATES = {"thinking", "working", "answering"}
 STATE_PURPOSES = {
-    "idle": "default calm presence",
+    "idle": "characterful animated baseline presence",
     "hover": "pointer hover over the companion",
     "dragging": "user is dragging the companion around the app",
     "greeting": "chat opens or first welcome",
@@ -89,7 +89,7 @@ STATE_PURPOSES = {
 }
 
 STATE_ACTING = {
-    "idle": "baseline presence, blink, tiny posture settle",
+    "idle": "lively baseline loop with body rhythm, blink/mouth beat, costume/accessory/appendage/prop follow-through, and clean settle",
     "hover": "pointer notice, tiny lift or perk, source-vibe ready expression, no semantic symbols",
     "dragging": "picked-up or carried pose with compact body, stable appendages, and safe grab/readiness acting",
     "greeting": "source-vibe greeting expression, small wave or body bounce when supported, return to rest",
@@ -126,8 +126,9 @@ THINKING_EYE_LOCK = (
 
 STATE_SPECIFIC_GUARDS = {
     "idle": (
-        "Idle stays as the mascot's baseline presence. Do not turn it into greeting, speaking, sleeping, error, or thinking; "
-        "avoid wide open mouths, semantic cues, and dramatic mood changes."
+        "Idle is the mascot's default alive loop, not a frozen rest pose. Show source-vibe body rhythm, weight shift, "
+        "costume/appendage/prop motion, and a blink or tiny mouth beat. Do not become greeting, speaking, sleeping, "
+        "error, or thinking; no detached cues or off-vibe jumps."
     ),
     "hover": (
         "Hover should read as the mascot noticing the user's pointer in its own personality: perked, intrigued, wary, sly, or friendly as the reference supports. "
@@ -176,7 +177,7 @@ STATE_SPECIFIC_GUARDS = {
 }
 
 STATE_STORY_BEATS = {
-    "idle": "baseline rest -> blink -> tiny breath lift -> settle",
+    "idle": "baseline personality pose -> weight shift or body rhythm -> blink/expression beat -> costume/prop follow-through -> clean settle",
     "hover": "notice pointer -> perk/lean -> source-vibe hold -> settle while still attentive",
     "dragging": "grab notice -> tiny lift/squash -> carried hold -> stable settle-ready loop",
     "greeting": "notice user -> source-vibe greeting expression -> peak greeting gesture/bounce -> settle",
@@ -202,10 +203,13 @@ STATE_ACTING_CHOREOGRAPHY_POLICY = (
 
 STATE_ACTING_CHOREOGRAPHY = {
     "idle": (
-        "Frame 1: calm resting face and stable silhouette. Frame 2: soft eye shift or blink begins. "
-        "Frame 3: tiny breath lift or body rise. Frame 4: relaxed hold with appendages still accounted for. "
-        "Frame 5: small gaze or mouth micro-change. Frame 6: breath lowers. Frame 7: second soft blink or "
-        "settle beat. Frame 8: return cleanly to the first resting pose."
+        "Frame 1: source-vibe baseline pose with stable silhouette. Frame 2: weight shifts, robe/costume/accessory "
+        "begins a visible sway, or held prop starts a tiny counter-motion. Frame 3: blink, eye beat, mouth beat, "
+        "or body lift in the mascot's own personality. Frame 4: clearest idle performance beat: float, sway, "
+        "shoulder/appendage perk, prop bob, cloak flap, tail/ear/wing twitch, or other source-native motion that "
+        "still reads as idle without a one-frame jump, zoom, or body-scale change. Frame 5: follow-through in costume, "
+        "appendage, or prop while the face stays on-vibe. Frame 6: body rhythm reverses or settles. Frame 7: final tiny expression/blink/prop echo. Frame 8: return "
+        "cleanly to the first baseline pose."
     ),
     "hover": (
         "Frame 1: resting pose notices the pointer. Frame 2: eyes brighten or track upward without changing eye grammar. "
@@ -293,6 +297,7 @@ STATE_VISUAL_AIDS = {
 }
 
 STATE_REJECTS = {
+    "idle": "mostly static blink row, no clear motion peak, bland/timid default pose, one-frame size jump, body scale drift, frozen robe/accessories/appendages/held props, off-vibe mood jump, detached semantic cue, neighboring-state read",
     "hover": "cursor icons, pointer arrows, UI labels, glow rings, detached reaction symbols, large surprise faces, identity drift",
     "dragging": "external hands, cursor icons, drag handles, text labels, drop shadows, speed lines, dust, impact marks, stretched smear motion, body scale jumps, dangling detached appendages",
     "working": "off-vibe attack/rage frames unless explicitly requested or clearly source-supported, invented angry eyebrows or brow marks, decorative particles that do not read as work, unsupported held tools, duplicate identity props, prop-shaped glyph copies, static prop with no work motion, text-like prop marks, pseudo-writing, code lines, ruled notebook lines",
@@ -305,6 +310,13 @@ STATE_REJECTS = {
 }
 
 STATE_FRAME_ARCS = {
+    "idle": (
+        "Frame-by-frame acting arc: 1 source-vibe baseline pose, 2 visible weight shift or costume/accessory/prop "
+        "sway starts, 3 blink or tiny expression beat, 4 clearest idle motion peak such as float, sway, cloak flap, "
+        "prop bob, appendage/ear/tail/wing twitch, or shoulder perk, 5 follow-through, 6 reverse/settle, 7 small "
+        "echo beat, 8 loop back. Idle should feel alive and characterful while remaining the default state; it "
+        "should not be a mostly static blink row."
+    ),
     "hover": (
         "Frame-by-frame acting arc: 1 baseline mascot notices the pointer, 2 eyes or face react, 3 small perk/lean/lift, "
         "4 source-vibe attentive hold, 5 blink or tiny expression change, 6 body/appendage settle, 7 ready hold, 8 loop back. "
@@ -1402,6 +1414,14 @@ Reject if any frame has wrong eye grammar, stale same-face row, an off-vibe or n
 
 def compact_frame_story(*, state: str, state_plan: dict[str, str], frame_count: int) -> str:
     beats = state_plan["stateStoryBeats"]
+    if state == "idle":
+        return (
+            f"Use all {frame_count} frames as one lively default loop: {beats}. "
+            "Arc: baseline -> visible weight/body/costume/prop shift -> blink/tiny mouth/body lift -> clear idle "
+            "peak such as float, sway, cloak flap, prop bob, appendage twitch, or source-native in-place motion -> "
+            "follow-through -> settle -> echo -> loop. Every frame needs meaningful face, body, costume, appendage, "
+            "or prop change without scale/center jumps; do not make idle a mostly static blink row."
+        )
     if state == "answering":
         return (
             f"Use all {frame_count} frames as one loop: {beats}. Mouth shapes must visibly cycle from closed/tiny "
@@ -1527,6 +1547,7 @@ State goal:
 
 State performance story arc:
 Make the row a coherent mini-story, not a checklist or random emotion collage. Expressions must be adjacent beats caused by the state action and loop cleanly back to the first frame. Do not let all motion live in a cue while the mascot face and body stay frozen.
+Art floor: in-place acting; vary face, body, costume, appendage, or prop without scale jumps.
 
 Frame plan:
 {frame_story}
@@ -1535,10 +1556,10 @@ Cue/prop rule:
 {cue_rule}
 
 Expression and anatomy rules:
-- Preserve the reference's expression language. Do not add generic emotion shortcuts such as stock happy helper smiles, angry brows, hostile eyes, teeth, sweat, blush, or dramatic marks unless the source design already supports them and the state calls for them.
+- Preserve the reference's expression language. Do not add generic emotion shortcuts such as stock happy helper smiles, angry brows, hostile eyes, teeth, sweat, blush, or dramatic marks just to force state clarity. Stronger expressions are allowed when the source design, source vibe, or requested state supports them and they remain coherent in motion.
 - {SOURCE_EYE_LOCK}
 - Use only appendages and props visible in the canonical base/reference. Preserve count, side, attachment, and basic silhouette across the row.
-- If an appendage affordance is unclear, keep movement subtle and side/body-attached; carry the state through eyes, mouth, body timing, and source-bound cue timing.
+- If an appendage affordance is unclear, keep movement readable, attached, and silhouette-safe; use small-to-medium side/body-anchored motion, costume motion, prop follow-through, eyes, mouth, body timing, and source-bound cue timing instead of freezing the mascot.
 - No extra limbs, duplicate props, detached appendage blobs, prop echoes, random icons, punctuation, or text.
 
 Scale and layout rules:

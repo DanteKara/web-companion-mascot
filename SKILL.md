@@ -130,6 +130,8 @@ The user prompt/reference vibe is authoritative. Do not impose a default cute, h
 
 State rows should act through the mascot first: expression, blink, mouth shape, body rhythm, appendages, and identity props. Let rows be expressive and characterful: bounces, tilts, prop beats, costume/accessory/appendage motion, mouth shapes, and theme-native effects are good when identity stays stable and the reference vibe supports them. Use one small mascot-native semantic enhancer when acting alone would not read clearly.
 
+Idle is not a freeze frame with a token blink. Treat `idle` as the mascot's default character performance: a loopable little moment with source-vibe body rhythm, weight shift, blink or mouth beat, costume/accessory sway, appendage follow-through, held-prop motion, and a clean return to baseline. Keep that performance in-place: reject bland idle rows that barely move, but also reject one-frame jumps, zooms, or body-scale changes.
+
 Do not let validation make the art timid or flatten personality. Technical blockers must be fixed, but intentional state-specific acting such as a triumphant success beat, ominous success beat, sleepy droop, annoyed/recoverable error beat, or intense thinking lean can pass when the manual review documents that it improves the read without breaking identity or app usability.
 
 Review state rows as animation loops, not just still images. A technically clean row can still fail when one frame has an exaggerated side glance, closed-eye style swap, odd mood jump, or expression outlier that breaks the left-to-right motion story. For `thinking`, prefer a steady processing/working loop carried by body, appendage/prop, blink, mouth, and compact cue timing before using dramatic eye-direction changes.

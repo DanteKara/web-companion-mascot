@@ -41,7 +41,7 @@ Recommended defaults:
 
 | State | Frames | Purpose |
 | --- | ---: | --- |
-| idle | 8 | Resting breathing/blink loop |
+| idle | 8 | Characterful baseline loop with body rhythm, blink/expression beat, costume/accessory/prop motion, and clean settle |
 | hover | 8 | Pointer hover over the mascot |
 | dragging | 8 | User is dragging the mascot around the app |
 | greeting | 8 | Chat opens or first visit |
@@ -386,7 +386,7 @@ Frame fitting must not make the mascot body resize when a semantic effect grows.
 Do not treat "more frames" as duplicated stills. Every used frame should earn its slot.
 
 - Every state should tell one coherent loopable performance story, not a random emotion collage. Expressions should be adjacent beats caused by the state action and the source personality: calm -> blink -> settle, notice -> source-vibe response -> settle, source-vibe baseline -> focused processing -> compact cue or prop beat -> resolution beat -> settle, ready -> speaking -> conversational blink/mouth beat -> settle, or another state-appropriate arc. Reject abrupt mood jumps, off-vibe faces, wrong-state expressions, and one-frame expression-style outliers that cannot loop back to frame 1 cleanly.
-- `idle`: slow breathing, 1-2 blink/eye frames, tiny hand/prop settle.
+- `idle`: source-vibe baseline performance, not a static rest pose. Use in-place body rhythm, float/sway/weight shift, 1-2 blink or eye frames, tiny mouth/expression beat, costume/accessory motion, hand/appendage follow-through, held-prop bob, aura pulse, or other mascot-native idle motion, then return cleanly to baseline. Reject idle rows that barely move or have no clear motion peak, and reject one-frame jumps, zooms, or body-scale changes.
 - `hover`: pointer-notice acting through eyes, tiny perk/lean/lift, source-vibe ready hold, and small settle; no cursor icon, pointer arrow, UI label, glow ring, or detached attention symbol.
 - `dragging`: compact picked-up/carried loop for pointer-follow movement; tiny lift/tuck/bob/sway while preserving body scale, appendage count, identity props, and center stability; no external hands, drag handles, cursor icons, speed lines, dust, floor shadows, impact marks, or smear/stretch motion.
 - `greeting`: anticipation, arm/prop rise, peak gesture, return, source-vibe hold.
