@@ -23,6 +23,8 @@ REQUIRED_ATLAS_FIELDS = {
 
 CHATBOT_RECOMMENDED_FRAMES = {
     "idle": 8,
+    "hover": 8,
+    "dragging": 8,
     "greeting": 8,
     "listening": 8,
     "thinking": 8,
@@ -35,9 +37,9 @@ CHATBOT_RECOMMENDED_FRAMES = {
 }
 
 CHATBOT_CORE_STATES = {"idle", "thinking", "answering", "success", "error"}
-HIGH_VISIBILITY_EYE_REVIEW_STATES = {"thinking", "working", "answering"}
-HIGH_VISIBILITY_STATE_PERFORMANCE_REVIEW_STATES = {"thinking", "working", "answering"}
-HIGH_VISIBILITY_ANATOMY_REVIEW_STATES = {"thinking", "working", "answering"}
+HIGH_VISIBILITY_EYE_REVIEW_STATES = {"thinking", "working", "answering", "dragging"}
+HIGH_VISIBILITY_STATE_PERFORMANCE_REVIEW_STATES = {"thinking", "working", "answering", "hover", "dragging"}
+HIGH_VISIBILITY_ANATOMY_REVIEW_STATES = {"thinking", "working", "answering", "dragging"}
 MIN_USED_CELL_COVERAGE = 0.015
 STATE_CLARITY_PROFILES = {"pose-only", "semantic-enhancers"}
 RENDERING_STYLES = {"codex-pixel-art"}

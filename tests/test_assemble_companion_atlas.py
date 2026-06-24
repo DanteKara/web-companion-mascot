@@ -191,6 +191,7 @@ class AssembleCompanionAtlasTests(unittest.TestCase):
         scale = assembler.body_anchor_scale_for_edge_clearance(
             [body_with_too_tall_cue],
             scale=1.0,
+            cell_width=100,
             cell_height=80,
             padding=10,
         )

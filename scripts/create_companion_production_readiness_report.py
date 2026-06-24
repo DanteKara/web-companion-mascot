@@ -342,7 +342,7 @@ def report_handoffs(blockers: list[dict[str, Any]], run_dir: Path) -> list[dict[
     handoff_summaries: list[dict[str, Any]] = []
     manifest_path = run_dir / "manifest.json"
     imagegen_jobs_path = run_dir / "imagegen-jobs.json"
-    for path in sorted((run_dir / "qa").glob("*cli-fallback-handoff*.json")):
+    for path in sorted((run_dir / "qa").glob("*repair-handoff*.json")):
         handoff = optional_json(path)
         if not handoff:
             continue
@@ -426,7 +426,7 @@ def report_handoffs(blockers: list[dict[str, Any]], run_dir: Path) -> list[dict[
                 target=str(handoff.get("jobId") or path.name),
                 message=(
                     f"{path.name} promptRepairContract is incomplete; regenerate the handoff from a "
-                    f"story-preserving fallback prompt before any real CLI/API generation: {missing_text}."
+                    f"story-preserving repair prompt before any repair generation: {missing_text}."
                 ),
             )
         if stale_labels:
@@ -436,8 +436,8 @@ def report_handoffs(blockers: list[dict[str, Any]], run_dir: Path) -> list[dict[
                 kind="stale-fallback-handoff",
                 target=str(handoff.get("jobId") or path.name),
                 message=(
-                    f"{path.name} must be {requirements}; regenerate the fallback handoff from the "
-                    "current job source and fallback prompt before any real CLI/API generation."
+                    f"{path.name} must be {requirements}; regenerate the repair handoff from the "
+                    "current job source and repair prompt before any repair generation."
                 ),
             )
         if source_mode == "rejected-candidate":
@@ -560,19 +560,19 @@ def infer_next_actions(
     actions: list[str] = []
     if any(blocker.get("code") in {"non_uniform_chroma_key_background", "fake_checkerboard_transparency_background"} for blocker in blockers):
         actions.append(
-            "Use the approved $imagegen true-transparency fallback for promising rows with non-flat or fake backgrounds; do not locally normalize the source."
+            "Regenerate promising rows through Codex app $imagegen with revised prompt/reference grounding; do not locally normalize the source."
         )
     if any(blocker.get("kind") == "validation-error" and "row_source_style" in blocker.get("message", "") for blocker in blockers):
         actions.append("Re-record repaired row sources with --strict-row-style so row-source evidence is stored in imagegen-jobs.json.")
     if any(blocker.get("kind") == "missing-visual-review" for blocker in blockers):
         actions.append("After repaired sources are selected and assembled, create frame-covered anatomy, state-performance, eye-grammar, and art-direction reviews.")
     if any(blocker.get("kind") == "fallback-handoff" for blocker in blockers):
-        actions.append("Regenerate fallback handoffs from the current imagegen-jobs.json source_path before using any real run command.")
+        actions.append("Regenerate repair handoffs from the current imagegen-jobs.json source_path before using any real run command.")
     if any(blocker.get("kind") == "fallback-handoff-prompt" for blocker in blockers):
-        actions.append("Regenerate any fallback prompt repair contract before running real CLI/API generation; preserve story/scale while repairing eye grammar and transparency.")
+        actions.append("Regenerate any repair prompt contract before repair generation; preserve story/scale while repairing eye grammar and transparency.")
     if any(blocker.get("kind") == "stale-fallback-handoff" for blocker in blockers):
         actions.append(
-            "Regenerate stale fallback handoffs from the current manifest, imagegen-jobs.json, row source, and fallback prompt before any true-transparency repair."
+            "Regenerate stale repair handoffs from the current manifest, imagegen-jobs.json, row source, and repair prompt before any repair generation."
         )
     if any(blocker.get("kind") == "stale-visual-review" for blocker in blockers):
         actions.append("Regenerate stale manual visual reviews after the latest atlas, contact sheet, and manifest changes.")
@@ -601,9 +601,9 @@ def infer_next_actions(
             pieces.append("environment " + ", ".join(missing_env_names))
         if pieces:
             actions.append(
-                f"Fallback handoffs for {blocked_jobs} are not runnable yet; resolve "
+                f"Repair handoffs for {blocked_jobs} are not runnable yet; resolve "
                 + " and ".join(pieces)
-                + " before any real CLI/API generation."
+                + " before any repair generation."
             )
     candidate_rejections = candidate_rejections or []
     exhausted_current = [
@@ -614,7 +614,7 @@ def infer_next_actions(
     if exhausted_current:
         jobs = ", ".join(str(item.get("jobId")) for item in exhausted_current if item.get("jobId"))
         actions.append(
-            f"Rejected candidate evidence for {jobs} says repeated built-in repairs are exhausted for the current recorded row; preserve story/scale and move only through a narrow approved repair or true-transparency fallback."
+            f"Rejected candidate evidence for {jobs} says repeated built-in repairs are exhausted for the current recorded row; preserve story/scale and move through a revised Codex app generation path."
         )
     if not actions and blockers:
         actions.append("Resolve listed blockers, then rerun strict validation and this readiness report.")

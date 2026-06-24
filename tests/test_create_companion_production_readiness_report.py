@@ -119,7 +119,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
             self.assertIn("qa/eye-grammar-review.json", blocker_text)
             self.assertIn("qa/art-direction-review.json", blocker_text)
             self.assertIn("good state read is not enough", report["verdict"])
-            self.assertTrue(any("true-transparency fallback" in action for action in report["nextActions"]))
+            self.assertTrue(any("Codex app $imagegen" in action for action in report["nextActions"]))
 
     def test_report_can_pass_when_source_validation_quality_and_reviews_are_clean(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -176,7 +176,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                 json.dumps({"ok": True, "errors": [], "warnings": [], "qa": {"qualityReport": {"ok": True}}}),
                 encoding="utf-8",
             )
-            (run_dir / "qa" / "thinking-cli-fallback-handoff.json").write_text(
+            (run_dir / "qa" / "thinking-repair-handoff.json").write_text(
                 json.dumps({"jobId": "thinking", "output": "old-output.png"}),
                 encoding="utf-8",
             )
@@ -191,7 +191,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
             self.assertTrue(any(blocker["kind"] == "fallback-handoff" for blocker in report["blockers"]))
             self.assertTrue(any("does not prove sourceMatchesRecordedJob" in blocker["message"] for blocker in report["blockers"]))
 
-    def test_report_summarizes_story_preserving_repair_intent_for_fallback_handoffs(self) -> None:
+    def test_report_summarizes_story_preserving_repair_intent_for_repair_handoffs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             run_dir = Path(raw_tmp) / "run"
             (run_dir / "qa").mkdir(parents=True)
@@ -212,7 +212,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                 json.dumps({"ok": True, "errors": [], "warnings": [], "qa": {"qualityReport": {"ok": True}}}),
                 encoding="utf-8",
             )
-            (run_dir / "qa" / "thinking-cli-fallback-handoff.json").write_text(
+            (run_dir / "qa" / "thinking-repair-handoff.json").write_text(
                 json.dumps(
                     {
                         "jobId": "thinking",
@@ -230,7 +230,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                         },
                         "defaultPromptWritten": True,
                         "repairPromptSource": "generic-story-preserving-default",
-                        "requiredEnvironment": ["OPENAI_API_KEY"],
+                        "requiredEnvironment": ["MASCOT_REPAIR_TOOL_READY"],
                         "requiresExplicitUserApproval": True,
                     }
                 ),
@@ -251,19 +251,19 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
             self.assertTrue(report["handoffs"][0]["promptRepairContractOk"])
             self.assertTrue(report["handoffs"][0]["defaultPromptWritten"])
             self.assertEqual(report["handoffs"][0]["repairPromptSource"], "generic-story-preserving-default")
-            self.assertEqual(report["handoffs"][0]["requiredEnvironment"], ["OPENAI_API_KEY"])
-            self.assertEqual(report["handoffs"][0]["requiredEnvironmentStatus"], {"OPENAI_API_KEY": "missing"})
+            self.assertEqual(report["handoffs"][0]["requiredEnvironment"], ["MASCOT_REPAIR_TOOL_READY"])
+            self.assertEqual(report["handoffs"][0]["requiredEnvironmentStatus"], {"MASCOT_REPAIR_TOOL_READY": "missing"})
             self.assertTrue(report["handoffs"][0]["requiresExplicitUserApproval"])
             self.assertEqual(
                 report["handoffs"][0]["executionBlockedBy"],
-                ["explicit-user-approval-required", "missing-env:OPENAI_API_KEY"],
+                ["explicit-user-approval-required", "missing-env:MASCOT_REPAIR_TOOL_READY"],
             )
             self.assertFalse(report["fallbackRepairReady"])
             self.assertEqual(report["summary"]["blockedHandoffCount"], 1)
             self.assertEqual(report["summary"]["runnableHandoffCount"], 0)
             self.assertTrue(
                 any(
-                    "OPENAI_API_KEY" in action and "explicit user approval" in action
+                    "MASCOT_REPAIR_TOOL_READY" in action and "explicit user approval" in action
                     for action in report["nextActions"]
                 )
             )
@@ -289,7 +289,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                 json.dumps({"ok": True, "errors": [], "warnings": [], "qa": {"qualityReport": {"ok": True}}}),
                 encoding="utf-8",
             )
-            (run_dir / "qa" / "thinking-cli-fallback-handoff.json").write_text(
+            (run_dir / "qa" / "thinking-repair-handoff.json").write_text(
                 json.dumps(
                     {
                         "jobId": "thinking",
@@ -301,16 +301,16 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                             "missingRequiredChecks": [],
                             "checks": {"preserve-story": True, "repair-eye-grammar": True},
                         },
-                        "requiredEnvironment": ["OPENAI_API_KEY"],
+                        "requiredEnvironment": ["MASCOT_REPAIR_TOOL_READY"],
                         "requiresExplicitUserApproval": True,
                         "explicitUserApprovalReceived": True,
-                        "approvalNote": "User approved true-transparency CLI fallback.",
+                        "approvalNote": "User approved the narrow repair generation.",
                     }
                 ),
                 encoding="utf-8",
             )
 
-            with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True):
+            with patch.dict(os.environ, {"MASCOT_REPAIR_TOOL_READY": "1"}, clear=True):
                 report = readiness.build_report(
                     manifest_path=manifest_path,
                     source_audit_path=run_dir / "qa" / "source-audit.json",
@@ -320,7 +320,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
             self.assertTrue(report["productionReady"])
             self.assertTrue(report["handoffs"][0]["explicitUserApprovalReceived"])
             self.assertTrue(report["handoffs"][0]["promptRepairContractOk"])
-            self.assertEqual(report["handoffs"][0]["requiredEnvironmentStatus"], {"OPENAI_API_KEY": "present"})
+            self.assertEqual(report["handoffs"][0]["requiredEnvironmentStatus"], {"MASCOT_REPAIR_TOOL_READY": "present"})
             self.assertEqual(report["handoffs"][0]["executionBlockedBy"], [])
             self.assertTrue(report["fallbackRepairReady"])
             self.assertEqual(report["summary"]["blockedHandoffCount"], 0)
@@ -356,7 +356,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                 json.dumps({"ok": True, "errors": [], "warnings": [], "qa": {"qualityReport": {"ok": True}}}),
                 encoding="utf-8",
             )
-            (run_dir / "qa" / "thinking-cli-fallback-handoff.json").write_text(
+            (run_dir / "qa" / "thinking-repair-handoff.json").write_text(
                 json.dumps(
                     {
                         "jobId": "thinking",
@@ -373,7 +373,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                             "missingRequiredChecks": [],
                             "checks": {"preserve-story": True, "repair-eye-grammar": True},
                         },
-                        "requiredEnvironment": ["OPENAI_API_KEY"],
+                        "requiredEnvironment": ["MASCOT_REPAIR_TOOL_READY"],
                         "requiresExplicitUserApproval": True,
                         "explicitUserApprovalReceived": True,
                     }
@@ -381,7 +381,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True):
+            with patch.dict(os.environ, {"MASCOT_REPAIR_TOOL_READY": "1"}, clear=True):
                 report = readiness.build_report(
                     manifest_path=manifest_path,
                     source_audit_path=run_dir / "qa" / "source-audit.json",
@@ -416,7 +416,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                 json.dumps({"ok": True, "errors": [], "warnings": [], "qa": {"qualityReport": {"ok": True}}}),
                 encoding="utf-8",
             )
-            (run_dir / "qa" / "thinking-cli-fallback-handoff.json").write_text(
+            (run_dir / "qa" / "thinking-repair-handoff.json").write_text(
                 json.dumps(
                     {
                         "jobId": "thinking",
@@ -427,7 +427,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                             "ok": False,
                             "missingRequiredChecks": ["preserve-story", "repair-eye-grammar"],
                         },
-                        "requiredEnvironment": ["OPENAI_API_KEY"],
+                        "requiredEnvironment": ["MASCOT_REPAIR_TOOL_READY"],
                         "requiresExplicitUserApproval": True,
                     }
                 ),
@@ -444,9 +444,9 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
             self.assertFalse(report["handoffs"][0]["promptRepairContractOk"])
             self.assertIn("fallback-prompt-contract-missing", report["handoffs"][0]["executionBlockedBy"])
             blocker_text = "\n".join(blocker["message"] for blocker in report["blockers"])
-            self.assertIn("thinking-cli-fallback-handoff.json promptRepairContract is incomplete", blocker_text)
+            self.assertIn("thinking-repair-handoff.json promptRepairContract is incomplete", blocker_text)
             self.assertIn("preserve-story", blocker_text)
-            self.assertTrue(any("fallback prompt repair contract" in action for action in report["nextActions"]))
+            self.assertTrue(any("repair prompt contract" in action for action in report["nextActions"]))
 
     def test_report_blocks_stale_fallback_handoff_after_job_prompt_or_source_changes(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -489,7 +489,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                 json.dumps({"ok": True, "errors": [], "warnings": [], "qa": {"qualityReport": {"ok": True}}}),
                 encoding="utf-8",
             )
-            handoff_path = run_dir / "qa" / "thinking-cli-fallback-handoff.json"
+            handoff_path = run_dir / "qa" / "thinking-repair-handoff.json"
             handoff_path.write_text(
                 json.dumps(
                     {
@@ -529,7 +529,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
             self.assertIn("newer than imagegen-jobs.json", stale_handoff_blockers[0]["message"])
             self.assertIn("newer than current-source.png", stale_handoff_blockers[0]["message"])
             self.assertIn("newer than prompts\\rows\\thinking-fallback.md", stale_handoff_blockers[0]["message"])
-            self.assertTrue(any("Regenerate stale fallback handoffs" in action for action in report["nextActions"]))
+            self.assertTrue(any("Regenerate stale repair handoffs" in action for action in report["nextActions"]))
 
     def test_report_summarizes_rejected_candidate_evidence_without_blocking_by_itself(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -591,7 +591,7 @@ class CompanionProductionReadinessReportTests(unittest.TestCase):
                             }
                         ],
                         "conclusion": {
-                            "nextRecommendedAction": "Stop retrying the same built-in prompt pattern; use true-transparency fallback."
+                            "nextRecommendedAction": "Stop retrying the same built-in prompt pattern; regenerate through Codex app $imagegen."
                         },
                     }
                 ),

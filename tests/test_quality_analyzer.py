@@ -145,7 +145,7 @@ class QualityAnalyzerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp_path = Path(raw_tmp)
             atlas = Image.new("RGBA", (1024, 288), (0, 0, 0, 0))
-            for column, radius in enumerate([52, 52, 57, 52]):
+            for column, radius in enumerate([52, 52, 58, 52]):
                 paste_body(atlas, column, radius)
             atlas.save(tmp_path / "atlas.png")
             manifest_path = write_manifest(tmp_path)

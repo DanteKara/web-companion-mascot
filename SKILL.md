@@ -1,15 +1,17 @@
 ---
 name: web-companion-mascot
-description: Use when creating, validating, or integrating custom animated mascot companions for React/chatbot websites from concept art, screenshots, existing Codex pets, or generated references, especially when states like idle, greeting, listening, thinking, answering, success, error, confused, or sleeping are needed.
+description: Use when creating, validating, or integrating custom animated mascot companions, sprite sheets, sprite atlases, or React/chatbot website mascot assets from concept art, screenshots, existing Codex pets, or generated references, especially when states like idle, hover, dragging, greeting, listening, thinking, answering, success, error, or sleeping are needed.
 ---
 
 # Web Companion Mascot
 
 ## Overview
 
-Create website-first pixel-art chatbot companions with a custom sprite atlas, state manifest, QA assets, and optional React integration. Prefer this skill for web/chat companions rather than fixed Codex app pets.
+Create website-first pixel-art chatbot companions with custom sprite sheets, a sprite atlas, state manifest, QA assets, and optional React integration for chat, hover, and drag/drop companion behavior. Prefer this skill for web/chat companions rather than fixed Codex app pets.
 
 Use `$imagegen` for all production visual generation. Use this skill's scripts only for deterministic preparation, provenance recording, cleanup, atlas assembly, QA, validation, and React file generation.
+
+Default behavior is agent-led: infer the mascot identity, state list, clarity approach, geometry, and cue style from the user's prompt/reference. Do not ask the user to choose workflow modes. Ask only when a missing decision would materially change the character or target product.
 
 ## Reference Routing
 
@@ -26,6 +28,9 @@ Load only what the task needs:
 - Do not manually edit `imagegen-jobs.json`, copy files into `generated/`, or mark visual jobs complete by hand.
 - Record selected visual outputs with `scripts/record_companion_imagegen_result.py`; keep source provenance explicit.
 - Only the base job may be prompt-only when no reference exists. Every state-row job must use the grounding images listed in `imagegen-jobs.json`, including `references/canonical-base.png` after the base is recorded.
+- For a normal React/chatbot companion request, deliver the full companion package. Base-only or single-image outputs are incomplete unless the user explicitly asks for a concept image, canonical base, audition, or narrow repair.
+- Run the Codex app image capture preflight before treating `$imagegen` output as production art. If the image appears inline in Codex app rather than as an obvious file, use `scripts/capture_codex_app_imagegen_result.py` to capture the app's `image_generation_call` result to a PNG and `.codex-imagegen.json` sidecar, then record it with `--source-provenance codex-app-imagegen`.
+- If a captured Codex app `$imagegen` row is visually good but needs chroma cleanup, use the installed `$imagegen` chroma helper to create a transparent PNG outside the run directory, then record the cleaned PNG with `--source-provenance codex-app-imagegen-chroma-cleanup --chroma-cleanup-source <original-captured-png>`.
 - If `$imagegen` is unavailable and the user has not provided finished integrated sprite art, stop and explain the blocker.
 
 ## Default Output
@@ -52,11 +57,13 @@ run/
   react/useCompanionState.ts
 ```
 
-Default production geometry is `256x288` per cell, one row per website state, and usually 8 frames per row. Use `192x208` only for deliberately small/simple companions.
+Default production geometry starts at `256x288` per cell, one row per website state, and usually 8 frames per row. Choose larger cells without asking when the character needs headroom: use `320x320`, `384x384`, or another explicit size for tall hats, long held props, wings, long tails, large ears, readable hand acting, or theme-native effects. Use `192x208` only for deliberately small/simple companions.
+
+This default output is the full companion package. Do not call a normal React/chatbot mascot complete until the atlas, frames, manifest, QA evidence, and requested React files exist.
 
 ## Workflow
 
-1. Establish identity, references, must-keep features, anatomy class, prop rules, palette, target site vibe, state list, and state clarity profile (`pose-only` or `semantic-enhancers`).
+1. Establish identity, references, must-keep features, anatomy class, prop rules, palette, target site vibe, state list, and state clarity. For normal React website companions, include `hover` and `dragging` interaction rows unless the request is deliberately compact or non-interactive. Infer `semantic-enhancers` for normal chatbot companions unless the user asks for a quieter/minimal mascot; infer `pose-only` only when acting alone will read clearly.
 2. Prepare the run folder and prompt plan:
 
 ```bash
@@ -69,23 +76,27 @@ python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /p
 python scripts/companion_job_status.py --run-dir /path/to/run
 ```
 
-4. Generate/select the canonical Codex-style pixel-art base with `$imagegen`, then record it:
+4. Generate/select the canonical Codex-style pixel-art base with `$imagegen`, capture it if needed, then record it. Do not stop after the canonical base during a normal full companion run:
 
 ```bash
-python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id base --source /absolute/path/to/generated/base.png --strict-base-style
+python scripts/capture_codex_app_imagegen_result.py --out /absolute/path/to/codex-app-imagegen/ig_base.png
+python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id base --source /absolute/path/to/codex-app-imagegen/ig_base.png --source-provenance codex-app-imagegen --strict-base-style
 ```
 
 5. Generate one grounded row strip per ready state with `$imagegen`, then record each selected row:
 
 ```bash
-python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id thinking --source /absolute/path/to/generated/thinking.png --strict-row-style
+python scripts/capture_codex_app_imagegen_result.py --out /absolute/path/to/codex-app-imagegen/ig_thinking.png
+python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id thinking --source /absolute/path/to/codex-app-imagegen/ig_thinking.png --source-provenance codex-app-imagegen --strict-row-style
 ```
 
 6. Assemble and inspect the atlas:
 
 ```bash
-python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --cell-width 256 --cell-height 288 --max-outline-halo-pixels 0 --no-equal-fallback
+python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --cell-width 256 --cell-height 288 --extraction-mode component --allow-edge-clearance-scale --max-outline-halo-pixels 0 --no-equal-fallback
 ```
+
+If the contact sheet shows edge pressure, neighbor slivers, prop clipping, or mascot scale shrink from tall/wide cues, rerun assembly with a larger explicit cell such as `384x384`, then rerun QA on that final atlas.
 
 7. Run QA and manual review scripts before acceptance:
 
@@ -106,15 +117,17 @@ If `python` cannot import required image libraries, call `load_workspace_depende
 
 ## Visual Standards
 
-Production art must be native pixel-art sprite work: compact chibi proportions, visible stepped pixel edges, thick dark 1-2 px outline, limited palette, flat cel shading, readable face, stable silhouette, stable eye grammar, and consistent appendage/prop count.
+Production art must be native pixel-art sprite work: compact chibi proportions, visible stepped pixel edges, thick dark 1-2 px outline, readable face, stable silhouette, stable eye grammar, and consistent appendage/prop count.
 
 Reject smooth illustration, glossy app-icon rendering, painterly gradients, 3D material shading, high-detail antialiasing, vector-flat symbols, CSS-scaled smooth art, fake transparency, non-flat chroma backgrounds, cropped frames, detached random symbols, shadows, glows, smear effects, and identity drift.
 
-State rows should act through the mascot first: expression, blink, mouth shape, body rhythm, appendages, and identity props. Use one small mascot-native semantic enhancer only when acting alone would not read clearly.
+State rows should act through the mascot first: expression, blink, mouth shape, body rhythm, appendages, and identity props. Let rows be expressive and characterful: tasteful bounces, tilts, prop beats, costume/accessory/appendage motion, mouth shapes, and theme-native effects are good when identity stays stable. Use one small mascot-native semantic enhancer when acting alone would not read clearly.
+
+Do not let validation make the art timid. Technical blockers must be fixed, but small intentional state-specific motion such as a success cheer, sleepy droop, error jitter, or thinking lean can pass when the manual review documents that it improves the read without breaking identity or app usability.
 
 ## React Notes
 
-When integrating into React, serve final assets from a stable public path, drive animation from manifest frame durations, respect `prefers-reduced-motion`, keep `state`, `size`, and `paused` controlled by app state, and use `image-rendering: pixelated`.
+When integrating into React, serve final assets from a stable public path, drive animation from manifest frame durations, respect `prefers-reduced-motion`, keep `state`, `size`, and `paused` controlled by app state, map pointer hover to `hover`, map active drag/drop movement to `dragging`, and use `image-rendering: pixelated`.
 
 ## Acceptance
 

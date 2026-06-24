@@ -225,7 +225,7 @@ def build_report(
             "builtInPromptRepairExhaustedForNow": exhausted,
             "nextRecommendedAction": (
                 "Stop retrying the same built-in prompt pattern; preserve the current accepted story/scale "
-                "and use a true-transparency fallback only after explicit user approval and required API environment."
+                "and regenerate through Codex app $imagegen with revised prompt/reference grounding."
                 if exhausted
                 else "Continue with a narrow grounded row repair only if it targets the recorded blockers without changing the accepted story or scale."
             ),
