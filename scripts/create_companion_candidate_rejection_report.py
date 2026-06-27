@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""Write a non-mutating QA report for rejected companion row candidates."""
+"""Write a non-mutating QA report for rejected companion base or row candidates."""
 
 from __future__ import annotations
 
 import argparse
 import importlib.util
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import quality_pipeline_v3 as v3
 
 RECORD_SCRIPT = Path(__file__).with_name("record_companion_imagegen_result.py")
 _record_spec = importlib.util.spec_from_file_location("record_companion_imagegen_result", RECORD_SCRIPT)
@@ -43,6 +50,12 @@ def find_job(run_dir: Path, job_id: str) -> dict[str, Any] | None:
     return None
 
 
+def job_kind(run_dir: Path, job_id: str) -> str | None:
+    job = find_job(run_dir, job_id)
+    kind = job.get("kind") if job else None
+    return str(kind) if kind else None
+
+
 def resolve_path(run_dir: Path, raw_path: Any) -> Path | None:
     if not isinstance(raw_path, str) or not raw_path.strip():
         return None
@@ -58,7 +71,7 @@ def path_hash(path: Path | None) -> str | None:
     return record.file_sha256(path)
 
 
-def current_kept_row(run_dir: Path, job_id: str) -> dict[str, Any]:
+def current_kept_source(run_dir: Path, job_id: str) -> dict[str, Any]:
     job = find_job(run_dir, job_id)
     if job is None:
         return {
@@ -68,6 +81,7 @@ def current_kept_row(run_dir: Path, job_id: str) -> dict[str, Any]:
             "sourcePath": None,
             "sourceSha256": None,
             "sourceProvenance": None,
+            "sourceStyleStrictBlockingWarningCodesV3": [],
             "rowSourceStrictBlockingWarningCodes": [],
         }
 
@@ -79,8 +93,13 @@ def current_kept_row(run_dir: Path, job_id: str) -> dict[str, Any]:
         "sourcePath": str(source) if source else None,
         "sourceSha256": path_hash(source),
         "sourceProvenance": job.get("source_provenance") or job.get("sourceProvenance"),
+        "sourceStyleStrictBlockingWarningCodesV3": job.get("source_style_strict_blocking_warning_codes_v3", []),
         "rowSourceStrictBlockingWarningCodes": job.get("row_source_style_strict_blocking_warning_codes", []),
     }
+
+
+def current_kept_row(run_dir: Path, job_id: str) -> dict[str, Any]:
+    return current_kept_source(run_dir, job_id)
 
 
 def normalize_visual_blockers(raw_value: Any) -> list[str]:
@@ -129,6 +148,7 @@ def analyze_candidate(
             "sourceValidation": source_validation,
             "sourceSha256": None,
             "analysis": None,
+            "sourceStyleAnalysisV3": None,
             "deterministicWarningCodes": ["source_path_missing_on_disk"],
             "strictBlockingWarningCodes": ["source_path_missing_on_disk"],
             "warnings": [
@@ -142,14 +162,17 @@ def analyze_candidate(
     analysis = record.analyze_base_style(source, record.read_chroma_key_rgb(run_dir))
     strict_blockers = record.blocking_row_source_style_warnings(analysis)
     warnings = [warning for warning in analysis.get("warnings", []) if isinstance(warning, dict)]
+    v3_analysis = v3.analyze_source_style(source, v3.chroma_key_from_run(run_dir))
+    v3_codes = [str(code) for code in v3_analysis.get("blockingWarningCodes", []) if code]
     return {
         "sourceValidation": source_validation,
         "sourceSha256": record.file_sha256(source),
         "analysis": analysis,
+        "sourceStyleAnalysisV3": v3_analysis,
         "deterministicWarningCodes": [str(warning.get("code")) for warning in warnings if warning.get("code")],
-        "strictBlockingWarningCodes": [
-            str(warning.get("code")) for warning in strict_blockers if warning.get("code")
-        ],
+        "strictBlockingWarningCodes": sorted(
+            set([str(warning.get("code")) for warning in strict_blockers if warning.get("code")] + v3_codes)
+        ),
         "warnings": warnings,
     }
 
@@ -165,7 +188,8 @@ def build_report(
     run_dir = run_dir.expanduser().resolve()
     candidates_path = candidates_path.expanduser().resolve()
     raw_candidates, notes = load_candidates(candidates_path)
-    current = current_kept_row(run_dir, job_id)
+    current = current_kept_source(run_dir, job_id)
+    kind = job_kind(run_dir, job_id)
 
     candidate_reports: list[dict[str, Any]] = []
     for index, raw_candidate in enumerate(raw_candidates, start=1):
@@ -199,17 +223,38 @@ def build_report(
                 "strictBlockingWarningCodes": source_report["strictBlockingWarningCodes"],
                 "warnings": source_report["warnings"],
                 "analysis": source_report["analysis"],
+                "sourceStyleAnalysisV3": source_report["sourceStyleAnalysisV3"],
             }
         )
 
     rejected_count = sum(1 for candidate in candidate_reports if candidate["decision"] == "reject")
     exhausted = rejected_count >= max(1, built_in_repair_threshold)
+    if job_id == "base" or kind == "base-companion":
+        exhausted_action = (
+            "Stop retrying the same built-in prompt pattern; report not production-ready yet with this run folder, "
+            "strict v3 blockers, and candidate hashes, then use a revised native-pixel prompt/reference strategy."
+        )
+        continue_action = (
+            "Continue only with a revised native-pixel base strategy that targets the recorded strict v3 blockers. "
+            "Do not deliver the static base as the full companion package."
+        )
+    else:
+        exhausted_action = (
+            "Stop retrying the same built-in prompt pattern; preserve the current accepted story/scale "
+            "and regenerate through Codex app $imagegen with revised prompt/reference grounding."
+        )
+        continue_action = (
+            "Continue with a narrow grounded row repair only if it targets the recorded blockers without changing "
+            "the accepted story or scale."
+        )
     report = {
         "ok": True,
         "reportKind": "companion-candidate-rejection-report",
         "runDir": str(run_dir),
         "jobId": job_id,
+        "jobKind": kind,
         "candidatesInput": str(candidates_path),
+        "currentKeptSource": current,
         "currentKeptRow": current,
         "summary": {
             "candidateCount": len(candidate_reports),
@@ -223,12 +268,7 @@ def build_report(
         "conclusion": {
             "doNotRecordOrAssembleRejectedCandidates": True,
             "builtInPromptRepairExhaustedForNow": exhausted,
-            "nextRecommendedAction": (
-                "Stop retrying the same built-in prompt pattern; preserve the current accepted story/scale "
-                "and regenerate through Codex app $imagegen with revised prompt/reference grounding."
-                if exhausted
-                else "Continue with a narrow grounded row repair only if it targets the recorded blockers without changing the accepted story or scale."
-            ),
+            "nextRecommendedAction": exhausted_action if exhausted else continue_action,
         },
     }
     return report

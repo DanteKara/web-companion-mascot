@@ -1,4 +1,4 @@
-# Quality Pipeline v3
+﻿# Quality Pipeline v3
 
 Production v3 exists to keep web companion mascots honest as native sprite art. The production target is native 16-bit-console pixel art: identity is approved before the base, the base is reviewed before rows, visual sources are audited, QA uses a locked profile, and every final frame receives hash-bound observation evidence. Foreground palette or alpha conversion is not chroma cleanup.
 
@@ -11,6 +11,7 @@ Production v3 exists to keep web companion mascots honest as native sprite art. 
 - Chroma cleanup is background-only. It may remove or alpha out the key background, but it must not remap foreground colors, posterize foreground pixels, change foreground alpha, or change sprite geometry.
 - Foreground quantization, posterization, recoloring, binary-alpha foreground conversion, geometry edits, or palette remapping block production.
 - Identity approval happens before base generation is accepted.
+- Approved identity JSON must follow the v3 contract. Start from the generated `references/character-bible.json` draft or `references/character-bible.example.json`; `paletteRoles` entries are objects such as `{"role":"outline","color":"#101828"}`, not prose strings.
 - Canonical base review happens before row generation or row recording is accepted.
 - QA profile `production-v3` is locked. Production scripts must not expose threshold override flags.
 - Approved exceptions must be declared in the approved identity contract before generation.
@@ -41,3 +42,5 @@ python scripts/create_companion_production_readiness_report_v3.py --manifest /pa
 ```
 
 The most important blocked failure is foreground conversion disguised as cleanup: a cleaned output whose protected sprite pixels have been quantized, indexed, posterized, recolored, alpha-flattened, or geometrically changed must fail v3 recording and readiness.
+
+When strict v3 recording blocks a base candidate, preserve the source path, hash, `source_style_analysis_v3` metrics, and visual blockers in a candidate rejection report before retrying. Regenerate with a specifically revised native-pixel prompt/reference strategy. After a small number of repeated built-in-imagegen failures for the same blocker, stop and report `notProductionReady` with the run folder and blockers; do not weaken v3, locally posterize the foreground, or deliver the static base as the completed companion package.

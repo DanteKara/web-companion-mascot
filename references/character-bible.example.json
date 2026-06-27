@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 3,
+  "status": "approved",
+  "pixelArtProfile": "16-bit-console",
+  "sourceVibe": "Friendly compact assistant companion translated into native 16-bit pixel art.",
+  "speciesOrForm": "Small creature mascot with readable face and compact body.",
+  "bodyCore": "Single compact body with a stable face-bearing area and simple silhouette.",
+  "speciesAnchors": [
+    "rounded compact body",
+    "clear face-bearing area",
+    "signature color markings"
+  ],
+  "silhouetteAnchors": [
+    "stable top edge",
+    "stable bottom edge",
+    "readable appendage positions"
+  ],
+  "proportionRules": [
+    "Keep the body compact and readable at 64 px.",
+    "Preserve the same appendage count and identity props across states."
+  ],
+  "faceGrammar": [
+    "two matched eyes in the same eye boxes",
+    "source-matched pupil/fill and catchlight logic",
+    "closed-eye frames use simple lines in the same positions"
+  ],
+  "paletteRoles": [
+    {
+      "role": "outline",
+      "color": "#101828"
+    },
+    {
+      "role": "body",
+      "color": "#2EA8B0"
+    },
+    {
+      "role": "face",
+      "color": "#F4DC96"
+    },
+    {
+      "role": "accent",
+      "color": "#F97316"
+    }
+  ],
+  "appendages": [
+    {
+      "id": "left-side-appendage",
+      "kind": "mitten paw",
+      "count": 1,
+      "placement": "left side of body",
+      "affordances": [
+        "small side bob",
+        "tiny wave",
+        "brace"
+      ]
+    },
+    {
+      "id": "right-side-appendage",
+      "kind": "mitten paw",
+      "count": 1,
+      "placement": "right side of body",
+      "affordances": [
+        "small side bob",
+        "tiny wave",
+        "brace"
+      ]
+    }
+  ],
+  "forbiddenMutations": [
+    "extra limbs",
+    "glossy 3D rendering",
+    "white crescent eye swaps",
+    "foreground quantization or posterization as cleanup"
+  ],
+  "personalityTraits": [
+    "friendly",
+    "curious",
+    "focused"
+  ],
+  "motionVocabulary": [
+    "soft blink",
+    "tiny body bob",
+    "small appendage lift"
+  ],
+  "stateCueRules": {
+    "idle": {
+      "attachment": "body-pose",
+      "componentPolicy": "body-only",
+      "approvedAllowances": [],
+      "notes": "Calm breathing and blink only."
+    },
+    "hover": {
+      "attachment": "body-pose",
+      "componentPolicy": "body-only",
+      "approvedAllowances": [],
+      "notes": "Small attentive perk; no cursor symbol."
+    },
+    "dragging": {
+      "attachment": "body-pose",
+      "componentPolicy": "body-only",
+      "approvedAllowances": [],
+      "notes": "Compact carried pose; no external hand."
+    },
+    "greeting": {
+      "attachment": "body-pose",
+      "componentPolicy": "body-only",
+      "approvedAllowances": [],
+      "notes": "Warm wave or bounce using existing appendages."
+    },
+    "listening": {
+      "attachment": "near-head",
+      "componentPolicy": "separate",
+      "approvedAllowances": [
+        "tiny source-bound listening pips"
+      ],
+      "notes": "Attentive lean; cue stays secondary."
+    },
+    "thinking": {
+      "attachment": "near-head",
+      "componentPolicy": "separate",
+      "approvedAllowances": [
+        "compact thought puff or idea orb"
+      ],
+      "notes": "Curious processing expression; cue stays close and small."
+    },
+    "answering": {
+      "attachment": "near-face",
+      "componentPolicy": "separate",
+      "approvedAllowances": [
+        "tiny mouth-origin speech pixels"
+      ],
+      "notes": "Mouth shapes carry the state."
+    },
+    "success": {
+      "attachment": "body-pose",
+      "componentPolicy": "separate",
+      "approvedAllowances": [
+        "tiny attached glint"
+      ],
+      "notes": "Proud bounce; cue stays source-bound."
+    },
+    "error": {
+      "attachment": "body-pose",
+      "componentPolicy": "separate",
+      "approvedAllowances": [
+        "small recovery mark"
+      ],
+      "notes": "Gentle recoverable failure, not harsh warning UI."
+    },
+    "sleeping": {
+      "attachment": "body-pose",
+      "componentPolicy": "body-only",
+      "approvedAllowances": [],
+      "notes": "Closed-eye breathing and relaxed settle."
+    }
+  },
+  "qualityProfile": {
+    "profile": "production-v3",
+    "stateAllowances": {}
+  }
+}

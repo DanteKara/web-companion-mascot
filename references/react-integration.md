@@ -19,7 +19,7 @@ Then use browser paths:
 /mascots/tridy/manifest.json
 ```
 
-Do not reference local machine paths such as `C:\Users\...` in deployed React code.
+Do not reference absolute local machine paths in deployed React code.
 
 ## Component API
 

@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 
@@ -6,6 +7,115 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class SkillDocumentTests(unittest.TestCase):
+    def test_scope_resolver_prevents_full_mascot_static_image_confusion(self) -> None:
+        text = (ROOT / "SKILL.md").read_text(encoding="utf-8-sig")
+        workflow_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
+
+        self.assertIn("## Scope Resolver", text)
+        self.assertIn("full mascot", text)
+        self.assertIn("ready mascot", text)
+        self.assertIn("make me a full mascot 16-bit pixel art from this reference", text)
+        self.assertIn("make me a React chatbot companion from this character", text)
+        self.assertIn("dog, robot, logo, plush, animal, object, character, avatar", text)
+        self.assertIn("Full body", text)
+        self.assertIn("does not narrow scope to a single static image", text)
+        self.assertIn("full-body mascot image only", text)
+        self.assertIn("explicitly narrows scope", text)
+        self.assertIn("Incorrect: generate one full-body transparent PNG and call it done", text)
+        self.assertIn('`readyJobs: ["base"]`', text)
+        self.assertIn("only an internal stage", text)
+        self.assertIn("mascot from this reference", workflow_text)
+        self.assertIn("full mascot 16-bit pixel art from this reference", workflow_text)
+
+    def test_prototype_escape_hatch_never_weakens_default_production_route(self) -> None:
+        top_level_text = (ROOT / "SKILL.md").read_text(encoding="utf-8-sig")
+        workflow_text = (ROOT / "references" / "production-workflow.md").read_text(encoding="utf-8-sig")
+        combined = top_level_text + "\n" + workflow_text
+
+        self.assertIn("Prototype Escape Hatch", combined)
+        self.assertIn("not production-v3 validated", combined)
+        self.assertIn("production-v3 path is blocked", combined)
+        self.assertIn("Never default to this path", combined)
+        self.assertIn("explicitly chooses", combined)
+        self.assertIn("does not satisfy production acceptance criteria", combined)
+        self.assertIn("productionReady: true", combined)
+        self.assertIn("Do not use prototype mode to bypass", combined)
+
+    def test_public_skill_files_do_not_embed_local_windows_paths(self) -> None:
+        forbidden = "C:" + "\\Users"
+        checked_paths = [ROOT / "SKILL.md"]
+        checked_paths.extend((ROOT / "references").glob("*.md"))
+        checked_paths.extend((ROOT / "scripts").glob("*.py"))
+        checked_paths.extend((ROOT / "tests").glob("*.py"))
+
+        for path in checked_paths:
+            self.assertNotIn(forbidden, path.read_text(encoding="utf-8-sig"), str(path.relative_to(ROOT)))
+
+    def test_normal_production_docs_use_v3_command_path(self) -> None:
+        docs = [
+            ROOT / "SKILL.md",
+            ROOT / "README.md",
+            ROOT / "references" / "production-workflow.md",
+            ROOT / "references" / "companion-contract.md",
+            ROOT / "references" / "state-enhancers.md",
+            ROOT / "references" / "quality-pipeline-v3.md",
+        ]
+        forbidden = {
+            "scripts/prepare_companion_run.py": "scripts/prepare_production_companion_run.py",
+            "scripts/record_companion_imagegen_result.py": "scripts/record_companion_imagegen_result_v3.py",
+            "scripts/audit_companion_imagegen_sources.py": "scripts/audit_companion_imagegen_sources_v3.py",
+            "smooth_or_overdetailed_foreground_palette": "smooth_gradient_or_painterly_render_risk",
+        }
+
+        for path in docs:
+            text = path.read_text(encoding="utf-8-sig")
+            for old, new in forbidden.items():
+                self.assertNotIn(old, text, f"{path.name} should use {new} in production-v3 docs")
+
+    def test_character_bible_example_documents_v3_identity_schema(self) -> None:
+        example_path = ROOT / "references" / "character-bible.example.json"
+        self.assertTrue(example_path.exists())
+        data = json.loads(example_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["schemaVersion"], 3)
+        self.assertEqual(data["status"], "approved")
+        self.assertEqual(data["pixelArtProfile"], "16-bit-console")
+        for key in (
+            "sourceVibe",
+            "speciesOrForm",
+            "bodyCore",
+            "speciesAnchors",
+            "silhouetteAnchors",
+            "proportionRules",
+            "faceGrammar",
+            "paletteRoles",
+            "appendages",
+            "forbiddenMutations",
+            "personalityTraits",
+            "motionVocabulary",
+            "stateCueRules",
+            "qualityProfile",
+        ):
+            self.assertIn(key, data)
+        self.assertTrue(all(isinstance(item, dict) and {"role", "color"} <= set(item) for item in data["paletteRoles"]))
+        self.assertTrue(
+            all({"id", "kind", "count", "placement", "affordances"} <= set(item) for item in data["appendages"])
+        )
+        for state in (
+            "idle",
+            "hover",
+            "dragging",
+            "greeting",
+            "listening",
+            "thinking",
+            "answering",
+            "success",
+            "error",
+            "sleeping",
+        ):
+            self.assertIn(state, data["stateCueRules"])
+        self.assertEqual(data["qualityProfile"], {"profile": "production-v3", "stateAllowances": {}})
+
     def test_top_level_skill_stays_compact_and_routes_to_references(self) -> None:
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8-sig")
 
@@ -174,10 +284,8 @@ class SkillDocumentTests(unittest.TestCase):
         for text in (skill_text, contract_text, enhancer_text):
             self.assertIn("non_uniform_chroma_key_background", text)
             self.assertIn("fake_checkerboard_transparency_background", text)
-            self.assertIn("base_style_analysis", text)
-            self.assertIn("base_style_strict_blocking_warning_codes", text)
-            self.assertIn("row_source_style_analysis", text)
-            self.assertIn("row_source_style_strict_blocking_warning_codes", text)
+            self.assertIn("source_style_analysis_v3", text)
+            self.assertIn("source_style_strict_blocking_warning_codes_v3", text)
             self.assertIn("capture_codex_app_imagegen_result.py", text)
             self.assertIn("codex-app-imagegen", text)
 
@@ -188,13 +296,13 @@ class SkillDocumentTests(unittest.TestCase):
         self.assertIn("merely looks green but has visible or measured falloff", contract_text)
         self.assertIn("Do not accept locally flood-filled", contract_text)
         self.assertIn("do not locally normalize the source background", enhancer_text)
-        self.assertIn("audit_companion_imagegen_sources.py", skill_text)
+        self.assertIn("audit_companion_imagegen_sources_v3.py", skill_text)
         self.assertIn("without copying files, recording jobs, or mutating", skill_text)
         self.assertIn("create_companion_candidate_rejection_report.py", skill_text)
         self.assertIn("candidate rejection report", skill_text)
         self.assertIn("recorded: false", skill_text)
         self.assertIn("leaves `imagegen-jobs.json` untouched", skill_text)
-        self.assertIn("create_companion_production_readiness_report.py", skill_text)
+        self.assertIn("create_companion_production_readiness_report_v3.py", skill_text)
         self.assertIn("production-readiness report", skill_text)
         self.assertIn("candidate rejection reports", skill_text)
         self.assertIn("do not block production by themselves", skill_text)

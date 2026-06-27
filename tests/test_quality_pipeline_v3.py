@@ -1,5 +1,7 @@
 import argparse
+import contextlib
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
@@ -168,6 +170,18 @@ class QualityPipelineV3Tests(unittest.TestCase):
                 if job["id"] != "base":
                     self.assertIn("current_canonical_base_review", required)
 
+    def test_prepare_v3_help_exits_zero_without_output_dir(self) -> None:
+        modules = load_v3_modules()
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as raised:
+                modules["prepare_v3"].main(["--help"])
+
+        self.assertEqual(raised.exception.code, 0)
+        help_text = stdout.getvalue()
+        self.assertIn("usage:", help_text)
+        self.assertIn("--output-dir", help_text)
+
     def test_approve_identity_refuses_after_any_job_complete_and_then_approves_hash_bindings(self) -> None:
         modules = load_v3_modules()
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -286,6 +300,39 @@ class QualityPipelineV3Tests(unittest.TestCase):
             self.assertGreater(noisy_result["foreground"]["rawUniqueRgbCount"], 64)
             self.assertIn("high_raw_unique_rgb_count", noisy_result["advisoryWarningCodes"])
             self.assertIn("smooth_gradient_or_painterly_render_risk", smooth_result["blockingWarningCodes"])
+
+    def test_record_v3_strict_failure_message_includes_actionable_metrics(self) -> None:
+        modules = load_v3_modules()
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            root = Path(raw_tmp)
+            run_dir = root / "run"
+            smooth = root / "smooth-base.png"
+            write_smooth_ramp_sprite(smooth)
+            modules["prepare_v3"].main(
+                ["--companion-name", "Vela", "--output-dir", str(run_dir), "--states", "thinking", "--quiet"]
+            )
+            identity_path = root / "identity.json"
+            write_identity(identity_path, ["thinking"])
+            modules["approve"].approve_identity(run_dir / "manifest.json", from_json=identity_path)
+
+            with self.assertRaises(SystemExit) as raised:
+                modules["record_v3"].record_result_v3(
+                    run_dir=run_dir,
+                    job_id="base",
+                    source=smooth,
+                    source_provenance="built-in-imagegen",
+                    force=False,
+                    allow_synthetic_test_source=True,
+                    strict_base_style=True,
+                )
+
+        message = str(raised.exception)
+        self.assertIn("smooth_gradient_or_painterly_render_risk", message)
+        self.assertIn("rawUniqueRgbCount", message)
+        self.assertIn("quantizedColorCount", message)
+        self.assertIn("partialAlphaRatio", message)
+        self.assertIn("sameOrSmallDeltaRampRatio", message)
+        self.assertIn("hardTransitionRatio", message)
 
     def test_analyze_quality_v3_exposes_no_production_threshold_override_flags(self) -> None:
         module = load_module("analyze_companion_quality_v3", "scripts/analyze_companion_quality_v3.py")

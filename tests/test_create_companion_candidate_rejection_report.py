@@ -66,6 +66,18 @@ def write_nonflat_sprite(path: Path) -> None:
     image.save(path)
 
 
+def write_smooth_ramp_sprite(path: Path) -> None:
+    image = Image.new("RGBA", (128, 128), (255, 0, 255, 255))
+    pixels = image.load()
+    for y in range(24, 104):
+        for x in range(24, 104):
+            if (x - 64) ** 2 + (y - 64) ** 2 <= 40 ** 2:
+                shade = int((x - 24) * 120 / 79)
+                pixels[x, y] = (40 + shade, 120 + shade // 2, 150 + shade // 3, 255)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path)
+
+
 class CompanionCandidateRejectionReportTests(unittest.TestCase):
     def test_report_records_rejected_candidates_without_mutating_jobs(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -185,6 +197,76 @@ class CompanionCandidateRejectionReportTests(unittest.TestCase):
                     candidates_path=candidates_json,
                     allow_synthetic_test_source=True,
                 )
+
+    def test_report_preserves_rejected_base_candidate_with_v3_metrics_without_completing_job(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp_path = Path(raw_tmp)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_manifest(run_dir)
+            smooth = tmp_path / "smooth-base.png"
+            write_smooth_ramp_sprite(smooth)
+
+            jobs_path = run_dir / "imagegen-jobs.json"
+            jobs_path.write_text(
+                json.dumps(
+                    {
+                        "jobs": [
+                            {
+                                "id": "base",
+                                "kind": "base-companion",
+                                "status": "pending",
+                                "output_path": "generated/base.png",
+                            }
+                        ]
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            before_jobs = jobs_path.read_text(encoding="utf-8")
+            candidates_json = tmp_path / "base-candidates.json"
+            candidates_json.write_text(
+                json.dumps(
+                    {
+                        "notes": "Base rejected after strict v3 recording failed.",
+                        "candidates": [
+                            {
+                                "source": str(smooth),
+                                "promptStrategy": "flatter indexed native-pixel base",
+                                "visualBlockers": ["still reads as smooth/painterly instead of native pixel art"],
+                            }
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            report = candidate_report.build_report(
+                run_dir=run_dir,
+                job_id="base",
+                candidates_path=candidates_json,
+                built_in_repair_threshold=1,
+                allow_synthetic_test_source=True,
+            )
+
+            self.assertTrue(report["ok"])
+            self.assertEqual(report["jobId"], "base")
+            self.assertEqual(report["jobKind"], "base-companion")
+            self.assertEqual(report["currentKeptSource"]["decision"], "none")
+            self.assertEqual(report["candidates"][0]["decision"], "reject")
+            self.assertFalse(report["candidates"][0]["recorded"])
+            self.assertIn(
+                "smooth_gradient_or_painterly_render_risk",
+                report["candidates"][0]["sourceStyleAnalysisV3"]["blockingWarningCodes"],
+            )
+            foreground = report["candidates"][0]["sourceStyleAnalysisV3"]["foreground"]
+            self.assertIn("rawUniqueRgbCount", foreground)
+            self.assertIn("sameOrSmallDeltaRampRatio", foreground)
+            self.assertIn("hardTransitionRatio", foreground)
+            self.assertIn("not production-ready yet", report["conclusion"]["nextRecommendedAction"])
+            self.assertEqual(jobs_path.read_text(encoding="utf-8"), before_jobs)
 
 
 if __name__ == "__main__":

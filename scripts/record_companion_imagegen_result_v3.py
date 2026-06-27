@@ -62,6 +62,23 @@ def strict_codes_for_job(job: dict[str, Any], analysis: dict[str, Any]) -> list[
     return codes
 
 
+def format_strict_style_failure(job_id: str, strict_codes: list[str], analysis: dict[str, Any]) -> str:
+    foreground = analysis.get("foreground") if isinstance(analysis.get("foreground"), dict) else {}
+    payload = {
+        "blockingWarningCodes": analysis.get("blockingWarningCodes", strict_codes),
+        "advisoryWarningCodes": analysis.get("advisoryWarningCodes", []),
+        "rawUniqueRgbCount": foreground.get("rawUniqueRgbCount"),
+        "quantizedColorCount": foreground.get("quantizedColorCount"),
+        "partialAlphaRatio": foreground.get("partialAlphaRatio"),
+        "sameOrSmallDeltaRampRatio": foreground.get("sameOrSmallDeltaRampRatio"),
+        "hardTransitionRatio": foreground.get("hardTransitionRatio"),
+    }
+    return (
+        f"v3 source style analysis failed for {job_id}: {', '.join(strict_codes)}\n"
+        + json.dumps(payload, indent=2)
+    )
+
+
 def update_recorded_job_v3(
     *,
     run_dir: Path,
@@ -123,7 +140,7 @@ def record_result_v3(
     strict_requested = strict_base_style if job_id == "base" else strict_row_style
     strict_codes = strict_codes_for_job(job, analysis)
     if strict_requested and strict_codes:
-        raise SystemExit(f"v3 source style analysis failed for {job_id}: {', '.join(strict_codes)}")
+        raise SystemExit(format_strict_style_failure(job_id, strict_codes, analysis))
 
     cleanup_verification = None
     if source_provenance in CHROMA_CLEANUP_PROVENANCES:

@@ -1,4 +1,4 @@
-# Web Companion Mascot
+﻿# Web Companion Mascot
 
 A Codex skill for creating complete animated **16-bit pixel-art** companions for React, chatbot, hover, and drag/drop website experiences.
 

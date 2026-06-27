@@ -1,4 +1,4 @@
----
+﻿---
 name: web-companion-mascot
 description: Use when creating, validating, or integrating custom animated mascot companions, sprite sheets, sprite atlases, or React/chatbot website mascot assets from concept art, screenshots, existing Codex pets, or generated references, especially when states like idle, hover, dragging, greeting, listening, thinking, answering, success, error, or sleeping are needed.
 ---
@@ -12,6 +12,25 @@ Create website-first pixel-art chatbot companions with custom sprite sheets, a s
 Use `$imagegen` for all production visual generation. Use this skill's scripts only for deterministic preparation, provenance recording, cleanup, atlas assembly, QA, validation, and React file generation.
 
 Default behavior is agent-led: infer the mascot identity, state list, clarity approach, geometry, and cue style from the user's prompt/reference. Do not ask the user to choose workflow modes. Ask only when a missing decision would materially change the character or target product.
+
+## Scope Resolver
+
+If the user invokes `$web-companion-mascot` and asks for a mascot, companion, pet, React mascot, chatbot mascot, website mascot, full mascot, ready mascot, or a mascot from a reference, treat it as a complete production package request by default. Requests like "make me a full mascot 16-bit pixel art from this reference", "make me a full website companion", or "make me a React chatbot companion from this character" route by intent, not exact string. Full body or full mascot 16-bit pixel art means the canonical base should show the whole character; it does not narrow scope to a single static image.
+
+Do not ask the user to choose workflow modes. `readyJobs: ["base"]` after preparation is only an internal stage; it is never the deliverable. Do not call a normal production request complete until atlas, frames, manifest, QA evidence, validation, and requested React files exist.
+
+Base-only/static output is allowed only when the user explicitly asks for a concept image, audition, canonical-base preview, narrow repair artifact, or full-body mascot image only. "Image only" explicitly narrows scope; label that output as partial and say what is missing for production.
+
+### Prototype Escape Hatch
+
+If the production-v3 path is blocked after repeated strict base or row failures, you may offer a rough package only as a prototype, not production-v3 validated. Never default to this path. Continue only if the user explicitly chooses it after you explain the production blocker, the run folder, and what failed. Prototype output does not satisfy production acceptance criteria, must not be reported as `productionReady: true`, and cannot replace the full production package. Do not use prototype mode to bypass v3 source-style checks, QA, validation, or the full-state routing rules above.
+
+Example:
+
+- User: "using $web-companion-mascot make me a full mascot 16-bit pixel art from this reference"
+- Generic references include dog, robot, logo, plush, animal, object, character, avatar, or other source images.
+- Correct: prepare production-v3 run, approve identity, generate/record canonical base, review base, generate/record default rows, assemble atlas, QA, validate, generate React.
+- Incorrect: generate one full-body transparent PNG and call it done.
 
 ## Reference Routing
 
@@ -71,7 +90,9 @@ This default output is the full companion package. Do not call a normal React/ch
 python scripts/prepare_production_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --force
 ```
 
-3. Fill and approve `references/character-bible.json` before accepting any visual job. The approved identity must define native 16-bit pixel art, species/form anchors, silhouette/proportion rules, face grammar, palette roles, appendages, forbidden mutations, motion vocabulary, and state cue rules:
+Do not invoke `$imagegen` for a standalone base before this run exists and `prompts/base.md` exists.
+
+3. Fill and approve `references/character-bible.json` before accepting any visual job. Start from the generated draft or `references/character-bible.example.json`; do not invent schema. The approved identity must define native 16-bit pixel art, species/form anchors, silhouette/proportion rules, face grammar, palette roles as `{"role": "...", "color": "..."}` objects, appendages, forbidden mutations, motion vocabulary, and state cue rules:
 
 ```bash
 python scripts/approve_companion_identity.py --manifest /path/to/run/manifest.json --from-json /path/to/approved-character-bible.json
@@ -89,6 +110,8 @@ python scripts/companion_job_status.py --run-dir /path/to/run
 python scripts/capture_codex_app_imagegen_result.py --out /absolute/path/to/codex-app-imagegen/ig_base.png
 python scripts/record_companion_imagegen_result_v3.py --run-dir /path/to/run --job-id base --source /absolute/path/to/codex-app-imagegen/ig_base.png --source-provenance codex-app-imagegen --strict-base-style
 ```
+
+If strict v3 recording rejects a base candidate, preserve the source path, hash, and `source_style_analysis_v3` in a candidate rejection report, regenerate with a revised native-pixel prompt/reference strategy, and stop as not production-ready yet after repeated same-blocker failures. Do not fall back to delivering the static base as if the companion package were complete.
 
 6. Create the canonical base review after comparing at least two credible base candidates. State rows remain locked until this review passes and binds to the current identity and canonical base:
 
@@ -153,7 +176,7 @@ Before calling a production companion complete, require:
 - `manifest.json`, `imagegen-jobs.json`, prompts, canonical base, atlas, extracted frames, previews, and QA files exist.
 - The approved character bible exists and is bound to `manifest.json` and every job.
 - `qa/canonical-base-review.json` passes and row jobs are bound to its current hash.
-- Base and rows have v3 strict source-style evidence and no blocking warning codes.
+- Base and rows have v3 strict source-style evidence (`source_style_analysis_v3`, `source_style_strict_blocking_warning_codes_v3: []`) and no blocking warning codes.
 - Chroma cleanup, when used, has v3 proof that protected foreground pixels were not quantized, posterized, recolored, alpha changed, or geometrically changed.
 - Contact sheet, cutout check, readability sheet, semantic anchor sheet, motion sheet, frame-level review evidence, anatomy review, state-performance review, eye-grammar review, and art-direction review pass.
 - `qa/assembly-report.json` reports outline improvement enabled and `totalOutlineHaloPixels: 0`.

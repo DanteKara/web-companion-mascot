@@ -144,10 +144,13 @@ def upgrade_run(run_dir: Path) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    run_dir = parse_output_dir(argv)
-    prepare.main(argv)
+    effective_argv = sys.argv[1:] if argv is None else argv
+    if any(arg in {"-h", "--help"} for arg in effective_argv):
+        return prepare.main(argv)
+    run_dir = parse_output_dir(effective_argv)
+    prepare.main(effective_argv)
     result = upgrade_run(run_dir)
-    if "--quiet" not in (argv or []):
+    if "--quiet" not in effective_argv:
         print(json.dumps(result, indent=2))
     return 0
 
