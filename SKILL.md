@@ -18,6 +18,7 @@ Default behavior is agent-led: infer the mascot identity, state list, clarity ap
 Load only what the task needs:
 
 - `references/production-workflow.md`: full production workflow, art-direction rules, script details, repair workflow, validation commands, and acceptance criteria. Read this for normal end-to-end mascot creation, production QA, failed validation repair, fallback decisions, or any task where visual quality/provenance matters.
+- `references/quality-pipeline-v3.md`: production v3 contract, status meanings, locked QA profile, cleanup provenance rules, and command path. Read this for any production mascot run.
 - `references/companion-contract.md`: manifest shape, default chatbot states, style metadata, anatomy contract, geometry, atlas rules, QA checklist, and website state mapping.
 - `references/state-enhancers.md`: use when the user chooses or needs `semantic-enhancers`, state cards, mascot-native cues, anatomy-sensitive props/effects, or clarity-profile decisions.
 - `references/react-integration.md`: use when wiring the mascot into a React app or modifying generated React component behavior.
@@ -26,11 +27,11 @@ Load only what the task needs:
 
 - Do not draw, tile, mirror, warp, synthesize, or replace production mascot pixels with local Python/Pillow, SVG, canvas, CSS, vector overlays, or deterministic compositors.
 - Do not manually edit `imagegen-jobs.json`, copy files into `generated/`, or mark visual jobs complete by hand.
-- Record selected visual outputs with `scripts/record_companion_imagegen_result.py`; keep source provenance explicit.
+- Record selected production visual outputs with `scripts/record_companion_imagegen_result_v3.py`; keep source provenance explicit.
 - Only the base job may be prompt-only when no reference exists. Every state-row job must use the grounding images listed in `imagegen-jobs.json`, including `references/canonical-base.png` after the base is recorded.
 - For a normal React/chatbot companion request, deliver the full companion package. Base-only or single-image outputs are incomplete unless the user explicitly asks for a concept image, canonical base, audition, or narrow repair.
 - Run the Codex app image capture preflight before treating `$imagegen` output as production art. If the image appears inline in Codex app rather than as an obvious file, use `scripts/capture_codex_app_imagegen_result.py` to capture the app's `image_generation_call` result to a PNG and `.codex-imagegen.json` sidecar, then record it with `--source-provenance codex-app-imagegen`.
-- If a captured Codex app `$imagegen` row is visually good but needs chroma cleanup, use the installed `$imagegen` chroma helper to create a transparent PNG outside the run directory, then record the cleaned PNG with `--source-provenance codex-app-imagegen-chroma-cleanup --chroma-cleanup-source <original-captured-png>`.
+- If a captured Codex app `$imagegen` row is visually good but needs chroma cleanup, use the installed `$imagegen` chroma helper to create a transparent PNG outside the run directory, then record the cleaned PNG with `--source-provenance codex-app-imagegen-chroma-cleanup --chroma-cleanup-source <original-captured-png>`. V3 cleanup must be background-only; foreground quantization, posterization, palette remapping, alpha changes, or geometry edits are production blockers.
 - If `$imagegen` is unavailable and the user has not provided finished integrated sprite art, stop and explain the blocker.
 
 ## Default Output
@@ -64,33 +65,45 @@ This default output is the full companion package. Do not call a normal React/ch
 ## Workflow
 
 1. Establish identity, references, must-keep features, anatomy class, prop rules, palette, target site vibe, state list, and state clarity. For normal React website companions, include `hover` and `dragging` interaction rows unless the request is deliberately compact or non-interactive. Infer `semantic-enhancers` for normal chatbot companions unless the user asks for a quieter/minimal mascot; infer `pose-only` only when acting alone will read clearly.
-2. Prepare the run folder and prompt plan:
+2. Prepare the production-v3 run folder and prompt plan:
 
 ```bash
-python scripts/prepare_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --force
+python scripts/prepare_production_companion_run.py --companion-name "<Name>" --reference /path/to/reference.png --output-dir /path/to/run --anatomy-class ambiguous-limbs --state-clarity semantic-enhancers --force
 ```
 
-3. Inspect ready jobs:
+3. Fill and approve `references/character-bible.json` before accepting any visual job. The approved identity must define native 16-bit pixel art, species/form anchors, silhouette/proportion rules, face grammar, palette roles, appendages, forbidden mutations, motion vocabulary, and state cue rules:
+
+```bash
+python scripts/approve_companion_identity.py --manifest /path/to/run/manifest.json --from-json /path/to/approved-character-bible.json
+```
+
+4. Inspect ready jobs:
 
 ```bash
 python scripts/companion_job_status.py --run-dir /path/to/run
 ```
 
-4. Generate/select the canonical Codex-style pixel-art base with `$imagegen`, capture it if needed, then record it. Do not stop after the canonical base during a normal full companion run:
+5. Generate/select the canonical native 16-bit pixel-art base with `$imagegen`, capture it if needed, then record it. Do not accept fancy 3D, glossy, painterly, soft-gradient, or realistic art as a production source:
 
 ```bash
 python scripts/capture_codex_app_imagegen_result.py --out /absolute/path/to/codex-app-imagegen/ig_base.png
-python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id base --source /absolute/path/to/codex-app-imagegen/ig_base.png --source-provenance codex-app-imagegen --strict-base-style
+python scripts/record_companion_imagegen_result_v3.py --run-dir /path/to/run --job-id base --source /absolute/path/to/codex-app-imagegen/ig_base.png --source-provenance codex-app-imagegen --strict-base-style
 ```
 
-5. Generate one grounded row strip per ready state with `$imagegen`, then record each selected row:
+6. Create the canonical base review after comparing at least two credible base candidates. State rows remain locked until this review passes and binds to the current identity and canonical base:
+
+```bash
+python scripts/create_canonical_base_review.py --manifest /path/to/run/manifest.json --candidate /path/to/base-a.png --candidate /path/to/base-b.png --status pass --production-use --check native16BitPixelArt=true --check noSmooth3DRendering=true --check silhouetteReadableAt64px=true --check speciesOrFormReadable=true --check identityMatchesContract=true --check anatomyMatchesContract=true --check faceGrammarMatchesContract=true --check paletteRolesPreserved=true --check animationReadySimplification=true --check noChromaContamination=true --observation silhouette="specific evidence" --observation speciesOrForm="specific evidence" --observation anatomy="specific evidence" --observation faceGrammar="specific evidence" --observation palette="specific evidence" --observation pixelArt="specific evidence" --observation smallSize="specific evidence"
+```
+
+7. Generate one grounded row strip per ready state with `$imagegen`, then record each selected row through the v3 recorder:
 
 ```bash
 python scripts/capture_codex_app_imagegen_result.py --out /absolute/path/to/codex-app-imagegen/ig_thinking.png
-python scripts/record_companion_imagegen_result.py --run-dir /path/to/run --job-id thinking --source /absolute/path/to/codex-app-imagegen/ig_thinking.png --source-provenance codex-app-imagegen --strict-row-style
+python scripts/record_companion_imagegen_result_v3.py --run-dir /path/to/run --job-id thinking --source /absolute/path/to/codex-app-imagegen/ig_thinking.png --source-provenance codex-app-imagegen --strict-row-style
 ```
 
-6. Assemble and inspect the atlas:
+8. Assemble and inspect the atlas:
 
 ```bash
 python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json --row-dir /path/to/run/generated --out-dir /path/to/run --cell-width 256 --cell-height 288 --extraction-mode component --allow-edge-clearance-scale --max-outline-halo-pixels 0 --no-equal-fallback
@@ -98,16 +111,20 @@ python scripts/assemble_companion_atlas.py --manifest /path/to/run/manifest.json
 
 If the contact sheet shows edge pressure, neighbor slivers, prop clipping, or mascot scale shrink from tall/wide cues, rerun assembly with a larger explicit cell such as `384x384`, then rerun QA on that final atlas.
 
-7. Run QA and manual review scripts before acceptance:
+9. Run QA and frame-level review scripts before acceptance:
 
 ```bash
 python scripts/create_state_readability_sheet.py --manifest /path/to/run/manifest.json
-python scripts/analyze_companion_quality.py --manifest /path/to/run/manifest.json
+python scripts/audit_companion_imagegen_sources_v3.py --run-dir /path/to/run
+python scripts/analyze_companion_quality_v3.py --manifest /path/to/run/manifest.json --profile production-v3
+python scripts/create_companion_review_bundle.py template --manifest /path/to/run/manifest.json --out /path/to/run/qa/review-template.json
+python scripts/create_companion_review_bundle.py consume --manifest /path/to/run/manifest.json --observations /path/to/run/qa/review-observations.json
 python scripts/validate_companion_manifest.py --manifest /path/to/run/manifest.json --profile chatbot --strict --require-state-clarity --require-rendering-style --require-quality-report --require-anatomy-review --require-state-performance-review --require-eye-grammar-review --require-art-direction-review --max-outline-halo-pixels 0
-python scripts/create_companion_production_readiness_report.py --manifest /path/to/run/manifest.json --json-out /path/to/run/qa/production-readiness-report.json
+python scripts/validate_production_contract_v3.py --manifest /path/to/run/manifest.json
+python scripts/create_companion_production_readiness_report_v3.py --manifest /path/to/run/manifest.json --json-out /path/to/run/qa/production-readiness-v3.json
 ```
 
-8. Generate React files only after visual QA, strict validation, and production-readiness checks pass:
+10. Generate React files only after visual QA, strict validation, and v3 production-readiness checks pass:
 
 ```bash
 python scripts/generate_react_component.py --manifest /path/to/run/manifest.json --out-dir /path/to/run/react
@@ -134,8 +151,12 @@ When integrating into React, serve final assets from a stable public path, drive
 Before calling a production companion complete, require:
 
 - `manifest.json`, `imagegen-jobs.json`, prompts, canonical base, atlas, extracted frames, previews, and QA files exist.
-- Base and rows have strict source-style evidence and no blocking warning codes.
-- Contact sheet, cutout check, readability sheet, semantic anchor sheet, motion sheet, anatomy review, state-performance review, eye-grammar review, and art-direction review pass.
+- The approved character bible exists and is bound to `manifest.json` and every job.
+- `qa/canonical-base-review.json` passes and row jobs are bound to its current hash.
+- Base and rows have v3 strict source-style evidence and no blocking warning codes.
+- Chroma cleanup, when used, has v3 proof that protected foreground pixels were not quantized, posterized, recolored, alpha changed, or geometrically changed.
+- Contact sheet, cutout check, readability sheet, semantic anchor sheet, motion sheet, frame-level review evidence, anatomy review, state-performance review, eye-grammar review, and art-direction review pass.
 - `qa/assembly-report.json` reports outline improvement enabled and `totalOutlineHaloPixels: 0`.
-- Strict chatbot validation passes, or any exception is explicitly reviewed and documented.
-- `qa/production-readiness-report.json` records `productionReady: true`.
+- Strict chatbot validation passes.
+- `qa/production-contract-v3-report.json` has no blockers.
+- `qa/production-readiness-v3.json` records `productionReady` or `productionReadyWithApprovedExceptions`; approved exceptions must be predeclared in the approved identity contract.

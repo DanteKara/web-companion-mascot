@@ -46,6 +46,24 @@ The v3 pipeline prevents:
 
 Read [SKILL.md](SKILL.md) and `references/quality-pipeline-v3.md` for the complete workflow.
 
+## Production review notes
+
+For high-visibility audition rows, especially thinking, working, and answering, do not accept output without anatomy review, state-performance review, and eye-grammar review. For focused auditions, run strict validation with the review gates enabled:
+
+```bash
+python scripts/validate_companion_manifest.py \
+  --manifest /path/to/run/manifest.json \
+  --profile audition \
+  --strict \
+  --require-anatomy-review \
+  --require-state-performance-review \
+  --require-eye-grammar-review
+```
+
+Anatomy review must name the body core, appendage count, placement/anchors, allowed motion/interactors, and forbidden extra anatomy. State-performance review must confirm the mascot is acting the state rather than hiding weak motion behind a symbol. Eye-grammar review must confirm every used frame preserves the approved eye count, shape, fill/pupil color, highlight logic, spacing, placement, and blink style.
+
+Thinking cues should use an accepted cue vocabulary and a stable source-to-peak trail. At the idea peak, the primary cue element is only slightly larger, never oversized; do not enlarge the cue to prove the idea landed. For separated elements, the smallest element stays closest to the inferred source. Do not let intermediate cue elements drift downward, reverse direction, jump sideways, or reorder the trail.
+
 ## Tests
 
 ```bash

@@ -6,41 +6,77 @@
       "nearDuplicateDelta": 1.0,
       "maxDuplicateRatio": 0.45,
       "minAverageMotionDelta": 1.2,
-      "maxBodyJumpRatio": 0.20,
+      "maxBodyJumpRatio": 0.2,
       "maxAreaJumpRatio": 0.45,
       "maxCoreScaleDriftRatio": 0.12,
       "maxCoreScaleRangeRatio": 0.09,
-      "maxCrossStateCoreScaleDriftRatio": 0.10,
+      "maxCrossStateCoreScaleDriftRatio": 0.1,
       "maxCoreCenterDriftRatio": 0.08,
       "maxFragmentAreaRatio": 0.015,
       "maxSemanticDriftRatio": 0.55,
       "minSemanticPresenceRatio": 0.35,
       "maxLoopSeamDelta": 6.0,
-      "maxPaletteDrift": 0.50,
+      "maxPaletteDrift": 0.5,
       "maxIntermediateAlphaRatio": 0.03,
       "allowanceCaps": {
-        "subtle-breathing": {"maxCoreScaleRangeRatio": 0.10},
-        "pointer-lean": {"maxCoreCenterDriftRatio": 0.10},
-        "carried-pose": {"maxCoreCenterDriftRatio": 0.12},
-        "tail-follow-through": {"maxAreaJumpRatio": 0.52},
-        "small-wave": {"maxAreaJumpRatio": 0.50},
-        "small-bounce": {"maxCoreCenterDriftRatio": 0.12},
-        "near-head-overlap-cue": {"minSemanticPresenceRatio": 0.0},
-        "thinking-lean": {"maxCoreCenterDriftRatio": 0.10},
-        "work-lean": {"maxCoreCenterDriftRatio": 0.11},
-        "prop-overlap": {"minSemanticPresenceRatio": 0.0},
-        "speaking-bob": {"maxCoreCenterDriftRatio": 0.10},
-        "mouth-origin-overlap-cue": {"minSemanticPresenceRatio": 0.0},
-        "celebratory-bounce": {"maxCoreCenterDriftRatio": 0.16},
-        "brief-squash-stretch": {"maxCoreScaleRangeRatio": 0.13},
-        "small-recoil": {"maxCoreCenterDriftRatio": 0.12},
-        "small-slump": {"maxCoreScaleRangeRatio": 0.11},
-        "questioning-tilt": {"maxCoreCenterDriftRatio": 0.10},
+        "subtle-breathing": {
+          "maxCoreScaleRangeRatio": 0.1
+        },
+        "pointer-lean": {
+          "maxCoreCenterDriftRatio": 0.1
+        },
+        "carried-pose": {
+          "maxCoreCenterDriftRatio": 0.12
+        },
+        "tail-follow-through": {
+          "maxAreaJumpRatio": 0.52
+        },
+        "small-wave": {
+          "maxAreaJumpRatio": 0.5
+        },
+        "small-bounce": {
+          "maxCoreCenterDriftRatio": 0.12
+        },
+        "near-head-overlap-cue": {
+          "minSemanticPresenceRatio": 0.0
+        },
+        "thinking-lean": {
+          "maxCoreCenterDriftRatio": 0.1
+        },
+        "work-lean": {
+          "maxCoreCenterDriftRatio": 0.11
+        },
+        "prop-overlap": {
+          "minSemanticPresenceRatio": 0.0
+        },
+        "speaking-bob": {
+          "maxCoreCenterDriftRatio": 0.1
+        },
+        "mouth-origin-overlap-cue": {
+          "minSemanticPresenceRatio": 0.0
+        },
+        "celebratory-bounce": {
+          "maxCoreCenterDriftRatio": 0.16
+        },
+        "brief-squash-stretch": {
+          "maxCoreScaleRangeRatio": 0.13
+        },
+        "small-recoil": {
+          "maxCoreCenterDriftRatio": 0.12
+        },
+        "small-slump": {
+          "maxCoreScaleRangeRatio": 0.11
+        },
+        "questioning-tilt": {
+          "maxCoreCenterDriftRatio": 0.1
+        },
         "curled-pose-compression": {
           "maxCoreScaleRangeRatio": 0.15,
           "maxCrossStateCoreScaleDriftRatio": 0.22
         },
-        "tail-wrap": {"maxAreaJumpRatio": 0.55}
+        "tail-wrap": {
+          "maxAreaJumpRatio": 0.55
+        }
       }
     },
     "audition-v3": {
@@ -58,7 +94,7 @@
       "maxSemanticDriftRatio": 0.65,
       "minSemanticPresenceRatio": 0.25,
       "maxLoopSeamDelta": 8.0,
-      "maxPaletteDrift": 0.60,
+      "maxPaletteDrift": 0.6,
       "maxIntermediateAlphaRatio": 0.05,
       "allowanceCaps": {}
     }
